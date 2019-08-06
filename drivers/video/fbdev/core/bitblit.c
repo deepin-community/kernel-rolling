@@ -43,6 +43,20 @@ static void update_attr(u8 *dst, u8 *src, int attribute,
 	}
 }
 
+u16 utf8_pos(struct vc_data *vc, const unsigned short *utf8)
+{
+	unsigned long p = (long)utf8;
+	if (vc->vc_font.charcount <= 512) return 0;
+	if (p >= vc->vc_origin && p < vc->vc_scr_end) {
+		return scr_readw((unsigned short *)(p + vc->vc_screenbuf_size));
+	} else {
+		u16 extra_c;
+		int c = *(int*)utf8;
+		extra_c = (c >> 16 ) & 0x0000ffff;
+		return extra_c;
+	}
+}
+
 static void bit_bmove(struct vc_data *vc, struct fb_info *info, int sy,
 		      int sx, int dy, int dx, int height, int width)
 {
@@ -59,11 +73,12 @@ static void bit_bmove(struct vc_data *vc, struct fb_info *info, int sy,
 }
 
 static void bit_clear(struct vc_data *vc, struct fb_info *info, int sy,
-		      int sx, int height, int width, int fg, int bg)
+		      int sx, int height, int width)
 {
+	int bgshift = (vc->vc_hi_font_mask) ? 13 : 12;
 	struct fb_fillrect region;
 
-	region.color = bg;
+	region.color = attr_bgcol_ec(bgshift, vc, info);
 	region.dx = sx * vc->vc_font.width;
 	region.dy = sy * vc->vc_font.height;
 	region.width = width * vc->vc_font.width;
@@ -79,21 +94,28 @@ static inline void bit_putcs_aligned(struct vc_data *vc, struct fb_info *info,
 				     struct fb_image *image, u8 *buf, u8 *dst)
 {
 	u16 charmask = vc->vc_hi_font_mask ? 0x1ff : 0xff;
-	unsigned int charcnt = vc->vc_font.charcount;
 	u32 idx = vc->vc_font.width >> 3;
 	u8 *src;
 
+	int utf8_c = 0;
 	while (cnt--) {
-		u16 ch = scr_readw(s++) & charmask;
-
-		if (ch >= charcnt)
-			ch = 0;
-		src = vc->vc_font.data + (unsigned int)ch * cellsize;
-
+		utf8_c = utf8_pos(vc, s);
+		if(((scr_readw(s) & charmask) == 0xff || (scr_readw(s) & charmask) == 0xfe ) &&  utf8_c != 0){
+			utf8_c -= 128;
+			if((scr_readw(s) & charmask) == 0xff){
+				src = vc->vc_font.data + (utf8_c * 32);
+			}else{
+				src = vc->vc_font.data + (utf8_c * 32 + 16);
+			}
+		}else{
+			src = vc->vc_font.data + (scr_readw(s) &
+						  charmask) * cellsize;
+		}
 		if (attr) {
 			update_attr(buf, src, attr, vc);
 			src = buf;
 		}
+		s++;
 
 		if (likely(idx == 1))
 			__fb_pad_aligned_buffer(dst, d_pitch, src, idx,
@@ -116,23 +138,30 @@ static inline void bit_putcs_unaligned(struct vc_data *vc,
 				       u8 *dst)
 {
 	u16 charmask = vc->vc_hi_font_mask ? 0x1ff : 0xff;
-	unsigned int charcnt = vc->vc_font.charcount;
 	u32 shift_low = 0, mod = vc->vc_font.width % 8;
 	u32 shift_high = 8;
 	u32 idx = vc->vc_font.width >> 3;
 	u8 *src;
 
+	int utf8_c = 0;
 	while (cnt--) {
-		u16 ch = scr_readw(s++) & charmask;
-
-		if (ch >= charcnt)
-			ch = 0;
-		src = vc->vc_font.data + (unsigned int)ch * cellsize;
-
+		utf8_c = utf8_pos(vc, s);
+		if(((scr_readw(s) & charmask) == 0xff || (scr_readw(s) & charmask) == 0xfe ) && utf8_c != 0){
+			utf8_c -= 128;
+			if((scr_readw(s) & charmask) == 0xff){
+				src = vc->vc_font.data + (utf8_c * 32);
+			}else{
+				src = vc->vc_font.data + (utf8_c * 32 + 16);
+			}
+		}else{
+			src = vc->vc_font.data + (scr_readw(s) &
+						  charmask) * cellsize;
+		}
 		if (attr) {
 			update_attr(buf, src, attr, vc);
 			src = buf;
 		}
+		s++;
 
 		fb_pad_unaligned_buffer(dst, d_pitch, src, idx,
 					image->height, shift_high,
@@ -168,11 +197,6 @@ static void bit_putcs(struct vc_data *vc, struct fb_info *info,
 	image.height = vc->vc_font.height;
 	image.depth = 1;
 
-	if (image.dy >= info->var.yres)
-		return;
-
-	image.height = min(image.height, info->var.yres - image.dy);
-
 	if (attribute) {
 		buf = kmalloc(cellsize, GFP_ATOMIC);
 		if (!buf)
@@ -186,18 +210,6 @@ static void bit_putcs(struct vc_data *vc, struct fb_info *info,
 			cnt = count;
 
 		image.width = vc->vc_font.width * cnt;
-
-		if (image.dx >= info->var.xres)
-			break;
-
-		if (image.dx + image.width > info->var.xres) {
-			image.width = info->var.xres - image.dx;
-			cnt = image.width / vc->vc_font.width;
-			if (cnt == 0)
-				break;
-			image.width = cnt * vc->vc_font.width;
-		}
-
 		pitch = DIV_ROUND_UP(image.width, 8) + scan_align;
 		pitch &= ~scan_align;
 		size = pitch * image.height + buf_align;
@@ -263,7 +275,7 @@ static void bit_cursor(struct vc_data *vc, struct fb_info *info, bool enable,
 	struct fb_cursor cursor;
 	struct fbcon_ops *ops = info->fbcon_par;
 	unsigned short charmask = vc->vc_hi_font_mask ? 0x1ff : 0xff;
-	int w = DIV_ROUND_UP(vc->vc_font.width, 8), c;
+	int w = DIV_ROUND_UP(vc->vc_font.width, 8), c, c_extra;
 	int y = real_y(ops->p, vc->state.y);
 	int attribute, use_sw = vc->vc_cursor_type & CUR_SW;
 	int err = 1;
@@ -275,8 +287,18 @@ static void bit_cursor(struct vc_data *vc, struct fb_info *info, bool enable,
 		return;
 
  	c = scr_readw((u16 *) vc->vc_pos);
+ 	c_extra = scr_readw((u16 *) vc->vc_pos + ( vc->vc_screenbuf_size >> 1));
 	attribute = get_attribute(info, c);
-	src = vc->vc_font.data + ((c & charmask) * (w * vc->vc_font.height));
+	if(((c&charmask) == 0xff || (c & charmask) == 0xfe) && c_extra != 0){
+		c_extra -= 128;
+		if((c & charmask) == 0xff){
+			src = (char *) (vc->vc_font.data + (c_extra * 32));
+		}else{
+			src = (char *) (vc->vc_font.data + (c_extra * 32 + 16));
+		}
+	}else{
+		src = vc->vc_font.data + ((c & charmask) * (w * vc->vc_font.height));
+	}
 
 	if (ops->cursor_state.image.data != src ||
 	    ops->cursor_reset) {
