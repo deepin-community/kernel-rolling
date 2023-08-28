@@ -5890,8 +5890,9 @@ static void ath11k_mac_setup_he_cap(struct ath11k *ar,
 					       ar->mac.iftype[NL80211_BAND_2GHZ],
 					       NL80211_BAND_2GHZ);
 		band = &ar->mac.sbands[NL80211_BAND_2GHZ];
-		band->iftype_data = ar->mac.iftype[NL80211_BAND_2GHZ];
-		band->n_iftype_data = count;
+		_ieee80211_set_sband_iftype_data(band,
+						 ar->mac.iftype[NL80211_BAND_2GHZ],
+						 count);
 	}
 
 	if (cap->supported_bands & WMI_HOST_WLAN_5G_CAP) {
@@ -5899,8 +5900,9 @@ static void ath11k_mac_setup_he_cap(struct ath11k *ar,
 					       ar->mac.iftype[NL80211_BAND_5GHZ],
 					       NL80211_BAND_5GHZ);
 		band = &ar->mac.sbands[NL80211_BAND_5GHZ];
-		band->iftype_data = ar->mac.iftype[NL80211_BAND_5GHZ];
-		band->n_iftype_data = count;
+		_ieee80211_set_sband_iftype_data(band,
+						 ar->mac.iftype[NL80211_BAND_5GHZ],
+						 count);
 	}
 
 	if (cap->supported_bands & WMI_HOST_WLAN_5G_CAP &&
@@ -5909,8 +5911,9 @@ static void ath11k_mac_setup_he_cap(struct ath11k *ar,
 					       ar->mac.iftype[NL80211_BAND_6GHZ],
 					       NL80211_BAND_6GHZ);
 		band = &ar->mac.sbands[NL80211_BAND_6GHZ];
-		band->iftype_data = ar->mac.iftype[NL80211_BAND_6GHZ];
-		band->n_iftype_data = count;
+		_ieee80211_set_sband_iftype_data(band,
+						 ar->mac.iftype[NL80211_BAND_6GHZ],
+						 count);
 	}
 }
 
