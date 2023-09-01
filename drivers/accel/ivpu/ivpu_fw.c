@@ -305,6 +305,8 @@ int ivpu_fw_init(struct ivpu_device *vdev)
 	if (ret)
 		goto err_fw_release;
 
+	ivpu_fw_load(vdev);
+
 	return 0;
 
 err_fw_release:
@@ -318,7 +320,7 @@ void ivpu_fw_fini(struct ivpu_device *vdev)
 	ivpu_fw_release(vdev);
 }
 
-int ivpu_fw_load(struct ivpu_device *vdev)
+void ivpu_fw_load(struct ivpu_device *vdev)
 {
 	struct ivpu_fw_info *fw = vdev->fw;
 	u64 image_end_offset = fw->image_load_offset + fw->image_size;
@@ -335,8 +337,6 @@ int ivpu_fw_load(struct ivpu_device *vdev)
 	}
 
 	wmb(); /* Flush WC buffers after writing fw->mem */
-
-	return 0;
 }
 
 static void ivpu_fw_boot_params_print(struct ivpu_device *vdev, struct vpu_boot_params *boot_params)
