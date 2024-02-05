@@ -597,6 +597,14 @@ struct sas_task {
 	void   *uldd_task;
 	struct sas_task_slow *slow_task;
 	struct sas_tmf_task *tmf;
+
+	DEEPIN_KABI_RESERVE(1)
+	DEEPIN_KABI_RESERVE(2)
+	DEEPIN_KABI_RESERVE(3)
+	DEEPIN_KABI_RESERVE(4)
+	DEEPIN_KABI_RESERVE(5)
+	DEEPIN_KABI_RESERVE(6)
+	DEEPIN_KABI_RESERVE(7)
 };
 
 struct sas_task_slow {
@@ -672,6 +680,11 @@ struct sas_domain_function_template {
 	/* GPIO support */
 	int (*lldd_write_gpio)(struct sas_ha_struct *, u8 reg_type,
 			       u8 reg_index, u8 reg_count, u8 *write_data);
+
+	DEEPIN_KABI_RESERVE(1)
+	DEEPIN_KABI_RESERVE(2)
+	DEEPIN_KABI_RESERVE(3)
+	DEEPIN_KABI_RESERVE(4)
 };
 
 extern int sas_register_ha(struct sas_ha_struct *);
