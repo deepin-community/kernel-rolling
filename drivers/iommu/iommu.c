@@ -32,6 +32,7 @@
 #include <trace/events/iommu.h>
 #include <linux/sched/mm.h>
 #include <linux/msi.h>
+#include <linux/dma-map-ops.h>
 
 #include "dma-iommu.h"
 #include "iommu-priv.h"
@@ -578,6 +579,9 @@ static int __iommu_probe_device(struct device *dev, struct list_head *group_list
 
 	if (group->default_domain)
 		iommu_setup_dma_ops(dev);
+
+	if (is_zhaoxin_kh40000)
+		kh40000_set_iommu_dma_ops(dev);
 
 	mutex_unlock(&group->mutex);
 
