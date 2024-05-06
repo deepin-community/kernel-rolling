@@ -614,7 +614,8 @@ static void rtw_usb_cancel_rx_bufs(struct rtw_usb *rtwusb)
 
 	for (i = 0; i < RTW_USB_RXCB_NUM; i++) {
 		rxcb = &rtwusb->rx_cb[i];
-		usb_kill_urb(rxcb->rx_urb);
+		if (rxcb->rx_urb)
+			usb_kill_urb(rxcb->rx_urb);
 	}
 }
 
@@ -625,8 +626,10 @@ static void rtw_usb_free_rx_bufs(struct rtw_usb *rtwusb)
 
 	for (i = 0; i < RTW_USB_RXCB_NUM; i++) {
 		rxcb = &rtwusb->rx_cb[i];
-		usb_kill_urb(rxcb->rx_urb);
-		usb_free_urb(rxcb->rx_urb);
+		if (rxcb->rx_urb) {
+			usb_kill_urb(rxcb->rx_urb);
+			usb_free_urb(rxcb->rx_urb);
+		}
 	}
 }
 
