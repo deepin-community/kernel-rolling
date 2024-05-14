@@ -43,8 +43,12 @@
 
 #define DRIVER_VERSION	"2.2"
 
-static struct microcode_ops *microcode_ops;
-static bool dis_ucode_ldr = false;
+#ifdef CONFIG_CPU_SUP_HYGON
+static const struct microcode_ops	*microcode_ops;
+#else
+static struct microcode_ops	*microcode_ops;
+#endif
+bool dis_ucode_ldr = true;
 
 bool force_minrev = IS_ENABLED(CONFIG_MICROCODE_LATE_FORCE_MINREV);
 module_param(force_minrev, bool, S_IRUSR | S_IWUSR);
@@ -124,10 +128,17 @@ bool __init microcode_loader_disabled(void)
 	 * 3) Certain AMD patch levels are not allowed to be
 	 *    overwritten.
 	 */
-	if (!have_cpuid_p() ||
-	    native_cpuid_ecx(1) & BIT(31) ||
-	    amd_check_current_patch_level())
-		dis_ucode_ldr = true;
+	if (native_cpuid_ecx(1) & BIT(31))
+		return true;
+
+	if (x86_cpuid_vendor() == X86_VENDOR_AMD ||
+	    x86_cpuid_vendor() == X86_VENDOR_HYGON) {
+		if (amd_check_current_patch_level())
+			return true;
+	}
+
+	if (cmdline_find_option_bool(cmdline, option) <= 0)
+		dis_ucode_ldr = false;
 
 	return dis_ucode_ldr;
 }
@@ -154,6 +165,10 @@ void __init load_ucode_bsp(void)
 	case X86_VENDOR_AMD:
 		if (x86_family(cpuid_1_eax) < 0x10)
 			return;
+		intel = false;
+		break;
+
+	case X86_VENDOR_HYGON:
 		intel = false;
 		break;
 
@@ -189,6 +204,9 @@ void load_ucode_ap(void)
 	case X86_VENDOR_AMD:
 		if (x86_family(cpuid_1_eax) >= 0x10)
 			load_ucode_amd_ap(cpuid_1_eax);
+		break;
+	case X86_VENDOR_HYGON:
+		load_ucode_amd_early(cpuid_1_eax);
 		break;
 	default:
 		break;
@@ -248,6 +266,9 @@ static void reload_early_microcode(unsigned int cpu)
 	case X86_VENDOR_AMD:
 		if (family >= 0x10)
 			reload_ucode_amd(cpu);
+		break;
+	case X86_VENDOR_HYGON:
+		reload_ucode_amd(cpu);
 		break;
 	default:
 		break;
@@ -836,6 +857,8 @@ static int __init microcode_init(void)
 		microcode_ops = init_intel_microcode();
 	else if (c->x86_vendor == X86_VENDOR_AMD)
 		microcode_ops = init_amd_microcode();
+	else if (c->x86_vendor == X86_VENDOR_HYGON)
+		microcode_ops = init_hygon_microcode();
 	else
 		pr_err("no support for this CPU vendor\n");
 
