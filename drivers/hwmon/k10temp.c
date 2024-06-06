@@ -247,14 +247,15 @@ static int k10temp_read_temp(struct device *dev, u32 attr, int channel,
 			break;
 		case 2 ... 13:		/* Tccd{1-12} */
 			if (hygon_f18h_m4h())
-				ret = hygon_read_temp(data, channel, &regval);
-			else
+				hygon_read_temp(data, channel, &regval);
+			else {
 				ret = amd_smn_read(amd_pci_dev_to_node_id(data->pdev),
-				     ZEN_CCD_TEMP(data->ccd_offset, channel - 2),
-						  &regval);
+						   ZEN_CCD_TEMP(data->ccd_offset, channel - 2),
+						   &regval);
 
-			if (ret)
-				return ret;
+				if (ret)
+					return ret;
+			}
 
 			*val = (regval & ZEN_CCD_TEMP_MASK) * 125 - 49000;
 			break;
