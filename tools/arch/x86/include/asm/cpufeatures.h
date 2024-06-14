@@ -13,7 +13,7 @@
 /*
  * Defines x86 CPU feature bits
  */
-#define NCAPINTS			22	   /* N 32-bit words worth of info */
+#define NCAPINTS			23	   /* N 32-bit words worth of info */
 #define NBUGINTS			2	   /* N 32-bit bug flags */
 
 /*
@@ -466,6 +466,8 @@
  * Reuse free bits when adding new feature flags!
  */
 #define X86_FEATURE_AMD_LBR_PMC_FREEZE	(21*32+ 0) /* AMD LBR and PMC Freeze */
+/* VIA/Cyrix/Centaur-defined CPU features, CPUID level 0xC0000006, word 22 */
+#define X86_FEATURE_ZXPAUSE		(22*32+ 0) /* ZHAOXIN ZXPAUSE */
 
 /*
  * BUG word(s)
