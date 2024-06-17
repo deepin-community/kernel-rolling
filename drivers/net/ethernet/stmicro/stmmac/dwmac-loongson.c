@@ -10,6 +10,7 @@
 #include "stmmac.h"
 
 #define DRIVER_NAME "dwmac-loongson-pci"
+#define PCI_DEVICE_ID_LOONGSON_GMAC	0x7a03
 
 static int loongson_default_data(struct plat_stmmacenet_data *plat)
 
@@ -218,7 +219,7 @@ static SIMPLE_DEV_PM_OPS(loongson_dwmac_pm_ops, loongson_dwmac_suspend,
 			 loongson_dwmac_resume);
 
 static const struct pci_device_id loongson_dwmac_id_table[] = {
-	{ PCI_VDEVICE(LOONGSON, 0x7a03) },
+	{ PCI_DEVICE_DATA(LOONGSON, GMAC, NULL) },
 	{}
 };
 MODULE_DEVICE_TABLE(pci, loongson_dwmac_id_table);
