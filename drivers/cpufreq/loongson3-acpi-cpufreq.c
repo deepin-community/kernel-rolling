@@ -642,7 +642,7 @@ static int loongson3_set_freq(struct core_data *core, unsigned long freq, int bo
 	return ret;
 }
 
-int loongson3_set_mode(int mode, int freq_level)
+static int loongson3_set_mode(int mode, int freq_level)
 {
 	uint32_t val;
 	int ret = 0;
@@ -832,7 +832,7 @@ static void faa_b2n(struct package_data *package)
 }
 
 
-unsigned int load_update(struct core_data *core)
+static unsigned int load_update(struct core_data *core)
 {
 	int i;
 	u64 update_time, cur_idle_time;
