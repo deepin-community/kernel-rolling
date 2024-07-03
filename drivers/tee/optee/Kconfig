@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# OP-TEE Trusted Execution Environment Configuration
+config OPTEE
+	tristate "OP-TEE"
+	depends on HAVE_ARM_SMCCC
+	depends on MMU
+	help
+	  This implements the OP-TEE Trusted Execution Environment (TEE)
+	  driver.
+
+config OPTEE_INSECURE_LOAD_IMAGE
+	bool "Load OP-TEE image as firmware"
+	default n
+	depends on OPTEE && ARM64
+	help
+	  This loads the BL32 image for OP-TEE as firmware when the driver is
+	  probed. This returns -EPROBE_DEFER until the firmware is loadable from
+	  the filesystem which is determined by checking the system_state until
+	  it is in SYSTEM_RUNNING. This also requires enabling the corresponding
+	  option in Trusted Firmware for Arm. The documentation there explains
+	  the security threat associated with enabling this as well as
+	  mitigations at the firmware and platform level.
+	  https://trustedfirmware-a.readthedocs.io/en/latest/threat_model/threat_model.html
+
+	  Additional documentation on kernel security risks are at
+	  Documentation/tee/op-tee.rst.
+
+if OPTEE
+
+choice
+	prompt "Default conduit method"
+	default OPTEE_DEFAULT_METHOD_NONE
+	help
+	  This option sets the default conduit method for OP-TEE in case
+	  firmware misses "method" property. If in doubt, select "none"
+	  which depends on firmware to provide the value.
+
+config OPTEE_DEFAULT_METHOD_NONE
+	bool "none"
+	help
+	  There is no default conduit method used by the driver. Require
+	  firmware to provide the method explicitly.
+
+config OPTEE_DEFAULT_METHOD_HVC
+	bool "hvc"
+	help
+	  Use the "hvc" as default conduit method.
+
+config OPTEE_DEFAULT_METHOD_SMC
+	bool "smc"
+	help
+	  Use the "smc" as default conduit method.
+
+endchoice
+
+endif
