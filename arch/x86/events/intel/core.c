@@ -5948,7 +5948,7 @@ static umode_t hybrid_td_is_visible(struct kobject *kobj,
 
 
 	/* Only the big core supports perf metrics */
-	if (pmu->cpu_type == hybrid_big)
+	if (pmu->pmu_type == hybrid_big)
 		return pmu->intel_cap.perf_metrics ? attr->mode : 0;
 
 	return attr->mode;
