@@ -22,6 +22,8 @@
 
 #define DRVNAME "zhaoxin_cputemp"
 
+MODULE_IMPORT_NS(HWMON_THERMAL);
+
 enum { SHOW_TEMP, SHOW_LABEL, SHOW_NAME, SHOW_CRIT, SHOW_MAX };
 
 /* Functions declaration */
