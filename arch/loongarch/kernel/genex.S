@@ -35,7 +35,6 @@ SYM_FUNC_START(__arch_cpu_idle)
 SYM_FUNC_END(__arch_cpu_idle)
 
 SYM_CODE_START(handle_vint)
-	UNWIND_HINT_UNDEFINED
 	BACKUP_T0T1
 	SAVE_ALL
 	la_abs	t1, 1b
@@ -52,7 +51,6 @@ SYM_CODE_START(handle_vint)
 SYM_CODE_END(handle_vint)
 
 SYM_CODE_START(except_vec_cex)
-	UNWIND_HINT_UNDEFINED
 	b	cache_parity_error
 SYM_CODE_END(except_vec_cex)
 
@@ -71,7 +69,6 @@ SYM_CODE_END(except_vec_cex)
 	.macro	BUILD_HANDLER exception handler prep
 	.align	5
 	SYM_CODE_START(handle_\exception)
-	UNWIND_HINT_UNDEFINED
 	666:
 	BACKUP_T0T1
 	SAVE_ALL
@@ -82,9 +79,7 @@ SYM_CODE_END(except_vec_cex)
 	668:
 	RESTORE_ALL_AND_RET
 	SYM_CODE_END(handle_\exception)
-	.pushsection	".data", "aw", %progbits
 	SYM_DATA(unwind_hint_\exception, .word 668b - 666b)
-	.popsection
 	.endm
 
 	BUILD_HANDLER ade ade badv
@@ -101,7 +96,6 @@ SYM_CODE_END(except_vec_cex)
 	BUILD_HANDLER reserved reserved none	/* others */
 
 SYM_CODE_START(handle_sys)
-	UNWIND_HINT_UNDEFINED
 	la_abs	t0, handle_syscall
 	jr	t0
 SYM_CODE_END(handle_sys)
