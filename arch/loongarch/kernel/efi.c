@@ -77,11 +77,6 @@ bool efi_poweroff_required(void)
 
 unsigned long __initdata screen_info_table = EFI_INVALID_TABLE_ADDR;
 
-bool efi_poweroff_required(void)
-{
-	return efi_enabled(EFI_RUNTIME_SERVICES);
-}
-
 static void __init init_screen_info(void)
 {
 	struct screen_info *si;
