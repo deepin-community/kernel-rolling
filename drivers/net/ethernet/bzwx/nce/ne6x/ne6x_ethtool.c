@@ -606,8 +606,8 @@ static void ne6x_get_drvinfo(struct net_device *netdev, struct ethtool_drvinfo *
 		snprintf(temp_str, 4, "N%d", (np_ver % 100));
 		strncat(nvm_version_str, temp_str, 4);
 	}
-	strlcpy(drvinfo->fw_version, nvm_version_str, sizeof(drvinfo->fw_version));
-	strlcpy(drvinfo->bus_info, pci_name(pf->pdev), sizeof(drvinfo->bus_info));
+	strncpy(drvinfo->fw_version, nvm_version_str, sizeof(drvinfo->fw_version));
+	strncpy(drvinfo->bus_info, pci_name(pf->pdev), sizeof(drvinfo->bus_info));
 }
 
 static void ne6x_get_regs(struct net_device *netdev, struct ethtool_regs *regs, void *p)

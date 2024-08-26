@@ -9,7 +9,7 @@
 #ifdef CONFIG_DEBUG_FS
 static struct dentry *ne6xvf_dbg_root;
 
-void ne6xvf_showqueue(struct ne6xvf_adapter *pf)
+static void ne6xvf_showqueue(struct ne6xvf_adapter *pf)
 {
 	struct ne6x_ring *ring;
 	u64 head, tail, oft;
@@ -64,7 +64,7 @@ void ne6xvf_showqueue(struct ne6xvf_adapter *pf)
 	dev_info(&pf->pdev->dev, "--------------------------------------------------------------------------------------------");
 }
 
-void ne6xvf_showring(struct ne6xvf_adapter *pf)
+static void ne6xvf_showring(struct ne6xvf_adapter *pf)
 {
 	struct ne6x_tx_desc *tx_desc;
 	struct ne6x_cq_desc *cq_desc;

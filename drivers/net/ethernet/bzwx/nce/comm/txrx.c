@@ -278,7 +278,7 @@ static struct sk_buff *ne6x_construct_skb(struct ne6x_ring *rx_ring,
 #endif
 
 	/* allocate a skb to store the frags */
-	skb = __napi_alloc_skb(&rx_ring->q_vector->napi, NE6X_RX_HDR_SIZE,
+	skb = napi_alloc_skb(&rx_ring->q_vector->napi, NE6X_RX_HDR_SIZE,
 			       GFP_ATOMIC | __GFP_NOWARN);
 	if (unlikely(!skb))
 		return NULL;
@@ -1114,7 +1114,7 @@ static inline void  ne6x_tx_desc_push(struct ne6x_tx_desc *tx_desc,
 	tx_desc->event_trigger = 1;
 }
 
-void ne6x_unmap_and_free_tx_resource(struct ne6x_ring *ring,
+static void ne6x_unmap_and_free_tx_resource(struct ne6x_ring *ring,
 				     struct ne6x_tx_buf *tx_buffer)
 {
 	if (tx_buffer->skb) {
@@ -1139,7 +1139,7 @@ static inline void ne6x_fill_gso_sg(void *p, u16 offset, u16 len, struct ne6x_sg
 	sg->len = len;
 }
 
-int ne6x_fill_jumbo_sgl(struct ne6x_ring *tx_ring, struct sk_buff *skb)
+static int ne6x_fill_jumbo_sgl(struct ne6x_ring *tx_ring, struct sk_buff *skb)
 {
 	u16 sg_max_dlen = 0, dlen = 0, len = 0, offset = 0, send_dlen = 0, total_dlen = 0;
 	u16 subframe = 0, send_subframe = 0, sg_avail = 0, i = 0, j = 0;
@@ -1239,7 +1239,7 @@ err:
 	return -1;
 }
 
-void ne6x_fill_tx_desc(struct ne6x_tx_desc *tx_desc, u8 vp, dma_addr_t tag_dma,
+static void ne6x_fill_tx_desc(struct ne6x_tx_desc *tx_desc, u8 vp, dma_addr_t tag_dma,
 		       dma_addr_t dma, struct ne6x_sg_info *sg)
 {
 	memset(tx_desc, 0, NE6X_TX_DESC_SIZE);
@@ -1258,7 +1258,7 @@ void ne6x_fill_tx_desc(struct ne6x_tx_desc *tx_desc, u8 vp, dma_addr_t tag_dma,
 	}
 }
 
-void ne6x_fill_tx_priv_tag(struct ne6x_ring *tx_ring, struct ne6x_tx_tag *tx_tag,
+static void ne6x_fill_tx_priv_tag(struct ne6x_ring *tx_ring, struct ne6x_tx_tag *tx_tag,
 			   int mss, struct ne6x_sg_info *sg)
 {
 	struct ne6x_adapt_comm *comm = (struct ne6x_adapt_comm *)tx_ring->adpt;
@@ -1273,7 +1273,7 @@ void ne6x_fill_tx_priv_tag(struct ne6x_ring *tx_ring, struct ne6x_tx_tag *tx_tag
 	tx_tag->tag_num = cpu_to_be16(tx_tag->tag_num);
 }
 
-void ne6x_xmit_jumbo(struct ne6x_ring *tx_ring, struct ne6x_tx_buf *first,
+static void ne6x_xmit_jumbo(struct ne6x_ring *tx_ring, struct ne6x_tx_buf *first,
 		     struct ne6x_ring *tag_ring, struct ne6x_tx_tag *tx_tag)
 {
 	int j = 0;
@@ -1363,7 +1363,7 @@ dma_error:
 	tx_ring->next_to_use = i;
 }
 
-void ne6x_xmit_simple(struct ne6x_ring *tx_ring, struct ne6x_tx_buf *first,
+static void ne6x_xmit_simple(struct ne6x_ring *tx_ring, struct ne6x_tx_buf *first,
 		      struct ne6x_ring *tag_ring, struct ne6x_tx_tag *tx_tag)
 {
 	struct sk_buff *skb = first->skb;

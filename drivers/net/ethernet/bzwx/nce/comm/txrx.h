@@ -474,3 +474,5 @@ int ne6x_setup_tg_descriptors(struct ne6x_ring *tg_ring);
 int ne6x_setup_tx_sgl(struct ne6x_ring *tx_ring);
 
 #endif
+
+bool ne6x_alloc_rx_buffers(struct ne6x_ring *rx_ring, u16 cleaned_count);

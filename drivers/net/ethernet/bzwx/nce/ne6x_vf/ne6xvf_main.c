@@ -39,7 +39,7 @@ static const struct net_device_ops ne6xvf_netdev_ops;
 struct workqueue_struct *ne6xvf_wq;
 static void ne6xvf_sync_features(struct net_device *netdev);
 
-struct ne6xvf_adapter *ne6xvf_pdev_to_adapter(struct pci_dev *pdev)
+static struct ne6xvf_adapter *ne6xvf_pdev_to_adapter(struct pci_dev *pdev)
 {
 	return netdev_priv(pci_get_drvdata(pdev));
 }
@@ -66,7 +66,7 @@ static void ne6xvf_tx_timeout(struct net_device *netdev, __always_unused unsigne
  * The statistics are actually updated from the service task.
  **/
 
-struct net_device_stats *nce_get_vsi_stats_struct(struct ne6xvf_adapter *adapter)
+static struct net_device_stats *nce_get_vsi_stats_struct(struct ne6xvf_adapter *adapter)
 {
 	if (adapter->netdev)
 		return &adapter->netdev->stats;
@@ -129,7 +129,7 @@ void ne6xvf_update_pf_stats(struct ne6xvf_adapter *adapter)
 	adapter->net_stats.tx_bytes = tx_b;
 }
 
-bool ne6xvf_is_remove_in_progress(struct ne6xvf_adapter *adapter)
+static bool ne6xvf_is_remove_in_progress(struct ne6xvf_adapter *adapter)
 {
 	return test_bit(__NE6XVF_IN_REMOVE_TASK, &adapter->crit_section);
 }
@@ -198,7 +198,7 @@ static int ne6xvf_check_reset_complete(struct ne6xvf_hw *hw)
 	return 0;
 }
 
-int ne6xvf_init_sdk_mbx(struct ne6xvf_hw *hw)
+static int ne6xvf_init_sdk_mbx(struct ne6xvf_hw *hw)
 {
 	union u_ne6x_mbx_snap_buffer_data mbx_buffer;
 	union u_ne6x_mbx_snap_buffer_data usnap;
@@ -733,7 +733,7 @@ static int ne6xvf_alloc_q_vectors(struct ne6xvf_adapter *adapter)
  * @adapter: board private structure to initialize
  *
  **/
-int ne6xvf_init_interrupt_scheme(struct ne6xvf_adapter *adapter)
+static int ne6xvf_init_interrupt_scheme(struct ne6xvf_adapter *adapter)
 {
 	int err;
 
@@ -1085,7 +1085,7 @@ free_queue_irqs:
  *
  * Request that the PF set up our (previously allocated) queues.
  **/
-void ne6xvf_configure_queues(struct ne6xvf_adapter *adapter)
+static void ne6xvf_configure_queues(struct ne6xvf_adapter *adapter)
 {
 	unsigned int rx_buf_len = NE6X_RXBUFFER_2048;
 	struct ne6xvf_hw *hw = &adapter->hw;
@@ -1434,7 +1434,7 @@ static void ne6xvf_init_process_extended_caps(struct ne6xvf_adapter *adapter)
  * Verify that we have a valid config struct, and set up our netdev features
  * and our VSI struct.
  **/
-int ne6xvf_process_config(struct ne6xvf_adapter *adapter)
+static int ne6xvf_process_config(struct ne6xvf_adapter *adapter)
 {
 	struct net_device *netdev = adapter->netdev;
 	netdev_features_t csumo_features;
@@ -1672,7 +1672,7 @@ static int ne6xvf_process_aq_command(struct ne6xvf_adapter *adapter)
  *  Returns true if the firmware has processed all descriptors on the
  *  admin send queue. Returns false if there are still requests pending.
  **/
-bool ne6xvf_asq_done(struct ne6xvf_hw *hw)
+static bool ne6xvf_asq_done(struct ne6xvf_hw *hw)
 {
 	return 1;
 }
@@ -1876,7 +1876,7 @@ static struct ne6xvf_mac_filter *ne6xvf_add_filter(struct ne6xvf_adapter *adapte
  *
  * Expects to be called while holding the __NE6XVF_IN_CRITICAL_TASK bit lock.
  **/
-void ne6xvf_down(struct ne6xvf_adapter *adapter)
+static void ne6xvf_down(struct ne6xvf_adapter *adapter)
 {
 	struct net_device *netdev = adapter->netdev;
 	struct ne6xvf_vlan_filter *vlf;
@@ -2174,7 +2174,7 @@ static int ne6xvf_addr_unsync(struct net_device *netdev, const u8 *addr)
  * ne6xvf_promiscuous_mode_changed - check if promiscuous mode bits changed
  * @adapter: device specific adapter
  */
-bool ne6xvf_promiscuous_mode_changed(struct ne6xvf_adapter *adapter)
+static bool ne6xvf_promiscuous_mode_changed(struct ne6xvf_adapter *adapter)
 {
 	return (adapter->current_netdev_promisc_flags ^ adapter->netdev->flags) &
 	       (IFF_PROMISC | IFF_ALLMULTI);
@@ -2461,7 +2461,7 @@ static netdev_features_t ne6xvf_fix_features(struct net_device *netdev, netdev_f
  *
  * Do not call this with mac_vlan_list_lock!
  **/
-int ne6xvf_replace_primary_mac(struct ne6xvf_adapter *adapter, const u8 *new_mac)
+static int ne6xvf_replace_primary_mac(struct ne6xvf_adapter *adapter, const u8 *new_mac)
 {
 	memcpy(adapter->hw.mac.addr, new_mac, 6);
 	adapter->aq_required |= NE6XVF_FLAG_AQ_SET_VF_MAC;
@@ -2591,7 +2591,7 @@ static struct ne6xvf_vlan_filter *ne6xvf_find_vlan(struct ne6xvf_adapter *adapte
  *
  * Returns ptr to the filter object or NULL when no memory available.
  **/
-struct ne6xvf_vlan_filter *ne6xvf_add_vlan_list(struct ne6xvf_adapter *adapter,
+static struct ne6xvf_vlan_filter *ne6xvf_add_vlan_list(struct ne6xvf_adapter *adapter,
 						struct ne6x_vf_vlan vlan)
 {
 	struct ne6xvf_vlan_filter *f = NULL;
@@ -2620,7 +2620,7 @@ clearout:
  * @adapter: board private structure
  * @vlan: VLAN tag
  **/
-void ne6xvf_del_vlan_list(struct ne6xvf_adapter *adapter, struct ne6x_vf_vlan vlan)
+static void ne6xvf_del_vlan_list(struct ne6xvf_adapter *adapter, struct ne6x_vf_vlan vlan)
 {
 	struct ne6xvf_vlan_filter *f;
 
@@ -2990,7 +2990,7 @@ err_dma:
  * @adapter: board private structure
  * @mask: bitmap of queues to enable
  **/
-void ne6xvf_irq_enable_queues(struct ne6xvf_adapter *adapter, u32 mask)
+static void ne6xvf_irq_enable_queues(struct ne6xvf_adapter *adapter, u32 mask)
 {
 	struct ne6xvf_hw *hw = &adapter->hw;
 	int i;

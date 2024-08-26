@@ -328,8 +328,8 @@ static void ne6xvf_get_drvinfo(struct net_device *netdev, struct ethtool_drvinfo
 
 	strscpy(drvinfo->driver, ne6xvf_driver_name, sizeof(drvinfo->driver));
 	strscpy(drvinfo->version, ne6xvf_driver_version, sizeof(drvinfo->version));
-	strlcpy(drvinfo->fw_version, "N/A", 4);
-	strlcpy(drvinfo->bus_info, pci_name(adapter->pdev), sizeof(drvinfo->bus_info));
+	strncpy(drvinfo->fw_version, "N/A", 4);
+	strncpy(drvinfo->bus_info, pci_name(adapter->pdev), sizeof(drvinfo->bus_info));
 }
 
 static void ne6xvf_get_regs(struct net_device *netdev, struct ethtool_regs *regs, void *p) {}
