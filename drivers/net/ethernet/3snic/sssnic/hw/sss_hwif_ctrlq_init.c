@@ -24,6 +24,7 @@
 #include "sss_hwif_api.h"
 #include "sss_hwif_ctrlq.h"
 #include "sss_common.h"
+#include "sss_hwif_ctrlq_init.h"
 
 #define	SSS_CTRLQ_DEPTH							4096
 
@@ -365,7 +366,7 @@ create_pool_err:
 	return ret;
 }
 
-void sss_deinit_ctrlq(struct sss_hwdev *hwdev)
+static void sss_deinit_ctrlq(struct sss_hwdev *hwdev)
 {
 	u8 i;
 	struct sss_ctrlq_info *ctrlq_info = hwdev->ctrlq_info;

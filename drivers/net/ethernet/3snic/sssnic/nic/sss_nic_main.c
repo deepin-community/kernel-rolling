@@ -18,6 +18,7 @@
 #include <linux/tcp.h>
 #include <linux/ip.h>
 #include <linux/debugfs.h>
+#include <linux/slab.h>
 
 #include "sss_kernel.h"
 #include "sss_hw.h"
@@ -381,7 +382,7 @@ static int sss_nic_alloc_lb_test_buf(struct sss_nic_dev *nic_dev)
 {
 	u8 *loop_test_rx_buf = NULL;
 
-	loop_test_rx_buf = vmalloc(SSSNIC_LP_PKT_CNT * SSSNIC_LP_PKT_LEN);
+	loop_test_rx_buf = kvmalloc(SSSNIC_LP_PKT_CNT * SSSNIC_LP_PKT_LEN, GFP_KERNEL);
 	if (!loop_test_rx_buf)
 		return -ENOMEM;
 
@@ -393,7 +394,7 @@ static int sss_nic_alloc_lb_test_buf(struct sss_nic_dev *nic_dev)
 
 static void sss_nic_free_lb_test_buf(struct sss_nic_dev *nic_dev)
 {
-	vfree(nic_dev->loop_test_rx_buf);
+	kvfree(nic_dev->loop_test_rx_buf);
 	nic_dev->loop_test_rx_buf = NULL;
 }
 
@@ -881,19 +882,19 @@ static void sss_nic_sriov_state_change(struct sss_nic_dev *nic_dev,
 		sss_nic_clear_all_vf_info(nic_dev->nic_io);
 }
 
-void sss_nic_port_module_cable_plug(struct sss_nic_dev *nic_dev, void *event_data)
+static void sss_nic_port_module_cable_plug(struct sss_nic_dev *nic_dev, void *event_data)
 {
 	nicif_info(nic_dev, link, nic_dev->netdev,
 		   "Port module event: Cable plugged\n");
 }
 
-void sss_nic_port_module_cable_unplug(struct sss_nic_dev *nic_dev, void *event_data)
+static void sss_nic_port_module_cable_unplug(struct sss_nic_dev *nic_dev, void *event_data)
 {
 	nicif_info(nic_dev, link, nic_dev->netdev,
 		   "Port module event: Cable unplugged\n");
 }
 
-void sss_nic_port_module_link_err(struct sss_nic_dev *nic_dev, void *event_data)
+static void sss_nic_port_module_link_err(struct sss_nic_dev *nic_dev, void *event_data)
 {
 	struct sss_nic_port_module_event *port_event = event_data;
 	enum link_err_type err_type = port_event->err_type;
@@ -1031,11 +1032,6 @@ struct sss_uld_info g_nic_uld_info = {
 	.event = sss_nic_event,
 	.ioctl = sss_tool_ioctl,
 };
-
-struct sss_uld_info *get_nic_uld_info(void)
-{
-	return &g_nic_uld_info;
-}
 
 static __init int sss_nic_init(void)
 {

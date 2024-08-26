@@ -27,6 +27,7 @@
 #include "sss_nic_rss_cfg.h"
 #include "sss_nic_dev_define.h"
 #include "sss_nic_tx.h"
+#include "sss_nic_tx_init.h"
 
 #define SSSNIC_SQ_EXTRA_SGE						18
 

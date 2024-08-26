@@ -27,6 +27,7 @@
 #include "sss_nic_mag_cfg.h"
 #include "sss_nic_cfg_define.h"
 #include "sss_nic_netdev_ops_api.h"
+#include "sss_nic_ethtool.h"
 
 #define SSSNIC_MGMT_VERSION_MAX_LEN			32
 

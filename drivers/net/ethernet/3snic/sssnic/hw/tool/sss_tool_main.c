@@ -77,7 +77,7 @@ static int sss_tool_msg_to_nic(struct sss_hal_dev *hal_dev, struct sss_tool_msg 
 	return ret;
 }
 
-void sss_tool_free_in_buf(void *hwdev, const struct sss_tool_msg *tool_msg, void *in_buf)
+static void sss_tool_free_in_buf(void *hwdev, const struct sss_tool_msg *tool_msg, void *in_buf)
 {
 	if (!in_buf)
 		return;
@@ -88,7 +88,7 @@ void sss_tool_free_in_buf(void *hwdev, const struct sss_tool_msg *tool_msg, void
 		kfree(in_buf);
 }
 
-void sss_tool_free_out_buf(void *hwdev, struct sss_tool_msg *tool_msg,
+static void sss_tool_free_out_buf(void *hwdev, struct sss_tool_msg *tool_msg,
 			   void *out_buf)
 {
 	if (!out_buf)
@@ -101,7 +101,7 @@ void sss_tool_free_out_buf(void *hwdev, struct sss_tool_msg *tool_msg,
 		kfree(out_buf);
 }
 
-int sss_tool_alloc_in_buf(void *hwdev, struct sss_tool_msg *tool_msg,
+static int sss_tool_alloc_in_buf(void *hwdev, struct sss_tool_msg *tool_msg,
 			  u32 in_len, void **in_buf)
 {
 	void *msg_buf = NULL;
@@ -143,7 +143,7 @@ int sss_tool_alloc_in_buf(void *hwdev, struct sss_tool_msg *tool_msg,
 	return 0;
 }
 
-int sss_tool_alloc_out_buf(void *hwdev, struct sss_tool_msg *tool_msg,
+static int sss_tool_alloc_out_buf(void *hwdev, struct sss_tool_msg *tool_msg,
 			   u32 out_len, void **out_buf)
 {
 	if (!out_len) {
@@ -179,7 +179,7 @@ int sss_tool_alloc_out_buf(void *hwdev, struct sss_tool_msg *tool_msg,
 	return 0;
 }
 
-int sss_tool_copy_to_user(struct sss_tool_msg *tool_msg,
+static int sss_tool_copy_to_user(struct sss_tool_msg *tool_msg,
 			  u32 out_len, void *out_buf)
 {
 	void *out_msg = NULL;

@@ -27,6 +27,7 @@
 #include "sss_nic_dev_define.h"
 #include "sss_nic_rss.h"
 #include "sss_nic_rx.h"
+#include "sss_nic_rx_init.h"
 #include "sss_nic_cfg.h"
 
 static void sss_nic_rx_free_dma_page(struct sss_nic_dev *nic_dev,

@@ -24,6 +24,7 @@
 #include "sss_hwif_api.h"
 #include "sss_hwif_export.h"
 #include "sss_hwif_mgmt_init.h"
+#include "sss_hwdev_init.h"
 
 enum sss_host_mode {
 	SSS_HOST_MODE_NORMAL = 0,

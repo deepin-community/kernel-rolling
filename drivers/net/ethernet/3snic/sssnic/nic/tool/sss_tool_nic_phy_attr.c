@@ -9,6 +9,7 @@
 #include "sss_tool_comm.h"
 #include "sss_tool_nic.h"
 #include "sss_nic_netdev_ops_api.h"
+#include "sss_tool_nic_phy_attr.h"
 
 enum sss_tool_link_mode {
 	SSS_TOOL_LINK_MODE_AUTO = 0,

@@ -23,6 +23,7 @@
 #include "sss_pci_sriov.h"
 #include "sss_adapter_mgmt.h"
 #include "sss_hwdev.h"
+#include "sss_pci_error.h"
 
 static void sss_record_pcie_error(void *dev)
 {

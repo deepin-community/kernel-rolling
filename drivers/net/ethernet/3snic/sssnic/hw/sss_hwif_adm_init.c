@@ -21,6 +21,7 @@
 #include "sss_csr.h"
 #include "sss_hwif_api.h"
 #include "sss_hwif_adm_common.h"
+#include "sss_hwif_adm_init.h"
 #include "sss_hwif_mgmt_common.h"
 
 /* ADM_MSG_REQ CSR: 0x0020+adm_id*0x080 */
@@ -577,7 +578,7 @@ static int create_adm_msg(struct sss_hwdev *hwdev, struct sss_adm_msg **adm_msg,
 	return 0;
 }
 
-void sss_destroy_adm_msg(struct sss_adm_msg *adm_msg)
+static void sss_destroy_adm_msg(struct sss_adm_msg *adm_msg)
 {
 	sss_free_adm_msg_buf(adm_msg);
 	kfree(adm_msg);

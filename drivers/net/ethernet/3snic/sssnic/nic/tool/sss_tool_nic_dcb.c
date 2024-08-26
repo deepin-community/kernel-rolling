@@ -9,6 +9,7 @@
 #include "sss_tool_nic.h"
 #include "sss_nic_rx_init.h"
 #include "sss_nic_netdev_ops_api.h"
+#include "sss_tool_nic_dcb.h"
 
 #define SSS_TOOL_DBG_DFLT_DSCP_VAL  0xFF
 

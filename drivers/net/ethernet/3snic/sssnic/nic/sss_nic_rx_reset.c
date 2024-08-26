@@ -28,6 +28,7 @@
 #include "sss_nic_rss.h"
 #include "sss_nic_rx.h"
 #include "sss_nic_cfg.h"
+#include "sss_nic_rx_reset.h"
 
 #define SSSNIC_RQ_GET_ERR_CNT_THRESHOLD		3
 #define SSSNIC_RQ_CHECK_ERR_CNT_THRESHOLD	2

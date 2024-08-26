@@ -19,6 +19,7 @@
 #include "sss_csr.h"
 #include "sss_common.h"
 #include "sss_adapter_mgmt.h"
+#include "sss_hwif_mbx_init.h"
 
 #define SSS_MBX_WB_STATUS_SIZE			16UL
 

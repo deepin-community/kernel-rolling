@@ -11,6 +11,7 @@
 #include "sss_hwdev.h"
 #include "sss_hw_svc_cap.h"
 #include "sss_hwif_irq.h"
+#include "sss_hwdev_mgmt_info.h"
 
 static int sss_init_ceq_info(struct sss_hwdev *hwdev)
 {

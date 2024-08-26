@@ -27,6 +27,7 @@
 #include "sss_nic_ethtool_stats_api.h"
 #include "sss_tool_comm.h"
 #include "sss_tool_nic.h"
+#include "sss_nic_netdev_ops_api.h"
 
 #define SSSNIC_SET_SUPPORTED_MODE  0
 #define SSSNIC_SET_ADVERTISED_MODE 1

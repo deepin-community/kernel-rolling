@@ -10,6 +10,7 @@
 #include "sss_hwif_api.h"
 #include "sss_hwif_mbx.h"
 #include "sss_common.h"
+#include "sss_hwdev_io_flush.h"
 
 #define SSS_FLR_TIMEOUT			1000
 #define SSS_FLR_TIMEOUT_ONCE		10000

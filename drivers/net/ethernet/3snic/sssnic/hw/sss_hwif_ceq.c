@@ -92,7 +92,7 @@ module_param(tasklet_depth, uint, 0444);
 MODULE_PARM_DESC(tasklet_depth,
 		 "The max number of ceqe can be processed in tasklet, default = 1024");
 
-void sss_init_ceqe_desc(void *data)
+static void sss_init_ceqe_desc(void *data)
 {
 	u32 i;
 	u32 init_val;
@@ -127,7 +127,7 @@ static u32 sss_chip_init_ceq_attr(void *data)
 	return sss_chip_set_ceq_attr(SSS_TO_HWDEV(ceq), ceq->qid, val, len);
 }
 
-irqreturn_t sss_ceq_intr_handle(int irq, void *data)
+static irqreturn_t sss_ceq_intr_handle(int irq, void *data)
 {
 	struct sss_eq *ceq = (struct sss_eq *)data;
 

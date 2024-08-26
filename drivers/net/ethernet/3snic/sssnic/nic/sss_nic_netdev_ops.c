@@ -24,6 +24,7 @@
 #include "sss_nic_tx.h"
 #include "sss_nic_rx.h"
 #include "sss_nic_dcb.h"
+#include "sss_nic_netdev_ops.h"
 #include "sss_nic_netdev_ops_api.h"
 #include "sss_nic_cfg.h"
 #include "sss_nic_vf_cfg.h"
@@ -294,7 +295,7 @@ static int sss_nic_ndo_set_mac_address(struct net_device *netdev, void *mac_addr
 	return 0;
 }
 
-int sss_nic_ndo_vlan_rx_add_vid(struct net_device *netdev,
+static int sss_nic_ndo_vlan_rx_add_vid(struct net_device *netdev,
 				__always_unused __be16 proto, u16 vlan_id)
 {
 	struct sss_nic_dev *nic_dev = netdev_priv(netdev);
@@ -315,7 +316,7 @@ int sss_nic_ndo_vlan_rx_add_vid(struct net_device *netdev,
 	return 0;
 }
 
-int sss_nic_ndo_vlan_rx_kill_vid(struct net_device *netdev,
+static int sss_nic_ndo_vlan_rx_kill_vid(struct net_device *netdev,
 				 __always_unused __be16 proto, u16 vlan_id)
 {
 	struct sss_nic_dev *nic_dev = netdev_priv(netdev);
@@ -503,7 +504,7 @@ static int sss_nic_ndo_get_vf_config(struct net_device *netdev,
 	return 0;
 }
 
-int sss_nic_ndo_set_vf_link_state(struct net_device *netdev, int vf_id, int link)
+static int sss_nic_ndo_set_vf_link_state(struct net_device *netdev, int vf_id, int link)
 {
 	int ret;
 	struct sss_nic_dev *nic_dev = netdev_priv(netdev);

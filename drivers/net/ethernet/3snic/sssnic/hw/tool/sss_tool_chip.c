@@ -495,7 +495,7 @@ static void sss_tool_clp_prepare_header(struct sss_hwdev *hwdev, u64 *header,
 		  SSS_SET_MSG_HEADER(0, MSG_ID);
 }
 
-int sss_tool_send_clp_msg(struct sss_hwdev *hwdev, u8 mod, u16 cmd, const void *buf_in,
+static int sss_tool_send_clp_msg(struct sss_hwdev *hwdev, u8 mod, u16 cmd, const void *buf_in,
 			  u16 in_size, void *buf_out, u16 *out_size)
 
 {
@@ -585,7 +585,7 @@ int sss_tool_send_clp_msg(struct sss_hwdev *hwdev, u8 mod, u16 cmd, const void *
 	return 0;
 }
 
-int sss_tool_adm_csr_rd32(struct sss_hwdev *hwdev, u8 dest, u32 addr, u32 *val)
+static int sss_tool_adm_csr_rd32(struct sss_hwdev *hwdev, u8 dest, u32 addr, u32 *val)
 {
 	int ret;
 	u32 csr_val = 0;
@@ -618,7 +618,7 @@ int sss_tool_adm_csr_rd32(struct sss_hwdev *hwdev, u8 dest, u32 addr, u32 *val)
 	return 0;
 }
 
-int sss_tool_adm_csr_wr32(struct sss_hwdev *hwdev, u8 dest, u32 addr, u32 val)
+static int sss_tool_adm_csr_wr32(struct sss_hwdev *hwdev, u8 dest, u32 addr, u32 val)
 {
 	int ret;
 	struct sss_tool_csr_request_adm_data adm_data = {0};

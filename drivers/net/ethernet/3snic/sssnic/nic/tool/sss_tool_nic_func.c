@@ -10,6 +10,7 @@
 #include "sss_tool_nic_qp_info.h"
 #include "sss_tool_nic_phy_attr.h"
 #include "sss_tool_nic_stats.h"
+#include "sss_tool_nic_func.h"
 
 typedef int (*sss_tool_cmd_func)(struct sss_nic_dev *nic_dev,
 				 const void *in_buf, u32 in_len,

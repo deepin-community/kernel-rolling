@@ -27,6 +27,7 @@
 #include "sss_hwdev_api.h"
 #include "sss_pci_remove.h"
 #include "sss_pci_global.h"
+#include "sss_pci_probe.h"
 #include "sss_tool.h"
 
 #define SSS_SYNC_YEAR_OFFSET		1900
@@ -274,7 +275,7 @@ static void sss_sync_time_to_chip(struct sss_pci_adapter *adapter)
 	}
 }
 
-int sss_attach_uld_driver(struct sss_pci_adapter *adapter,
+static int sss_attach_uld_driver(struct sss_pci_adapter *adapter,
 			  enum sss_service_type type, const struct sss_uld_info *uld_info)
 {
 	int ret = 0;

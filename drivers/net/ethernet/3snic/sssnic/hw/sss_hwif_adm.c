@@ -20,6 +20,7 @@
 #include "sss_hwdev.h"
 #include "sss_csr.h"
 #include "sss_hwif_api.h"
+#include "sss_hwif_adm.h"
 #include "sss_hwif_adm_common.h"
 #include "sss_hwif_aeq.h"
 
@@ -541,13 +542,13 @@ static int sss_adm_msg_io(struct sss_adm_msg *adm_msg, u8 node_id,
 	return sss_wait_for_adm_msg_completion(adm_msg, ctx, ack, ack_size);
 }
 
-int sss_adm_msg_write(struct sss_adm_msg *adm_msg, u8 node_id,
+static int sss_adm_msg_write(struct sss_adm_msg *adm_msg, u8 node_id,
 		      const void *cmd, u16 cmd_size)
 {
 	return sss_adm_msg_io(adm_msg, node_id, cmd, cmd_size, NULL, 0);
 }
 
-int sss_adm_msg_read(struct sss_adm_msg *adm_msg, u8 node_id,
+static int sss_adm_msg_read(struct sss_adm_msg *adm_msg, u8 node_id,
 		     const void *cmd, u16 size, void *ack, u16 ack_size)
 {
 	return sss_adm_msg_io(adm_msg, node_id, cmd, size, ack, ack_size);

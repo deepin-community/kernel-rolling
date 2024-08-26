@@ -19,6 +19,7 @@
 
 #include "sss_kernel.h"
 #include "sss_hw.h"
+#include "sss_pci_global.h"
 
 static bool attach_uld = true;
 module_param(attach_uld, bool, 0444);

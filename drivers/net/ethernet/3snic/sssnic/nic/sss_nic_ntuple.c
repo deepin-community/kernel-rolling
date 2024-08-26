@@ -20,6 +20,7 @@
 #include "sss_nic_mag_cfg.h"
 #include "sss_nic_rss_cfg.h"
 #include "sss_nic_dev_define.h"
+#include "sss_nic_ntuple.h"
 
 #define SSSNIC_MAX_ETHTOOL_NTUPLE_RULE				BIT(9)
 
@@ -347,7 +348,7 @@ static int sss_nic_init_fdir_tcam_info(struct sss_nic_dev *nic_dev,
 	return 0;
 }
 
-void sss_nic_flush_tcam_list(struct sss_nic_tcam_info *tcam_info)
+static void sss_nic_flush_tcam_list(struct sss_nic_tcam_info *tcam_info)
 {
 	struct sss_nic_tcam_filter *filter_tmp = NULL;
 	struct sss_nic_tcam_filter *filter = NULL;
@@ -363,7 +364,7 @@ void sss_nic_flush_tcam_list(struct sss_nic_tcam_info *tcam_info)
 	}
 }
 
-void sss_nic_flush_tcam_node_list(struct sss_nic_tcam_info *tcam_info)
+static void sss_nic_flush_tcam_node_list(struct sss_nic_tcam_info *tcam_info)
 {
 	struct sss_nic_tcam_node *block_tmp = NULL;
 	struct sss_nic_tcam_node *block = NULL;
@@ -379,7 +380,7 @@ void sss_nic_flush_tcam_node_list(struct sss_nic_tcam_info *tcam_info)
 	}
 }
 
-void sss_nic_flush_rx_flow_rule(struct sss_nic_rx_rule *rx_flow_rule)
+static void sss_nic_flush_rx_flow_rule(struct sss_nic_rx_rule *rx_flow_rule)
 {
 	struct sss_nic_ethtool_rx_flow_rule *rule_tmp = NULL;
 	struct sss_nic_ethtool_rx_flow_rule *rule = NULL;

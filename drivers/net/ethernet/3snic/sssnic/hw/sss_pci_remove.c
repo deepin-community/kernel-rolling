@@ -28,6 +28,7 @@
 #include "sss_hwif_mgmt_init.h"
 #include "sss_pci_global.h"
 #include "sss_tool.h"
+#include "sss_pci_remove.h"
 
 #define SSS_WAIT_SRIOV_CFG_TIMEOUT	15000
 #define SSS_EVENT_PROCESS_TIMEOUT	10000

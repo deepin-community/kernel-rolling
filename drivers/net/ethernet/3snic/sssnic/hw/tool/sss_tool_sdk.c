@@ -26,7 +26,7 @@ struct sss_tool_hw_cmd_handle {
 	sss_tool_hw_cmd_func		func;
 };
 
-int sss_tool_get_func_type(struct sss_hal_dev *hal_dev, const void *buf_in, u32 in_size,
+static int sss_tool_get_func_type(struct sss_hal_dev *hal_dev, const void *buf_in, u32 in_size,
 			   void *buf_out, u32 *out_size)
 {
 	if (*out_size != sizeof(u16) || !buf_out) {
@@ -39,7 +39,7 @@ int sss_tool_get_func_type(struct sss_hal_dev *hal_dev, const void *buf_in, u32 
 	return 0;
 }
 
-int sss_tool_get_func_id(struct sss_hal_dev *hal_dev, const void *buf_in, u32 in_size,
+static int sss_tool_get_func_id(struct sss_hal_dev *hal_dev, const void *buf_in, u32 in_size,
 			 void *buf_out, u32 *out_size)
 {
 	if (*out_size != sizeof(u16) || !buf_out) {
@@ -52,7 +52,7 @@ int sss_tool_get_func_id(struct sss_hal_dev *hal_dev, const void *buf_in, u32 in
 	return 0;
 }
 
-int sss_tool_get_hw_driver_stats(struct sss_hal_dev *hal_dev, const void *buf_in, u32 in_size,
+static int sss_tool_get_hw_driver_stats(struct sss_hal_dev *hal_dev, const void *buf_in, u32 in_size,
 				 void *buf_out, u32 *out_size)
 {
 	struct sss_hwdev *hwdev = hal_dev->hwdev;

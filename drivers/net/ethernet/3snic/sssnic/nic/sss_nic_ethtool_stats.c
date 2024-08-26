@@ -24,6 +24,7 @@
 #include "sss_nic_dev_define.h"
 #include "sss_nic_tx.h"
 #include "sss_nic_rx.h"
+#include "sss_nic_ethtool_stats.h"
 #include "sss_nic_ethtool_stats_api.h"
 
 typedef int (*sss_nic_ss_handler_t)(struct sss_nic_dev *nic_dev);

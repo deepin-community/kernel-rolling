@@ -626,7 +626,7 @@ int sss_nic_set_force_link_flag(struct net_device *netdev, u32 flag)
 	return ret;
 }
 
-int sss_nic_finish_loop_test(struct sss_nic_dev *nic_dev,
+static int sss_nic_finish_loop_test(struct sss_nic_dev *nic_dev,
 			     struct sk_buff *skb_tmp, u32 test_time)
 {
 	struct net_device *netdev = nic_dev->netdev;

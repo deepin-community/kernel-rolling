@@ -17,6 +17,7 @@
 #include "sss_hw.h"
 #include "sss_nic_dev_define.h"
 #include "sss_nic_cfg.h"
+#include "sss_nic_filter.h"
 
 enum sss_nic_rx_mode_state {
 	SSSNIC_PROMISC_ON,

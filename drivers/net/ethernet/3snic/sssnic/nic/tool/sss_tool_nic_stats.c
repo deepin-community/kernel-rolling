@@ -8,6 +8,7 @@
 #include "sss_tool_nic.h"
 #include "sss_nic_netdev_ops_api.h"
 #include "sss_nic_ethtool_stats_api.h"
+#include "sss_tool_nic_stats.h"
 
 enum sss_tool_show_set {
 	SSS_TOOL_SHOW_SSET_IO_STATS = 1,

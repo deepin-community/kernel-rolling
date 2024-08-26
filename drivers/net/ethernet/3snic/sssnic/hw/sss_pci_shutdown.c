@@ -24,6 +24,7 @@
 #include "sss_adapter_mgmt.h"
 #include "sss_hwdev_api.h"
 #include "sss_hwdev_init.h"
+#include "sss_pci_shutdown.h"
 
 void sss_pci_shutdown(struct pci_dev *pdev)
 {

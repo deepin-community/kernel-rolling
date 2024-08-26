@@ -10,6 +10,7 @@
 #include "sss_kernel.h"
 #include "sss_hwdev.h"
 #include "sss_hw_svc_cap.h"
+#include "sss_hwif_irq.h"
 
 #define SSS_GET_NEED_IRQ_NUM(hwif, intr_num) \
 	(SSS_GET_HWIF_MSIX_EN(hwif) ? (SSS_GET_HWIF_AEQ_NUM(hwif) + \

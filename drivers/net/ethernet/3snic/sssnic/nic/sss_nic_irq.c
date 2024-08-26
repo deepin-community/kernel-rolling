@@ -19,6 +19,7 @@
 #include "sss_nic_dev_define.h"
 #include "sss_nic_tx.h"
 #include "sss_nic_rx.h"
+#include "sss_nic_irq.h"
 
 #define SSSNIC_AVG_PKT_SMALL_SIZE      256U
 

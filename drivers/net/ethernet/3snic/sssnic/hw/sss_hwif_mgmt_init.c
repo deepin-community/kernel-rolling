@@ -19,6 +19,7 @@
 #include "sss_hwif_mgmt_common.h"
 #include "sss_hwif_ctrlq_init.h"
 #include "sss_hwif_adm_init.h"
+#include "sss_hwif_mgmt_init.h"
 
 #define SSS_DEF_OUT_SIZE		1
 

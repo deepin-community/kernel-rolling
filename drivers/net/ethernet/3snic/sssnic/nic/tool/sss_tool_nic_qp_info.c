@@ -7,6 +7,7 @@
 #include "sss_nic_tx.h"
 #include "sss_tool_comm.h"
 #include "sss_tool_nic.h"
+#include "sss_tool_nic_qp_info.h"
 
 static int sss_tool_get_wqe_info(struct sss_nic_dev *nic_dev,
 				 u16 q_id, u16 wqe_id, u16 wqebb_cnt,

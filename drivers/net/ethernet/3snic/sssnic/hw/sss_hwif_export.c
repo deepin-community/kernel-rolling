@@ -11,6 +11,7 @@
 #include "sss_csr.h"
 #include "sss_hwdev.h"
 #include "sss_hwif_api.h"
+#include "sss_hwif_export.h"
 
 int sss_alloc_db_addr(void *hwdev, void __iomem **db_base)
 {
