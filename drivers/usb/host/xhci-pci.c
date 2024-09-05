@@ -73,6 +73,8 @@
 #define PCI_DEVICE_ID_AMD_RAVEN_15E0_XHCI		0x15e0
 #define PCI_DEVICE_ID_AMD_RAVEN_15E1_XHCI		0x15e1
 #define PCI_DEVICE_ID_AMD_RAVEN2_XHCI			0x15e5
+#define PCI_DEVICE_ID_PHYTIUM_XHCI			0xdc27
+
 #define PCI_DEVICE_ID_AMD_RENOIR_XHCI			0x1639
 #define PCI_DEVICE_ID_AMD_PROMONTORYA_4			0x43b9
 #define PCI_DEVICE_ID_AMD_PROMONTORYA_3			0x43ba
@@ -500,6 +502,10 @@ static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
 		xhci->quirks |= XHCI_ZERO_64B_REGS;
 	}
 	if (pdev->vendor == PCI_VENDOR_ID_VIA)
+		xhci->quirks |= XHCI_RESET_ON_RESUME;
+
+	if (pdev->vendor == PCI_VENDOR_ID_PHYTIUM &&
+	    pdev->device == PCI_DEVICE_ID_PHYTIUM_XHCI)
 		xhci->quirks |= XHCI_RESET_ON_RESUME;
 
 	/* See https://bugzilla.kernel.org/show_bug.cgi?id=79511 */
