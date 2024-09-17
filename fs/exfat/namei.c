@@ -573,6 +573,9 @@ static int exfat_create(struct mnt_idmap *idmap, struct inode *dir,
 	loff_t i_pos;
 	int err;
 
+	if (unlikely(exfat_forced_shutdown(sb)))
+		return -EIO;
+
 	mutex_lock(&EXFAT_SB(sb)->s_lock);
 	exfat_set_volume_dirty(sb);
 	err = exfat_add_entry(dir, dentry->d_name.name, &cdir, TYPE_FILE,
@@ -794,6 +797,9 @@ static int exfat_unlink(struct inode *dir, struct dentry *dentry)
 	struct buffer_head *bh;
 	int num_entries, entry, err = 0;
 
+	if (unlikely(exfat_forced_shutdown(sb)))
+		return -EIO;
+
 	mutex_lock(&EXFAT_SB(sb)->s_lock);
 	exfat_chain_dup(&cdir, &ei->dir);
 	entry = ei->entry;
@@ -854,6 +860,9 @@ static int exfat_mkdir(struct mnt_idmap *idmap, struct inode *dir,
 	struct exfat_chain cdir;
 	loff_t i_pos;
 	int err;
+
+	if (unlikely(exfat_forced_shutdown(sb)))
+		return -EIO;
 
 	mutex_lock(&EXFAT_SB(sb)->s_lock);
 	exfat_set_volume_dirty(sb);
@@ -946,6 +955,9 @@ static int exfat_rmdir(struct inode *dir, struct dentry *dentry)
 	struct buffer_head *bh;
 	int num_entries, entry, err;
 
+	if (unlikely(exfat_forced_shutdown(sb)))
+		return -EIO;
+
 	mutex_lock(&EXFAT_SB(inode->i_sb)->s_lock);
 
 	exfat_chain_dup(&cdir, &ei->dir);
@@ -1019,6 +1031,9 @@ static int exfat_rename_file(struct inode *inode, struct exfat_chain *p_dir,
 	struct super_block *sb = inode->i_sb;
 	struct buffer_head *new_bh, *old_bh;
 	int sync = IS_DIRSYNC(inode);
+
+	if (unlikely(exfat_forced_shutdown(sb)))
+		return -EIO;
 
 	epold = exfat_get_dentry(sb, p_dir, oldentry, &old_bh);
 	if (!epold)
