@@ -2739,14 +2739,13 @@ void __init csv_init(struct kvm_x86_ops *ops)
 
 	memcpy(&csv_x86_ops, ops, sizeof(struct kvm_x86_ops));
 
+	ops->vm_size = sizeof(struct kvm_svm_csv);
 	ops->mem_enc_ioctl = csv_mem_enc_ioctl;
 	ops->vm_attestation = csv_vm_attestation;
 	ops->control_pre_system_reset = csv_control_pre_system_reset;
 	ops->control_post_system_reset = csv_control_post_system_reset;
 
 	if (boot_cpu_has(X86_FEATURE_SEV_ES) && boot_cpu_has(X86_FEATURE_CSV3)) {
-		ops->vm_size = sizeof(struct kvm_svm_csv);
-
 		ops->vm_destroy = csv_vm_destroy;
 		ops->handle_exit = csv_handle_exit;
 		ops->guest_memory_reclaimed = csv_guest_memory_reclaimed;
