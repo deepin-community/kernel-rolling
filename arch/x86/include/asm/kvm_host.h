@@ -1761,6 +1761,8 @@ struct kvm_x86_ops {
 	int (*vm_attestation)(struct kvm *kvm, unsigned long gpa, unsigned long len);
 	int (*control_pre_system_reset)(struct kvm *kvm);
 	int (*control_post_system_reset)(struct kvm *kvm);
+	int (*get_hygon_coco_extension)(struct kvm *kvm);
+	int (*enable_hygon_coco_extension)(struct kvm *kvm, u32 arg);
 };
 
 struct kvm_x86_nested_ops {

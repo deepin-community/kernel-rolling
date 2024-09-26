@@ -139,6 +139,8 @@ KVM_X86_OP_OPTIONAL_RET0(vcpu_get_apicv_inhibit_reasons);
 KVM_X86_OP_OPTIONAL(vm_attestation)
 KVM_X86_OP_OPTIONAL(control_pre_system_reset)
 KVM_X86_OP_OPTIONAL(control_post_system_reset)
+KVM_X86_OP_OPTIONAL(get_hygon_coco_extension)
+KVM_X86_OP_OPTIONAL(enable_hygon_coco_extension)
 
 #undef KVM_X86_OP
 #undef KVM_X86_OP_OPTIONAL
