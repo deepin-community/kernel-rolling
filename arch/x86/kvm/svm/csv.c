@@ -14,6 +14,7 @@
 #include <linux/memory.h>
 #include <linux/kvm_types.h>
 #include <linux/rbtree.h>
+#include <linux/swap.h>
 #include <asm/cacheflush.h>
 #include <asm/e820/api.h>
 #include <asm/csv.h>
@@ -2628,6 +2629,95 @@ static int csv3_handle_memory(struct kvm *kvm, struct kvm_sev_cmd *argp)
 	return r;
 };
 
+static int csv_launch_secret(struct kvm *kvm, struct kvm_sev_cmd *argp)
+{
+	struct kvm_sev_info *sev = &to_kvm_svm(kvm)->sev_info;
+	struct kvm_csv_info *csv = &to_kvm_svm_csv(kvm)->csv_info;
+	struct sev_data_launch_secret data;
+	struct kvm_sev_launch_secret params;
+	struct page **pages;
+	void *blob, *hdr;
+	unsigned long n, i;
+	int ret, offset;
+
+	if (!sev_guest(kvm))
+		return -ENOTTY;
+
+	if (copy_from_user(&params, (void __user *)(uintptr_t)argp->data, sizeof(params)))
+		return -EFAULT;
+
+	memset(&data, 0, sizeof(data));
+
+	if (!csv3_guest(kvm) ||
+	    !(csv->inuse_ext & KVM_CAP_HYGON_COCO_EXT_CSV3_INJ_SECRET)) {
+		pages = hygon_kvm_hooks.sev_pin_memory(kvm, params.guest_uaddr,
+						       params.guest_len, &n, 1);
+		if (IS_ERR(pages))
+			return PTR_ERR(pages);
+
+		/*
+		 * Flush (on non-coherent CPUs) before LAUNCH_SECRET encrypts
+		 * pages in place; the cache may contain the data that was
+		 * written unencrypted.
+		 */
+		hygon_kvm_hooks.sev_clflush_pages(pages, n);
+
+		/*
+		 * The secret must be copied into contiguous memory region,
+		 * lets verify that userspace memory pages are contiguous
+		 * before we issue command.
+		 */
+		if (hygon_kvm_hooks.get_num_contig_pages(0, pages, n) != n) {
+			ret = -EINVAL;
+			goto e_unpin_memory;
+		}
+
+		offset = params.guest_uaddr & (PAGE_SIZE - 1);
+		data.guest_address = __sme_page_pa(pages[0]) + offset;
+	} else {
+		/* It's gpa for CSV3 guest */
+		data.guest_address = params.guest_uaddr;
+	}
+	data.guest_len = params.guest_len;
+
+	blob = psp_copy_user_blob(params.trans_uaddr, params.trans_len);
+	if (IS_ERR(blob)) {
+		ret = PTR_ERR(blob);
+		goto e_unpin_memory;
+	}
+
+	data.trans_address = __psp_pa(blob);
+	data.trans_len = params.trans_len;
+
+	hdr = psp_copy_user_blob(params.hdr_uaddr, params.hdr_len);
+	if (IS_ERR(hdr)) {
+		ret = PTR_ERR(hdr);
+		goto e_free_blob;
+	}
+	data.hdr_address = __psp_pa(hdr);
+	data.hdr_len = params.hdr_len;
+
+	data.handle = sev->handle;
+	ret = hygon_kvm_hooks.sev_issue_cmd(kvm, SEV_CMD_LAUNCH_UPDATE_SECRET,
+							&data, &argp->error);
+
+	kfree(hdr);
+
+e_free_blob:
+	kfree(blob);
+e_unpin_memory:
+	if (!csv3_guest(kvm) ||
+	    !(csv->inuse_ext & KVM_CAP_HYGON_COCO_EXT_CSV3_INJ_SECRET)) {
+		/* content of memory is updated, mark pages dirty */
+		for (i = 0; i < n; i++) {
+			set_page_dirty_lock(pages[i]);
+			mark_page_accessed(pages[i]);
+		}
+		hygon_kvm_hooks.sev_unpin_memory(kvm, pages, n);
+	}
+	return ret;
+}
+
 static int csv_mem_enc_ioctl(struct kvm *kvm, void __user *argp)
 {
 	struct kvm_sev_cmd sev_cmd;
@@ -2650,6 +2740,9 @@ static int csv_mem_enc_ioctl(struct kvm *kvm, void __user *argp)
 		mutex_lock(&csv_cmd_batch_mutex);
 		r = csv_command_batch(kvm, &sev_cmd);
 		mutex_unlock(&csv_cmd_batch_mutex);
+		break;
+	case KVM_SEV_LAUNCH_SECRET:
+		r = csv_launch_secret(kvm, &sev_cmd);
 		break;
 	case KVM_SEV_SEND_UPDATE_VMSA:
 		/*
@@ -3000,6 +3093,8 @@ static int csv_get_hygon_coco_extension(struct kvm *kvm)
 			csv->kvm_ext |= KVM_CAP_HYGON_COCO_EXT_CSV3_SET_PRIV_MEM;
 			if (csv->fw_ext & CSV_EXT_CSV3_MULT_LUP_DATA)
 				csv->kvm_ext |= KVM_CAP_HYGON_COCO_EXT_CSV3_MULT_LUP_DATA;
+			if (csv->fw_ext & CSV_EXT_CSV3_INJ_SECRET)
+				csv->kvm_ext |= KVM_CAP_HYGON_COCO_EXT_CSV3_INJ_SECRET;
 		}
 		csv->kvm_ext_valid = true;
 	}
