@@ -8,8 +8,8 @@
 obj-$(CONFIG_MXGBEVF) += rnpgbevf.o
 rnpgbevf-objs :=   \
 		vf.o \
-                mbx.o \
-                ethtool.o \
-                sysfs.o \
+                rnpgbevf_mbx.o \
+                rnpgbevf_ethtool.o \
+                rnpgbevf_sysfs.o \
                 rnpgbevf_main.o
 
