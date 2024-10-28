@@ -530,3 +530,28 @@ void iwl_fwrt_dump_error_logs(struct iwl_fw_runtime *fwrt)
 	}
 }
 IWL_EXPORT_SYMBOL(iwl_fwrt_dump_error_logs);
+
+bool iwl_fwrt_read_err_table(struct iwl_trans *trans, u32 base, u32 *err_id)
+{
+	struct error_table_start {
+		/* cf. struct iwl_error_event_table */
+		u32 valid;
+		__le32 err_id;
+	} err_info = {};
+	int ret;
+
+	if (!base)
+		return false;
+
+	ret = iwl_trans_read_mem_bytes(trans, base,
+				       &err_info, sizeof(err_info));
+
+	if (ret)
+		return true;
+
+	if (err_info.valid && err_id)
+		*err_id = le32_to_cpu(err_info.err_id);
+
+	return !!err_info.valid;
+}
+IWL_EXPORT_SYMBOL(iwl_fwrt_read_err_table);
