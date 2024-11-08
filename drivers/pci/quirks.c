@@ -3884,6 +3884,22 @@ DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CAVIUM, 0xa100, quirk_no_bus_reset);
  */
 DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_TI, 0xb005, quirk_no_bus_reset);
 
+
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_MUCSE, 0x1000, quirk_no_bus_reset);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_MUCSE, 0x1c00, quirk_no_bus_reset);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_MUCSE, 0x1020, quirk_no_bus_reset);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_MUCSE, 0x1c20, quirk_no_bus_reset);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_MUCSE, 0x1060, quirk_no_bus_reset);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_MUCSE, 0x1c00, quirk_no_bus_reset);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_MUCSE, 0x1001, quirk_no_bus_reset);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_MUCSE, 0x1c01, quirk_no_bus_reset);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_MUCSE, 0x1003, quirk_no_bus_reset);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_MUCSE, 0x1c03, quirk_no_bus_reset);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_MUCSE, 0x1021, quirk_no_bus_reset);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_MUCSE, 0x1c00, quirk_no_bus_reset);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_MUCSE, 0x1061, quirk_no_bus_reset);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_MUCSE, 0x1c61, quirk_no_bus_reset);
+
 static void quirk_no_pm_reset(struct pci_dev *dev)
 {
 	/*
@@ -5291,6 +5307,21 @@ static const struct pci_dev_acs_enabled {
 	/* Wangxun nics */
 	{ PCI_VENDOR_ID_WANGXUN, PCI_ANY_ID, pci_quirk_wangxun_nic_acs },
 	{ PCI_ANY_ID, PCI_ANY_ID, pcie_acs_overrides },
+	/* Mucse multi-function devices */
+	{ PCI_VENDOR_ID_MUCSE, 0x1000, pci_quirk_mf_endpoint_acs },
+	{ PCI_VENDOR_ID_MUCSE, 0x1c00, pci_quirk_mf_endpoint_acs },
+	{ PCI_VENDOR_ID_MUCSE, 0x1020, pci_quirk_mf_endpoint_acs },
+	{ PCI_VENDOR_ID_MUCSE, 0x1c20, pci_quirk_mf_endpoint_acs },
+	{ PCI_VENDOR_ID_MUCSE, 0x1060, pci_quirk_mf_endpoint_acs },
+	{ PCI_VENDOR_ID_MUCSE, 0x1c60, pci_quirk_mf_endpoint_acs },
+	{ PCI_VENDOR_ID_MUCSE, 0x1001, pci_quirk_mf_endpoint_acs },
+	{ PCI_VENDOR_ID_MUCSE, 0x1c01, pci_quirk_mf_endpoint_acs },
+	{ PCI_VENDOR_ID_MUCSE, 0x1003, pci_quirk_mf_endpoint_acs },
+	{ PCI_VENDOR_ID_MUCSE, 0x1c03, pci_quirk_mf_endpoint_acs },
+	{ PCI_VENDOR_ID_MUCSE, 0x1021, pci_quirk_mf_endpoint_acs },
+	{ PCI_VENDOR_ID_MUCSE, 0x1c21, pci_quirk_mf_endpoint_acs },
+	{ PCI_VENDOR_ID_MUCSE, 0x1061, pci_quirk_mf_endpoint_acs },
+	{ PCI_VENDOR_ID_MUCSE, 0x1c61, pci_quirk_mf_endpoint_acs },
 	{ 0 }
 };
 
