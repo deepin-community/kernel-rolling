@@ -74,7 +74,7 @@ static ssize_t rnpgbe_hwmon_show_location(struct device __always_unused *dev,
 static ssize_t rnpgbe_hwmon_show_name(struct device __always_unused *dev,
 				      struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "rnp\n");
+	return snprintf(buf, PAGE_SIZE, "rnpgbe\n");
 }
 
 static ssize_t rnpgbe_hwmon_show_temp(struct device __always_unused *dev,
@@ -1202,7 +1202,7 @@ int rnpgbe_sysfs_init(struct rnpgbe_adapter *adapter)
 
 	adapter->rnpgbe_hwmon_buff = rnpgbe_hwmon;
 
-	for (i = 0; i < RNP_MAX_SENSORS; i++) {
+	for (i = 0; i < RNPGBE_MAX_SENSORS; i++) {
 		/*
 		 * Only create hwmon sysfs entries for sensors that have
 		 * meaningful data for.
@@ -1230,7 +1230,7 @@ int rnpgbe_sysfs_init(struct rnpgbe_adapter *adapter)
 	rnpgbe_hwmon->group.attrs = rnpgbe_hwmon->attrs;
 
 	hwmon_dev = devm_hwmon_device_register_with_groups(
-		&adapter->pdev->dev, "rnp", rnpgbe_hwmon, rnpgbe_hwmon->groups);
+		&adapter->pdev->dev, "rnpgbe", rnpgbe_hwmon, rnpgbe_hwmon->groups);
 
 	if (IS_ERR(hwmon_dev)) {
 		rc = PTR_ERR(hwmon_dev);

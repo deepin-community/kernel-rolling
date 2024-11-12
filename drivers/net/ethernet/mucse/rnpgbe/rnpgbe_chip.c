@@ -2251,7 +2251,7 @@ rnpgbe_update_hw_status_hw_ops_n500(struct rnpgbe_hw *hw,
 		mac_rd32(mac, GMAC_MANAGEMENT_RX_UNDERSIZE);
 	hw_stats->jumbo_cnt += mac_rd32(mac, RNP500_MAC_GLEN_ERR_NUM);
 	hw_stats->tx_pause += mac_rd32(mac, GMAC_MANAGEMENT_TX_PAUSE);
-	hw_stats->rx_pause += mac_rd32(mac, GMAC_MANAGEMENT_RX_UNDERSIZE);
+	hw_stats->rx_pause += mac_rd32(mac, GMAC_MANAGEMENT_RX_PAUSE);
 }
 
 const struct rnpgbe_stats rnp500_gstrings_net_stats[] = {
@@ -2386,11 +2386,7 @@ static int rnp500_get_link_ksettings(struct net_device *netdev,
 		else
 			cmd->base.eth_tp_mdix = ETH_TP_MDI_INVALID;
 
-		if (hw->fake_autoneg)
-			cmd->base.eth_tp_mdix = ETH_TP_MDI_INVALID;
 		cmd->base.eth_tp_mdix_ctrl = hw->tp_mdix_ctrl;
-		if (hw->fake_autoneg)
-			cmd->base.eth_tp_mdix_ctrl = ETH_TP_MDI_INVALID;
 	} else {
 		if (supported_link & RNP_LINK_SPEED_1GB_FULL) {
 			ethtool_link_ksettings_add_link_mode(cmd, supported,
@@ -3358,7 +3354,9 @@ static const struct ethtool_ops rnp500_ethtool_ops = {
 	.get_ethtool_stats = rnp500_get_ethtool_stats,
 	.get_coalesce = rnpgbe_get_coalesce,
 	.set_coalesce = rnpgbe_set_coalesce,
-	.supported_coalesce_params = ETHTOOL_COALESCE_USECS,
+	.supported_coalesce_params = ETHTOOL_COALESCE_USECS |
+				     ETHTOOL_COALESCE_MAX_FRAMES_IRQ |
+				     ETHTOOL_COALESCE_MAX_FRAMES,
 	.get_rxnfc = rnpgbe_get_rxnfc,
 	.set_rxnfc = rnpgbe_set_rxnfc,
 	.get_eee = rnpgbe_get_eee,
@@ -3381,6 +3379,42 @@ static const struct ethtool_ops rnp500_ethtool_ops = {
 void rnpgbe_set_ethtool_hw_ops_n500(struct net_device *netdev)
 {
 	netdev->ethtool_ops = &rnp500_ethtool_ops;
+}
+
+/**
+ * rnpgbe_get_thermal_sensor_data_hw_ops_n500 - Gathers thermal sensor data
+ * @hw: pointer to hardware structure
+ * Returns the thermal sensor data structure
+ **/
+static s32 rnpgbe_get_thermal_sensor_data_hw_ops_n500(struct rnpgbe_hw *hw)
+{
+	int voltage = 0;
+	struct rnpgbe_thermal_sensor_data *data = &hw->thermal_sensor_data;
+
+	voltage = voltage;
+	data->sensor[0].temp = rnpgbe_mbx_get_temp(hw, &voltage);
+
+	return 0;
+}
+
+/**
+ * rnpgbe_init_thermal_sensor_thresh_hw_ops_n500 - Inits thermal sensor thresholds
+ * @hw: pointer to hardware structure
+ * Inits the thermal sensor thresholds according to the NVM map
+ * and save off the threshold and location values into mac.thermal_sensor_data
+ **/
+static s32 rnpgbe_init_thermal_sensor_thresh_hw_ops_n500(struct rnpgbe_hw *hw)
+{
+	u8 i;
+	struct rnpgbe_thermal_sensor_data *data = &hw->thermal_sensor_data;
+
+	for (i = 0; i < RNPGBE_MAX_SENSORS; i++) {
+		data->sensor[i].location = i + 1;
+		data->sensor[i].caution_thresh = 90;
+		data->sensor[i].max_op_thresh = 100;
+	}
+
+	return 0;
 }
 
 static struct rnpgbe_hw_operations hw_ops_n500 = {
@@ -3435,6 +3469,9 @@ static struct rnpgbe_hw_operations hw_ops_n500 = {
 	.set_rx_skip = &rnpgbe_set_rx_skip_hw_ops_n500,
 	.set_outer_vlan_type = &rnpgbe_set_outer_vlan_type_hw_ops_n500,
 	.setup_ethtool = &rnpgbe_set_ethtool_hw_ops_n500,
+	.get_thermal_sensor_data = &rnpgbe_get_thermal_sensor_data_hw_ops_n500,
+	.init_thermal_sensor_thresh =
+		&rnpgbe_init_thermal_sensor_thresh_hw_ops_n500,
 	.phy_read_reg = &rnpgbe_phy_read_reg_hw_ops_n500,
 	.phy_write_reg = &rnpgbe_phy_write_reg_hw_ops_n500,
 	.setup_wol = &rnpgbe_setup_wol_hw_ops_n500,
@@ -4113,7 +4150,7 @@ struct rnpgbe_info rnpgbe_n500_info = {
 	.get_invariants = &rnpgbe_get_invariants_n500,
 	.mac_ops = &mac_ops_n500,
 	.eeprom_ops = NULL,
-	.mbx_ops = &mbx_ops_generic,
+	.mbx_ops = &rnpgbe_mbx_ops_generic,
 };
 
 struct rnpgbe_info rnpgbe_n210_info = {
@@ -4125,5 +4162,5 @@ struct rnpgbe_info rnpgbe_n210_info = {
 	.get_invariants = &rnpgbe_get_invariants_n210,
 	.mac_ops = &mac_ops_n500,
 	.eeprom_ops = NULL,
-	.mbx_ops = &mbx_ops_generic,
+	.mbx_ops = &rnpgbe_mbx_ops_generic,
 };

@@ -45,8 +45,8 @@
 char rnpgbe_driver_name[] = "rnpgbe";
 static const char rnpgbe_driver_string[] =
 	"mucse 1 Gigabit PCI Express Network Driver";
-#define DRV_VERSION "0.2.3-rc3"
-static u32 driver_version = 0x00020303;
+#define DRV_VERSION "0.2.3-rc10"
+static u32 driver_version = 0x0002030a;
 #include "version.h"
 
 const char rnpgbe_driver_version[] = DRV_VERSION;
@@ -118,7 +118,7 @@ static int enable_hi_dma;
 static void rnpgbe_service_timer(struct timer_list *t);
 static void rnpgbe_setup_eee_mode(struct rnpgbe_adapter *adapter, bool status);
 
-static void rnpgbe_service_event_schedule(struct rnpgbe_adapter *adapter)
+void rnpgbe_service_event_schedule(struct rnpgbe_adapter *adapter)
 {
 	if (!test_bit(__RNP_DOWN, &adapter->state) &&
 	    !test_and_set_bit(__RNP_SERVICE_SCHED, &adapter->state))
@@ -3134,9 +3134,6 @@ static int rnpgbe_vlan_rx_kill_vid(struct net_device *netdev,
 				}
 				/* if no other tags use this vid */
 				if (true_remove) {
-					if ((adapter->flags2 &
-					     RNP_FLAG2_VLAN_STAGS_ENABLED) &&
-					    (vid != adapter->stags_vid))
 						hw->ops.set_vlan_filter(
 							hw, vid, false,
 							veb_setup);
@@ -7228,10 +7225,6 @@ static int rnpgbe_add_adpater(struct pci_dev *pdev, struct rnpgbe_info *ii,
 
 	netdev->hw_features |= netdev->features;
 
-	if (hw->feature_flags & RNP_NET_FEATURE_VLAN_FILTER)
-		netdev->hw_features |= NETIF_F_HW_VLAN_CTAG_FILTER;
-	if (hw->feature_flags & RNP_NET_FEATURE_STAG_FILTER)
-		netdev->hw_features |= NETIF_F_HW_VLAN_STAG_FILTER;
 	if (hw->feature_flags & RNP_NET_FEATURE_VLAN_OFFLOAD) {
 		if (!hw->ncsi_en) {
 			netdev->hw_features |= NETIF_F_HW_VLAN_CTAG_RX;

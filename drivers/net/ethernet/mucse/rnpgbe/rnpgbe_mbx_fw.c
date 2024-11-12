@@ -1426,6 +1426,7 @@ static inline int rnpgbe_mbx_fw_req_handler(struct rnpgbe_adapter *adapter,
 		adapter->flags |= RNP_FLAG_NEED_LINK_UPDATE;
 		break;
 	}
+	rnpgbe_service_event_schedule(adapter);
 
 	return 0;
 }

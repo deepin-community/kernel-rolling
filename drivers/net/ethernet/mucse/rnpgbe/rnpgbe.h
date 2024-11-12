@@ -504,8 +504,8 @@ struct hwmon_attr {
 struct hwmon_buff {
 	struct attribute_group group;
 	const struct attribute_group *groups[2];
-	struct attribute *attrs[RNP_MAX_SENSORS * 4 + 1];
-	struct hwmon_attr hwmon_list[RNP_MAX_SENSORS * 4];
+	struct attribute *attrs[RNPGBE_MAX_SENSORS * 4 + 1];
+	struct hwmon_attr hwmon_list[RNPGBE_MAX_SENSORS * 4];
 	unsigned int n_hwmon;
 };
 #endif /* RNPGBE_HWMON */
@@ -1173,7 +1173,7 @@ int rnp500_fw_update(struct rnpgbe_hw *hw, int partition, const u8 *fw_bin,
 int rnpgbe_fw_update(struct rnpgbe_hw *hw, int partition, const u8 *fw_bin,
 		     int bytes);
 #define RNPM_FW_VERSION_NEW_ETHTOOL 0x00050010
-
+void rnpgbe_service_event_schedule(struct rnpgbe_adapter *adapter);
 static inline bool rnpgbe_fw_is_old_ethtool(struct rnpgbe_hw *hw)
 {
 	return hw->fw_version >= RNPM_FW_VERSION_NEW_ETHTOOL ? false : true;

@@ -631,7 +631,7 @@ s32 rnpgbe_init_mbx_params_pf(struct rnpgbe_hw *hw)
 	return 0;
 }
 
-struct rnpgbe_mbx_operations mbx_ops_generic = {
+struct rnpgbe_mbx_operations rnpgbe_mbx_ops_generic = {
 	.init_params = rnpgbe_init_mbx_params_pf,
 	.read = rnpgbe_read_mbx_pf,
 	.write = rnpgbe_write_mbx_pf,

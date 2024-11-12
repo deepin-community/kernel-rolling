@@ -107,16 +107,16 @@ static inline struct device *pci_dev_to_dev(struct pci_dev *pdev)
 #define ADVERTISE_2500_HALF 0x0040 /* NOT used, just FYI */
 #define ADVERTISE_2500_FULL 0x0080
 
-#define RNP_MAX_SENSORS 1
+#define RNPGBE_MAX_SENSORS 1
 struct rnpgbe_thermal_diode_data {
-	u8 location;
-	u8 temp;
-	u8 caution_thresh;
-	u8 max_op_thresh;
+	unsigned int location;
+	unsigned int temp;
+	unsigned int caution_thresh;
+	unsigned int max_op_thresh;
 };
 
 struct rnpgbe_thermal_sensor_data {
-	struct rnpgbe_thermal_diode_data sensor[RNP_MAX_SENSORS];
+	struct rnpgbe_thermal_diode_data sensor[RNPGBE_MAX_SENSORS];
 };
 
 /* Proxy Status */
