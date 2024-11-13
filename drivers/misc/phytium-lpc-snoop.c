@@ -291,15 +291,13 @@ static int phytium_lpc_snoop_probe(struct platform_device *pdev)
 	return rc;
 }
 
-static int phytium_lpc_snoop_remove(struct platform_device *pdev)
+static void phytium_lpc_snoop_remove(struct platform_device *pdev)
 {
 	struct phytium_lpc_snoop *lpc_snoop = dev_get_drvdata(&pdev->dev);
 
 	/* Disable both snoop channels */
 	phytium_lpc_disable_snoop(lpc_snoop, 0);
 	phytium_lpc_disable_snoop(lpc_snoop, 1);
-
-	return 0;
 }
 
 
