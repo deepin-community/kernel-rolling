@@ -76,7 +76,7 @@ void zx_apei_mce_report_mem_error(struct cper_sec_mem_err *mem_err)
 	if (!(mem_err->validation_bits & CPER_MEM_VALID_PA))
 		return;
 
-	mce_setup(&m);
+	mce_prep_record(&m);
 	m.misc = 0;
 	m.misc = mem_err->module;
 	m.addr = mem_err->physical_addr;
@@ -139,7 +139,7 @@ void zx_apei_mce_report_pcie_error(int severity, struct cper_sec_pcie *pcie_err)
 	if (boot_cpu_data.x86 != 7 || boot_cpu_data.x86_model != 91)
 		return;
 
-	mce_setup(&m);
+	mce_prep_record(&m);
 	m.addr = 0;
 	m.misc = 0;
 	m.misc |= (u64)pcie_err->device_id.segment << 32;
@@ -175,7 +175,7 @@ void zx_apei_mce_report_zdi_error(struct cper_sec_proc_generic *zdi_err)
 	if (boot_cpu_data.x86 != 7 || boot_cpu_data.x86_model != 91)
 		return;
 
-	mce_setup(&m);
+	mce_prep_record(&m);
 	m.misc = 0;
 	m.misc |= (zdi_err->requestor_id & 0xff) << 19;
 	m.misc |= ((zdi_err->requestor_id & 0xff00) >> 8) >> 24;
