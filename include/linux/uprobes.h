@@ -47,6 +47,7 @@ struct uprobe_consumer {
 
 #ifdef CONFIG_UPROBES
 #include <asm/uprobes.h>
+#include <linux/deepin_kabi.h>
 
 enum uprobe_task_state {
 	UTASK_RUNNING,
@@ -80,6 +81,14 @@ struct uprobe_task {
 
 	struct return_instance		*return_instances;
 	unsigned int			depth;
+	DEEPIN_KABI_RESERVE(1)
+	DEEPIN_KABI_RESERVE(2)
+	DEEPIN_KABI_RESERVE(3)
+	DEEPIN_KABI_RESERVE(4)
+	DEEPIN_KABI_RESERVE(5)
+	DEEPIN_KABI_RESERVE(6)
+	DEEPIN_KABI_RESERVE(7)
+	DEEPIN_KABI_RESERVE(8)
 };
 
 struct return_instance {
