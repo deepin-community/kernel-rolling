@@ -4746,14 +4746,11 @@ leapioraid_base_send_ioc_init(struct LEAPIORAID_ADAPTER *ioc)
 	current_time = ktime_get_real();
 	mpi_request.TimeStamp = cpu_to_le64(ktime_to_ms(current_time));
 	if (ioc->logging_level & LEAPIORAID_DEBUG_INIT) {
-		__le32 *mfp;
-		int i;
 
-		mfp = (__le32 *) &mpi_request;
 		pr_info("%s \toffset:data\n", ioc->name);
-		for (i = 0; i < sizeof(struct LeapioraidIOCInitReq_t) / 4; i++)
-			pr_info("%s \t[0x%02x]:%08x\n",
-			       ioc->name, i * 4, le32_to_cpu(mfp[i]));
+		leapioraid_debug_dump_mf(&mpi_request,
+				sizeof(struct LeapioraidIOCInitReq_t) / 4);
+
 	}
 	r = leapioraid_base_handshake_req_reply_wait(ioc,
 						     sizeof
@@ -7022,7 +7019,11 @@ leapioraid_config_get_volume_handle(struct LEAPIORAID_ADAPTER *ioc,
 		r = -1;
 		ioc_status = le16_to_cpu(mpi_reply.IOCStatus) &
 		    LEAPIORAID_IOCSTATUS_MASK;
-		if (ioc_status != LEAPIORAID_IOCSTATUS_SUCCESS)
+		if (ioc_status == LEAPIORAID_IOCSTATUS_CONFIG_INVALID_PAGE) {
+			*volume_handle = 0;
+			r = 0;
+			goto out;
+		} else if (ioc_status != LEAPIORAID_IOCSTATUS_SUCCESS)
 			goto out;
 		for (i = 0; i < config_page->NumElements; i++) {
 			element_type =

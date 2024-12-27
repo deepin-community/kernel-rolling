@@ -53,7 +53,6 @@
 #include <linux/poll.h>
 #include <linux/io.h>
 #include <linux/uaccess.h>
-#include "leapioraid_func.h"
 
 #ifdef __KERNEL__
 #include <linux/miscdevice.h>
