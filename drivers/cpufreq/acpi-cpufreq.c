@@ -627,6 +627,19 @@ static int acpi_cpufreq_blacklist(struct cpuinfo_x86 *c)
 }
 #endif
 
+/* The work item is needed to avoid CPU hotplug locking issues */
+static void sched_itmt_work_fn(struct work_struct *work)
+{
+	sched_set_itmt_support();
+}
+
+static DECLARE_WORK(sched_itmt_work, sched_itmt_work_fn);
+
+static void sched_set_itmt(void)
+{
+	schedule_work(&sched_itmt_work);
+}
+
 #ifdef CONFIG_ACPI_CPPC_LIB
 /*
  * get_max_boost_ratio: Computes the max_boost_ratio as the ratio
@@ -674,11 +687,51 @@ static u64 get_max_boost_ratio(unsigned int cpu, u64 *nominal_freq)
 	return div_u64(highest_perf << SCHED_CAPACITY_SHIFT, nominal_perf);
 }
 
+static bool cppc_highest_perf_diff;
+static struct cpumask core_prio_cpumask;
+
+static void core_set_itmt_prio(int cpu)
+{
+	u64 highest_perf = 0;
+	int ret = 0;
+	static u64 max_highest_perf = 0, min_highest_perf = U64_MAX;
+
+	ret = cppc_get_highest_perf(cpu, &highest_perf);
+	if (ret) {
+		pr_debug("CPU%d: Unable to get performance capabilities (%d)\n", cpu, ret);
+		return;
+	}
+	sched_set_itmt_core_prio(highest_perf, cpu);
+	cpumask_set_cpu(cpu, &core_prio_cpumask);
+
+	if (max_highest_perf <= min_highest_perf) {
+		if (highest_perf > max_highest_perf)
+			max_highest_perf = highest_perf;
+
+		if (highest_perf < min_highest_perf)
+			min_highest_perf = highest_perf;
+
+		if (max_highest_perf > min_highest_perf)
+			cppc_highest_perf_diff = true;
+	}
+
+	if (cppc_highest_perf_diff && cpumask_equal(&core_prio_cpumask, cpu_online_mask)) {
+		/*
+		 * This code  can be run during CPU online under the CPU hotplug locks,
+		 * so sched_set_itmt cannot be called from here.
+		 * queue a work item to invoke it
+		 */
+		pr_debug("queue a work to set itmt support and enable\n");
+		sched_set_itmt();
+	}
+}
+
 #else
 static inline u64 get_max_boost_ratio(unsigned int cpu, u64 *nominal_freq)
 {
 	return 0;
 }
+static void core_set_itmt_prio(int cpu) {}
 #endif
 
 static int acpi_cpufreq_cpu_init(struct cpufreq_policy *policy)
@@ -691,7 +744,7 @@ static int acpi_cpufreq_cpu_init(struct cpufreq_policy *policy)
 	u64 max_boost_ratio, nominal_freq = 0;
 	unsigned int valid_states = 0;
 	unsigned int result = 0;
-	unsigned int i;
+	unsigned int i, j = 0;
 #ifdef CONFIG_SMP
 	static int blacklisted;
 #endif
@@ -755,6 +808,11 @@ static int acpi_cpufreq_cpu_init(struct cpufreq_policy *policy)
 		pr_info_once("overriding BIOS provided _PSD data\n");
 	}
 #endif
+
+	if (c->x86_vendor == X86_VENDOR_CENTAUR || c->x86_vendor == X86_VENDOR_ZHAOXIN) {
+		for_each_cpu(j, policy->cpus)
+			core_set_itmt_prio(j);
+	}
 
 	/* capability check */
 	if (perf->state_count <= 1) {
