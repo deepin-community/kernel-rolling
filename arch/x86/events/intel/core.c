@@ -4752,7 +4752,6 @@ static void update_pmu_cap(struct x86_hybrid_pmu *pmu)
 		pmu->num_counters_fixed = fls(fixed_cntr);
 	}
 
-
 	if (!intel_pmu_broken_perf_cap()) {
 		/* Perf Metric (Bit 15) and PEBS via PT (Bit 16) are hybrid enumeration */
 		rdmsrl(MSR_IA32_PERF_CAPABILITIES, pmu->intel_cap.capabilities);
