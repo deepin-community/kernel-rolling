@@ -58,6 +58,16 @@
 #define EIOINTC_REG_ROUTE_VEC_SHIFT(vector)	((vector & 0x03) << 3)
 #define EIOINTC_REG_ROUTE_VEC_MASK(vector)	(0xff << EIOINTC_REG_ROUTE_VEC_SHIFT(vector))
 
+typedef struct { DECLARE_BITMAP(bits, MAX_EIO_NODES); } extioi_node_map;
+
+#define EXTIOI_NODE_MASK_NONE							\
+((extioi_node_map) { {							\
+	[0 ... BITS_TO_LONGS(MAX_EIO_NODES)-1] =  0UL			\
+} })
+
+extioi_node_map extioi_node_maps = EXTIOI_NODE_MASK_NONE;
+
+
 static int nr_pics;
 
 struct eiointc_priv {
@@ -95,6 +105,7 @@ static void eiointc_set_irq_route(int pos, unsigned int cpu, unsigned int mnode,
 	int i, node, cpu_node, route_node;
 	unsigned char coremap;
 	uint32_t pos_off, data, data_byte, data_mask;
+	nodemask_t eio_node_map = *node_map;
 
 	pos_off = pos & ~3;
 	data_byte = pos & 3;
@@ -106,13 +117,14 @@ static void eiointc_set_irq_route(int pos, unsigned int cpu, unsigned int mnode,
 
 	for_each_online_cpu(i) {
 		node = cpu_to_eio_node(i);
-		if (!node_isset(node, *node_map))
-			continue;
-
-		/* EIO node 0 is in charge of inter-node interrupt dispatch */
-		route_node = (node == mnode) ? cpu_node : node;
-		data = ((coremap | (route_node << 4)) << (data_byte * 8));
-		csr_any_send(EIOINTC_REG_ROUTE + pos_off, data, data_mask, node * CORES_PER_EIO_NODE);
+		if (node_isset(node, eio_node_map)) {
+			node_clear(node, eio_node_map);
+			/* EIO node 0 is in charge of inter-node interrupt dispatch */
+			route_node = (node == mnode) ? cpu_node : node;
+			data = ((coremap | (route_node << 4)) << (data_byte * 8));
+			csr_any_send(EIOINTC_REG_ROUTE + pos_off, data, data_mask,
+					cpu_logical_map(i));
+		}
 	}
 }
 
@@ -131,7 +143,7 @@ static DEFINE_RAW_SPINLOCK(affinity_lock);
 
 static int eiointc_set_irq_affinity(struct irq_data *d, const struct cpumask *affinity, bool force)
 {
-	unsigned int cpu;
+	unsigned int cpu, i;
 	unsigned long flags;
 	uint32_t vector, regaddr;
 	struct eiointc_priv *priv = d->domain->host_data;
@@ -152,16 +164,21 @@ static int eiointc_set_irq_affinity(struct irq_data *d, const struct cpumask *af
 		veiointc_set_irq_route(vector, cpu);
 		iocsr_write32(EIOINTC_ALL_ENABLE, regaddr);
 	} else {
+		for_each_online_cpu(i) {
+			if (cpu_to_eio_node(i) == priv->node)
+					break;
+		}
+
 		/* Mask target vector */
 		csr_any_send(regaddr, EIOINTC_ALL_ENABLE_VEC_MASK(vector),
-			     0x0, priv->node * CORES_PER_EIO_NODE);
+			     0x0, cpu_logical_map(i));
 
 		/* Set route for target vector */
 		eiointc_set_irq_route(vector, cpu, priv->node, &priv->node_map);
 
 		/* Unmask target vector */
 		csr_any_send(regaddr, EIOINTC_ALL_ENABLE,
-			     0x0, priv->node * CORES_PER_EIO_NODE);
+			     0x0, cpu_logical_map(i));
 	}
 
 	irq_data_update_effective_affinity(d, cpumask_of(cpu));
@@ -223,7 +240,9 @@ static int eiointc_router_init(unsigned int cpu)
 			else if (index == 0)
 				bit = BIT(cpu_logical_map(0));
 			else
-				bit = (eiointc_priv[index]->node << 4) | 1;
+				bit = (eiointc_priv[index]->node << 4) |
+				BIT(cpu_logical_map(smp_processor_id()) %
+						CORES_PER_EIO_NODE);
 
 			data = bit | (bit << 8) | (bit << 16) | (bit << 24);
 			iocsr_write32(data, EIOINTC_REG_ROUTE + i * 4);
@@ -232,8 +251,10 @@ static int eiointc_router_init(unsigned int cpu)
 		for (i = 0; i < eiointc_priv[0]->vec_count / 32; i++) {
 			data = 0xffffffff;
 			iocsr_write32(data, EIOINTC_REG_ENABLE + i * 4);
-			iocsr_write32(data, EIOINTC_REG_BOUNCE + i * 4);
+			iocsr_write32(0, EIOINTC_REG_BOUNCE + i * 4);
 		}
+
+		set_bit(node, (&extioi_node_maps)->bits);
 	}
 
 	return 0;
@@ -365,6 +386,7 @@ static int eiointc_suspend(void)
 
 static void eiointc_resume(void)
 {
+	extioi_node_maps = EXTIOI_NODE_MASK_NONE;
 	eiointc_router_init(0);
 }
 
