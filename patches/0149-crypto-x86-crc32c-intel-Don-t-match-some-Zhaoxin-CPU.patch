@@ -1,0 +1,61 @@
+From b90928937ae2e3608630dab99b9c7d07e59c8948 Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Wed, 12 Jun 2024 17:44:56 +0800
+Subject: [PATCH 149/360] crypto: x86/crc32c-intel - Don't match some Zhaoxin
+ CPUs
+
+zhaoxin inclusion
+category: feature
+CVE: NA
+
+----------------------------------------------------------------
+
+The driver crc32c-intel match CPUs supporting X86_FEATURE_XMM4_2.
+On platforms with Zhaoxin CPUs supporting this X86 feature,
+when crc32c-intel and crc32c-generic are both registered,
+system will use crc32c-intel because its .cra_priority is greater
+than crc32c-generic.
+
+When doing lmbench3 Create and Delete file test on partitions with
+ext4 enabling metadata checksum, found using crc32c-generic driver
+could get about 20% performance gain than using the driver
+crc32c-intel on some Zhaoxin CPUs.
+
+This case expect to use crc32c-generic driver for these Zhaoxin CPUs
+to get performance gain, so remove these Zhaoxin CPUs support from
+crc32c-intel.
+
+This patch was submitted to mainline kernel but not accepted by upstream
+maintainer whose reason is "Then create a BUG flag for it,".
+
+We think this is not a CPU bug for Zhaoxin CPUs. So should patch the
+crc32c driver for Zhaoxin CPUs but not report a BUG.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ arch/x86/crypto/crc32c-intel_glue.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/arch/x86/crypto/crc32c-intel_glue.c b/arch/x86/crypto/crc32c-intel_glue.c
+index feccb5254c7e..da99741f28e7 100644
+--- a/arch/x86/crypto/crc32c-intel_glue.c
++++ b/arch/x86/crypto/crc32c-intel_glue.c
+@@ -222,8 +222,15 @@ MODULE_DEVICE_TABLE(x86cpu, crc32c_cpu_id);
+ 
+ static int __init crc32c_intel_mod_init(void)
+ {
++	struct cpuinfo_x86 *c = &boot_cpu_data;
++
+ 	if (!x86_match_cpu(crc32c_cpu_id))
+ 		return -ENODEV;
++
++	if ((c->x86_vendor == X86_VENDOR_ZHAOXIN || c->x86_vendor == X86_VENDOR_CENTAUR) &&
++	    (c->x86 <= 7 && c->x86_model <= 59))
++		return -ENODEV;
++
+ #ifdef CONFIG_X86_64
+ 	if (boot_cpu_has(X86_FEATURE_PCLMULQDQ)) {
+ 		alg.update = crc32c_pcl_intel_update;
+-- 
+2.20.1
+

@@ -1,0 +1,29 @@
+From daddf423eb31eb722b393f82c2f8904f289b87a5 Mon Sep 17 00:00:00 2001
+From: WangYuli <wangyuli@uniontech.com>
+Date: Wed, 18 Dec 2024 11:56:28 +0800
+Subject: [PATCH 301/360] deepin: arm64: config: Enable Android binder drivers
+
+Enable Android binder drivers.
+Thanks for report by open-FDE.
+
+Signed-off-by: WangYuli <wangyuli@uniontech.com>
+---
+ arch/arm64/configs/deepin_arm64_desktop_defconfig | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/deepin_arm64_desktop_defconfig b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+index a28bf3753dfd..e7401a581d2f 100644
+--- a/arch/arm64/configs/deepin_arm64_desktop_defconfig
++++ b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+@@ -3863,6 +3863,8 @@ CONFIG_MARVELL_CN10K_DDR_PMU=m
+ CONFIG_ARM_CORESIGHT_PMU_ARCH_SYSTEM_PMU=m
+ CONFIG_MESON_DDR_PMU=m
+ CONFIG_PHYTIUM_PMU=y
++CONFIG_ANDROID_BINDER_IPC=y
++CONFIG_ANDROID_BINDERFS=y
+ CONFIG_STM=y
+ CONFIG_STM_SOURCE_CONSOLE=y
+ CONFIG_FPGA=m
+-- 
+2.20.1
+

@@ -1,0 +1,52 @@
+From 608c047f20c9778203459c7257963b34379be62f Mon Sep 17 00:00:00 2001
+From: WangYuli <wangyuli@uniontech.com>
+Date: Sat, 17 Aug 2024 15:16:08 +0800
+Subject: [PATCH 198/360] can: phytium: Use phytium_can_of_ids only when
+ CONFIG_OF enabled
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Fix follow errors:
+
+drivers/net/can/phytium/phytium_can_platform.c: In function ‘phytium_can_plat_probe’:
+drivers/net/can/phytium/phytium_can_platform.c:113:41: error: ‘phytium_can_of_ids’ undeclared (first use in this function); did you mean ‘phytium_can_acpi_ids’?
+  113 |                 of_id = of_match_device(phytium_can_of_ids, &pdev->dev);
+      |                                         ^~~~~~~~~~~~~~~~~~
+      |                                         phytium_can_acpi_ids
+drivers/net/can/phytium/phytium_can_platform.c:113:41: note: each undeclared identifier is reported only once for each function it appears in
+
+Signed-off-by: WangYuli <wangyuli@uniontech.com>
+---
+ drivers/net/can/phytium/phytium_can_platform.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/net/can/phytium/phytium_can_platform.c b/drivers/net/can/phytium/phytium_can_platform.c
+index 852da788f9f7..f6c0d7a90113 100644
+--- a/drivers/net/can/phytium/phytium_can_platform.c
++++ b/drivers/net/can/phytium/phytium_can_platform.c
+@@ -76,7 +76,9 @@ static int phytium_can_plat_probe(struct platform_device *pdev)
+ 	struct phytium_can_dev *cdev;
+ 	struct phytium_can_plat *priv;
+ 	struct resource *res;
++# ifdef CONFIG_OF
+ 	const struct of_device_id *of_id;
++# endif /* CONFIG_OF */
+ 	const struct phytium_can_devtype *devtype = &phytium_can_data;
+ 	u32 tx_fifo_depth;
+ 	int ret;
+@@ -110,9 +112,11 @@ static int phytium_can_plat_probe(struct platform_device *pdev)
+ 		}
+ 		cdev->can.clock.freq = clk_get_rate(cdev->clk);
+ 
++# ifdef CONFIG_OF
+ 		of_id = of_match_device(phytium_can_of_ids, &pdev->dev);
+ 		if (of_id && of_id->data)
+ 			devtype = of_id->data;
++# endif /* CONFIG_OF */
+ 	} else if (has_acpi_companion(&pdev->dev)) {
+ 		ret = fwnode_property_read_u32(dev_fwnode(&pdev->dev),
+ 					       "clock-frequency",
+-- 
+2.20.1
+

@@ -1,0 +1,29 @@
+From 8d4893eb11b2181ed2eb26285610c4906c91c96a Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Thu, 27 Jun 2024 16:25:44 +0800
+Subject: [PATCH 039/360] tty: serial: fix phytium-uart on 6.9
+
+Declare phytium_unregister_port() as a static function to resolve a missing
+prototype warning.
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ drivers/tty/serial/phytium-uart.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/tty/serial/phytium-uart.c b/drivers/tty/serial/phytium-uart.c
+index 1839203fc306..84a96350c3dc 100644
+--- a/drivers/tty/serial/phytium-uart.c
++++ b/drivers/tty/serial/phytium-uart.c
+@@ -763,7 +763,7 @@ static struct uart_driver phytium_uart = {
+ 	.nr		= UART_NR,
+ };
+ 
+-void phytium_unregister_port(struct phytium_uart_port *pup)
++static void phytium_unregister_port(struct phytium_uart_port *pup)
+ {
+ 	int i;
+ 	bool busy = false;
+-- 
+2.20.1
+

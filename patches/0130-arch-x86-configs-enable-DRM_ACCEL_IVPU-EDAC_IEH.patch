@@ -1,0 +1,39 @@
+From 7a64925b08a33062a9f59eb6a80629ead86c2bb0 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Mon, 24 Jun 2024 13:22:14 +0800
+Subject: [PATCH 130/360] arch: x86: configs: enable DRM_ACCEL_IVPU, EDAC_IEH
+
+Enable features introduced in Intel's pull requests:
+
+- DRM_ACCEL_IVPU: Intel NPU (Neural Processing Unit) (Meteor Lake).
+- EDAC_IEH: Intel Integrated Error Handler (Meteor Lake).
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ arch/x86/configs/deepin_x86_desktop_defconfig | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index 4efef28204d7..21b0a558c9af 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -3350,6 +3350,8 @@ CONFIG_BACKLIGHT_ARCXCNN=m
+ CONFIG_BACKLIGHT_RAVE_SP=m
+ CONFIG_FRAMEBUFFER_CONSOLE_ROTATION=y
+ CONFIG_FRAMEBUFFER_CONSOLE_DEFERRED_TAKEOVER=y
++CONFIG_DRM_ACCEL=y
++CONFIG_DRM_ACCEL_IVPU=m
+ CONFIG_SOUND=m
+ # CONFIG_SOUND_OSS_CORE_PRECLAIM is not set
+ CONFIG_SND=m
+@@ -4275,6 +4277,7 @@ CONFIG_EDAC_SBRIDGE=m
+ CONFIG_EDAC_SKX=m
+ CONFIG_EDAC_I10NM=m
+ CONFIG_EDAC_PND2=m
++CONFIG_EDAC_IEH=m
+ CONFIG_RTC_CLASS=y
+ CONFIG_RTC_DRV_88PM860X=m
+ CONFIG_RTC_DRV_88PM80X=m
+-- 
+2.20.1
+

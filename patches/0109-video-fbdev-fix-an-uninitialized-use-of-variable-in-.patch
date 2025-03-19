@@ -1,0 +1,28 @@
+From f5cafa1ef0ee301b44f866657d358d84883d3d75 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Tue, 2 Jul 2024 16:49:55 +0800
+Subject: [PATCH 109/360] video: fbdev: fix an uninitialized use of variable in
+ ls2k500sfb.c
+
+Initialize chip as NULL to avoid an error when -Werror is enabled.
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ drivers/video/fbdev/ls2k500sfb.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/video/fbdev/ls2k500sfb.c b/drivers/video/fbdev/ls2k500sfb.c
+index fed4dd5977d8..a3564f05ca33 100644
+--- a/drivers/video/fbdev/ls2k500sfb.c
++++ b/drivers/video/fbdev/ls2k500sfb.c
+@@ -287,6 +287,7 @@ static int get_gpio_irq_from_acpi_table(int gpio)
+ {
+ 	struct gpio_chip *chip;
+ 	struct gpio_desc *desc;
++	chip = NULL;
+ 
+ 	chip->gpiodev = gpio_device_find_by_label("LOON0007:00");
+ 	if (!chip->gpiodev)
+-- 
+2.20.1
+

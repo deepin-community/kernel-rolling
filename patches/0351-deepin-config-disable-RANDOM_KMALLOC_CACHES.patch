@@ -1,0 +1,39 @@
+From 102e7e73aa9b3ae02448631024af9bfab0e1e0c4 Mon Sep 17 00:00:00 2001
+From: Wentao Guan <guanwentao@uniontech.com>
+Date: Tue, 11 Feb 2025 21:19:27 +0800
+Subject: [PATCH 351/360] deepin: config: disable RANDOM_KMALLOC_CACHES
+
+Cause arm64 and loongarch port random unrecover after
+hibernate. temp disable it.(in x86 the option is already off now)
+---
+ arch/arm64/configs/deepin_arm64_desktop_defconfig         | 1 -
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 1 -
+ 2 files changed, 2 deletions(-)
+
+diff --git a/arch/arm64/configs/deepin_arm64_desktop_defconfig b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+index fb62d741f238..de9c275b3178 100644
+--- a/arch/arm64/configs/deepin_arm64_desktop_defconfig
++++ b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+@@ -209,7 +209,6 @@ CONFIG_ZBUD=y
+ CONFIG_ZSMALLOC_STAT=y
+ CONFIG_SLAB_FREELIST_RANDOM=y
+ CONFIG_SLAB_FREELIST_HARDENED=y
+-CONFIG_RANDOM_KMALLOC_CACHES=y
+ # CONFIG_COMPAT_BRK is not set
+ CONFIG_MEMORY_HOTPLUG=y
+ CONFIG_MEMORY_HOTPLUG_DEFAULT_ONLINE=y
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index f106ca5ce71e..0e3e0a7b7c4f 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -143,7 +143,6 @@ CONFIG_Z3FOLD=y
+ CONFIG_ZSMALLOC_STAT=y
+ CONFIG_SLAB_FREELIST_RANDOM=y
+ CONFIG_SLAB_FREELIST_HARDENED=y
+-CONFIG_RANDOM_KMALLOC_CACHES=y
+ # CONFIG_COMPAT_BRK is not set
+ CONFIG_MEMORY_HOTPLUG=y
+ CONFIG_MEMORY_HOTPLUG_DEFAULT_ONLINE=y
+-- 
+2.20.1
+

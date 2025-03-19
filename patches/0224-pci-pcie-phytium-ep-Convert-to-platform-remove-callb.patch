@@ -1,0 +1,45 @@
+From f63ef894f93ae7f0d137f2ab064b285a3a0a0ed9 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 18:03:13 +0800
+Subject: [PATCH 224/360] pci: pcie-phytium-ep: Convert to platform remove
+ callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/pci/controller/pcie-phytium-ep.c:462:19: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+  462 |         .remove = phytium_pcie_ep_remove,
+      |                   ^~~~~~~~~~~~~~~~~~~~~~
+drivers/pci/controller/pcie-phytium-ep.c:462:19: note: (near initialization for ‘phytium_pcie_ep_driver.<anonymous>.remove’)
+---
+ drivers/pci/controller/pcie-phytium-ep.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/pci/controller/pcie-phytium-ep.c b/drivers/pci/controller/pcie-phytium-ep.c
+index 039e0832704c..d339be7057df 100644
+--- a/drivers/pci/controller/pcie-phytium-ep.c
++++ b/drivers/pci/controller/pcie-phytium-ep.c
+@@ -437,15 +437,13 @@ static int phytium_pcie_ep_probe(struct platform_device *pdev)
+ 	return ret;
+ }
+ 
+-static int phytium_pcie_ep_remove(struct platform_device *pdev)
++static void phytium_pcie_ep_remove(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+ 	struct phytium_pcie_ep *priv = dev_get_drvdata(dev);
+ 	struct pci_epc *epc = priv->epc;
+ 
+ 	pci_epc_mem_exit(epc);
+-
+-	return 0;
+ }
+ 
+ static const struct of_device_id phytium_pcie_ep_of_match[] = {
+-- 
+2.20.1
+

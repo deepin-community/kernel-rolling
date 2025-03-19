@@ -1,0 +1,90 @@
+From 269c9c1de1953fbe37d923ff7588f8a93afa4444 Mon Sep 17 00:00:00 2001
+From: Yanteng Si <siyanteng@loongson.cn>
+Date: Mon, 27 May 2024 10:20:21 +0800
+Subject: [PATCH 120/360] LoongArch: kexec: Add compatibility with old
+ interfaces
+
+Old interface:
+a0 = argc, a1 = argv, a2 = bootparam
+
+New interface:
+a0 = efi flag, a1 = cmdline, a2 = systemtab
+
+The following interfaces are not supported:
+a0 = efi flag, a1 = fdt pointer, a2 = 0
+
+Signed-off-by: Youling Tang <tangyouling@loongson.cn>
+Signed-off-by: Yanteng Si <siyanteng@loongson.cn>
+---
+ arch/loongarch/kernel/machine_kexec.c | 45 +++++++++++++++++++++++++--
+ 1 file changed, 43 insertions(+), 2 deletions(-)
+
+diff --git a/arch/loongarch/kernel/machine_kexec.c b/arch/loongarch/kernel/machine_kexec.c
+index f9381800e291..21470bd06cdc 100644
+--- a/arch/loongarch/kernel/machine_kexec.c
++++ b/arch/loongarch/kernel/machine_kexec.c
+@@ -59,6 +59,9 @@ static void kexec_image_info(const struct kimage *kimage)
+ 	}
+ }
+ 
++#define MAX_ARGS 64
++#define KEXEC_CMDLINE_SIZE (COMMAND_LINE_SIZE * 2)
++
+ int machine_kexec_prepare(struct kimage *kimage)
+ {
+ 	int i;
+@@ -70,11 +73,49 @@ int machine_kexec_prepare(struct kimage *kimage)
+ 	kimage->arch.efi_boot = fw_arg0;
+ 	kimage->arch.systable_ptr = fw_arg2;
+ 
++	if (!fw_arg2)
++		pr_err("Small fdt mode is not supported!\n");
++
+ 	/* Find the command line */
+ 	for (i = 0; i < kimage->nr_segments; i++) {
+ 		if (!strncmp(bootloader, (char __user *)kimage->segment[i].buf, strlen(bootloader))) {
+-			if (!copy_from_user(cmdline_ptr, kimage->segment[i].buf, COMMAND_LINE_SIZE))
+-				kimage->arch.cmdline_ptr = (unsigned long)cmdline_ptr;
++			if (fw_arg0 < 2) {
++				/* New firmware */
++				if (!copy_from_user(cmdline_ptr, kimage->segment[i].buf, COMMAND_LINE_SIZE))
++					kimage->arch.cmdline_ptr = (unsigned long)cmdline_ptr;
++			} else {
++				/* Old firmware */
++				int argc = 0;
++				long offt;
++				char *ptr, *str;
++				unsigned long *argv;
++
++				/*
++				 * convert command line string to array
++				 * of parameters (as bootloader does).
++				 */
++				argv = (unsigned long *)kmalloc(KEXEC_CMDLINE_SIZE, GFP_KERNEL);
++				argv[argc++] = (unsigned long)(KEXEC_CMDLINE_ADDR + KEXEC_CMDLINE_SIZE/2);
++				str = (char *)argv + KEXEC_CMDLINE_SIZE/2;
++
++				if (copy_from_user(str, kimage->segment[i].buf, KEXEC_CMDLINE_SIZE/2))
++					return -EINVAL;
++
++				ptr = strchr(str, ' ');
++
++				while (ptr && (argc < MAX_ARGS)) {
++					*ptr = '\0';
++					if (ptr[1] != ' ') {
++						offt = (long)(ptr - str + 1);
++						argv[argc++] = (unsigned long)argv + KEXEC_CMDLINE_SIZE/2 + offt;
++					}
++					ptr = strchr(ptr + 1, ' ');
++				}
++
++				kimage->arch.efi_boot = argc;
++				kimage->arch.cmdline_ptr = (unsigned long)argv;
++				break;
++			}
+ 			break;
+ 		}
+ 	}
+-- 
+2.20.1
+

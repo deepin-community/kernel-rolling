@@ -1,0 +1,49 @@
+From c981da75cd46d231772a100df139b9cd665a770c Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Mon, 18 Nov 2024 15:08:38 +0800
+Subject: [PATCH 266/360] x86: mce: apei: rename mce_setup() to
+ mce_prep_record() for Zhaoxin-specific methods
+
+Follow commit 5ad21a249732 ("x86/mce: Rename mce_setup() to
+mce_prep_record()") and rename all mce_setup() functions to
+mce_prep_record(). This fixes build for kernel versions >= 6.12.
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ arch/x86/kernel/cpu/mce/apei.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/arch/x86/kernel/cpu/mce/apei.c b/arch/x86/kernel/cpu/mce/apei.c
+index 2e0b279821cf..420fd3a7d046 100644
+--- a/arch/x86/kernel/cpu/mce/apei.c
++++ b/arch/x86/kernel/cpu/mce/apei.c
+@@ -74,7 +74,7 @@ void zx_apei_mce_report_mem_error(struct cper_sec_mem_err *mem_err)
+ 	if (!(mem_err->validation_bits & CPER_MEM_VALID_PA))
+ 		return;
+ 
+-	mce_setup(&m);
++	mce_prep_record(&m);
+ 	m.misc = 0;
+ 	m.misc = mem_err->module;
+ 	m.addr = mem_err->physical_addr;
+@@ -137,7 +137,7 @@ void zx_apei_mce_report_pcie_error(int severity, struct cper_sec_pcie *pcie_err)
+ 	if (boot_cpu_data.x86 != 7 || boot_cpu_data.x86_model != 91)
+ 		return;
+ 
+-	mce_setup(&m);
++	mce_prep_record(&m);
+ 	m.addr = 0;
+ 	m.misc = 0;
+ 	m.misc |= (u64)pcie_err->device_id.segment << 32;
+@@ -173,7 +173,7 @@ void zx_apei_mce_report_zdi_error(struct cper_sec_proc_generic *zdi_err)
+ 	if (boot_cpu_data.x86 != 7 || boot_cpu_data.x86_model != 91)
+ 		return;
+ 
+-	mce_setup(&m);
++	mce_prep_record(&m);
+ 	m.misc = 0;
+ 	m.misc |= (zdi_err->requestor_id & 0xff) << 19;
+ 	m.misc |= ((zdi_err->requestor_id & 0xff00) >> 8) >> 24;
+-- 
+2.20.1
+

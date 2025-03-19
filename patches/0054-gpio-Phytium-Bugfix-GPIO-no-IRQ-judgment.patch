@@ -1,0 +1,31 @@
+From e54ae6fceed70dd90a5af225510faf10e3e4149a Mon Sep 17 00:00:00 2001
+From: Li Guohui <liguohui2061@phytium.com.cn>
+Date: Thu, 16 May 2024 16:36:38 +0800
+Subject: [PATCH 054/360] gpio: Phytium: Bugfix GPIO no IRQ judgment
+
+Because gpio->irq here is the pointer, We must use gpio->irq[0] instead of gpio->irq to judge GPIO no IRQ.
+
+Signed-off-by: Li Guohui <liguohui2061@phytium.com.cn>
+Signed-off-by: Zuo Qian <zuoqian2032@phytium.com.cn>
+Signed-off-by: Li Mingzhe <limingzhe1839@phytium.com.cn>
+Signed-off-by: Wang Yinfeng <wangyinfeng@phytium.com.cn>
+---
+ drivers/gpio/gpio-phytium-pci.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/gpio/gpio-phytium-pci.c b/drivers/gpio/gpio-phytium-pci.c
+index 6755995ae703..b5e2092729c9 100644
+--- a/drivers/gpio/gpio-phytium-pci.c
++++ b/drivers/gpio/gpio-phytium-pci.c
+@@ -62,7 +62,7 @@ static int phytium_gpio_pci_probe(struct pci_dev *pdev, const struct pci_device_
+ 	pci_set_master(pdev);
+ 
+ 	gpio->irq[0] = pdev->irq;
+-	if (gpio->irq < 0)
++	if (gpio->irq[0] < 0)
+ 		dev_warn(dev, "no irq is found.\n");
+ 
+ 	/* There is only one group of Pins at the moment. */
+-- 
+2.20.1
+

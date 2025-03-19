@@ -1,0 +1,51 @@
+From 7942504e9be820d921ff42dbb745698aba1f69a6 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Wed, 13 Nov 2024 11:08:30 +0800
+Subject: [PATCH 220/360] i2c: i2c-zhaoxin-smbus: convert to the .remove_new
+ (void) callback
+
+With commit 74a5b94b6221 ("ARM: Convert to platform remove callback
+returning void"), the .remove() callback for platform drivers was
+refactored into void (previously int), with the callback renamed as
+.remove_new().
+
+Follow the commit and refactor this driver.
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ drivers/i2c/busses/i2c-zhaoxin-smbus.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-zhaoxin-smbus.c b/drivers/i2c/busses/i2c-zhaoxin-smbus.c
+index b1f749bcc716..39832e8a6dce 100644
+--- a/drivers/i2c/busses/i2c-zhaoxin-smbus.c
++++ b/drivers/i2c/busses/i2c-zhaoxin-smbus.c
+@@ -349,15 +349,13 @@ static int zxsmb_probe(struct platform_device *pdev)
+ 	return i2c_add_adapter(&smb->adap);
+ }
+ 
+-static int zxsmb_remove(struct platform_device *pdev)
++static void zxsmb_remove(struct platform_device *pdev)
+ {
+ 	struct zxsmb *smb = platform_get_drvdata(pdev);
+ 
+ 	i2c_del_adapter(&(smb->adap));
+ 	platform_set_drvdata(pdev, NULL);
+ 	devm_kfree(&pdev->dev, smb);
+-
+-	return 0;
+ }
+ 
+ static const struct acpi_device_id zxsmb_acpi_match[] = {
+@@ -368,7 +366,7 @@ MODULE_DEVICE_TABLE(acpi, zxsmb_acpi_match);
+ 
+ static struct platform_driver zxsmb_driver = {
+ 	.probe  = zxsmb_probe,
+-	.remove = zxsmb_remove,
++	.remove_new = zxsmb_remove,
+ 	.driver = {
+ 		.name = ZXSMB_NAME,
+ 		.acpi_match_table = ACPI_PTR(zxsmb_acpi_match),
+-- 
+2.20.1
+

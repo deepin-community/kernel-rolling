@@ -1,0 +1,29 @@
+From 93e1577e48fc770436b757c67a0b8ca2f9b4120c Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Tue, 2 Jul 2024 13:34:37 +0800
+Subject: [PATCH 107/360] video: fbdev: fix ls2k500sfb.c on 6.9
+
+Declare multiple functions as static functions to suppress warnings about
+missing prototypes.
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ drivers/video/fbdev/ls2k500sfb.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/video/fbdev/ls2k500sfb.c b/drivers/video/fbdev/ls2k500sfb.c
+index 22764b333285..fed4dd5977d8 100644
+--- a/drivers/video/fbdev/ls2k500sfb.c
++++ b/drivers/video/fbdev/ls2k500sfb.c
+@@ -253,7 +253,7 @@ static void ls2k500sfb_events_fn(struct work_struct *work)
+ 	priv->running = 0;
+ }
+ 
+-irqreturn_t ls2k500sfb_interrupt(int irq, void *arg)
++static irqreturn_t ls2k500sfb_interrupt(int irq, void *arg)
+ {
+ 	struct ls2k500sfb_struct *priv = arg;
+ 	struct pci_dev *pdev = priv->dev;
+-- 
+2.20.1
+

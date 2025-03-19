@@ -1,0 +1,49 @@
+From def7ca2e5fc98f6d7c0d75b15550895dd4655f28 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Fri, 28 Jun 2024 16:09:55 +0800
+Subject: [PATCH 093/360] pci: controller: adapt pcie-phytium-ep.c to >= 6.7
+
+Adapt to a change in the PCI subsystem that removed the pci_epc_irq_type enum:
+
+    PCI: endpoint: Drop PCI_EPC_IRQ_XXX definitions
+
+    linux/pci.h defines the IRQ flags PCI_IRQ_INTX, PCI_IRQ_MSI and
+    PCI_IRQ_MSIX. Let's use these flags directly instead of the endpoint
+    definitions provided by enum pci_epc_irq_type. This removes the need
+    for defining this enum type completely.
+
+    Link: https://lore.kernel.org/r/20231122060406.14695-3-dlemoal@kernel.org
+    Signed-off-by: Damien Le Moal <dlemoal@kernel.org>
+    Signed-off-by: Lorenzo Pieralisi <lpieralisi@kernel.org>
+    Reviewed-by: Serge Semin <fancer.lancer@gmail.com>
+    Reviewed-by: Christoph Hellwig <hch@lst.de>
+    Acked-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ drivers/pci/controller/pcie-phytium-ep.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/pci/controller/pcie-phytium-ep.c b/drivers/pci/controller/pcie-phytium-ep.c
+index edab8fb369ea..039e0832704c 100644
+--- a/drivers/pci/controller/pcie-phytium-ep.c
++++ b/drivers/pci/controller/pcie-phytium-ep.c
+@@ -296,13 +296,12 @@ static int phytium_pcie_ep_send_msi_irq(struct phytium_pcie_ep *priv, u8 fn,
+ }
+ 
+ static int phytium_pcie_ep_raise_irq(struct pci_epc *epc, u8 fn, u8 vfn,
+-				     enum pci_epc_irq_type type,
+-				     u16 interrupt_num)
++				     unsigned int type, u16 interrupt_num)
+ {
+ 	struct phytium_pcie_ep *priv = epc_get_drvdata(epc);
+ 
+ 	switch (type) {
+-	case PCI_EPC_IRQ_MSI:
++	case PCI_IRQ_MSI:
+ 		return phytium_pcie_ep_send_msi_irq(priv, fn, interrupt_num);
+ 
+ 	default:
+-- 
+2.20.1
+

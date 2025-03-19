@@ -1,0 +1,105 @@
+From 17a6bcfb0f6a83180b08cbea30948b6297c83645 Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Fri, 16 Aug 2024 17:55:31 +0800
+Subject: [PATCH 260/360] perf/x86/zhaoxin: fix warning log issue on KH-40000
+
+There are some vulnerabilities present in KH40000 platforms with specific
+core counts, which may affect the monitoring of the uncore portion by the
+perf software and generate warning logs. This patch is intended to rectify
+this issue.
+
+Additionally, some code formatting adjustments have been made.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ arch/x86/events/zhaoxin/core.c   |  2 +-
+ arch/x86/events/zhaoxin/uncore.c | 17 +++++++++--------
+ arch/x86/events/zhaoxin/uncore.h |  6 +++---
+ 3 files changed, 13 insertions(+), 12 deletions(-)
+
+diff --git a/arch/x86/events/zhaoxin/core.c b/arch/x86/events/zhaoxin/core.c
+index c5c5e17bfc6a..e7dd276e4211 100644
+--- a/arch/x86/events/zhaoxin/core.c
++++ b/arch/x86/events/zhaoxin/core.c
+@@ -658,7 +658,7 @@ __init int zhaoxin_pmu_init(void)
+ 
+ 			if (boot_cpu_data.x86_model == 0x5b)
+ 				pr_cont("Yongfeng events, ");
+-			
++
+ 			if (boot_cpu_data.x86_model == 0x6b)
+ 				pr_cont("Shijidadao events, ");
+ 
+diff --git a/arch/x86/events/zhaoxin/uncore.c b/arch/x86/events/zhaoxin/uncore.c
+index 68c687d1d216..ff12ec466ad9 100644
+--- a/arch/x86/events/zhaoxin/uncore.c
++++ b/arch/x86/events/zhaoxin/uncore.c
+@@ -212,7 +212,7 @@ static int kh40000_pcibus_limit[KH40000_MAX_SUBNODE_NUMBER];
+ #define KX7000_MC_B1_CHy_PMON_CTL0		0xee0
+ #define KX7000_MC_B1_CHy_PMON_BLK_CTL		0xef4
+ 
+-#define	KX7000_ZDI_DL_MMIO_PMON_CTR0		0xf00	
++#define	KX7000_ZDI_DL_MMIO_PMON_CTR0		0xf00
+ #define KX7000_ZDI_DL_MMIO_PMON_CTL0		0xf28
+ #define KX7000_ZDI_DL_MMIO_PMON_BLK_CTL		0xf44
+ #define KX7000_IOD_ZDI_DL_MMIO_BASE_OFFSET	0x168
+@@ -397,24 +397,24 @@ DEFINE_PER_CPU(cpumask_t, zx_subnode_core_bits);
+ 
+ static void zx_gen_core_map(void)
+ {
+-	int i, nr, cpu;
++	int cpu, i;
+ 	int cluster_id, subnode_id;
+ 
+ 	for_each_present_cpu(cpu) {
+ 		cluster_id = zx_topology_cluster_id(cpu);
+ 
+-		for (i = 0; i < 4; i++) {
+-			nr = (cluster_id << 2) + i;
+-			cpumask_set_cpu(nr, &per_cpu(zx_cluster_core_bits, cpu));
++		for_each_present_cpu(i) {
++			if (zx_topology_cluster_id(i) == cluster_id)
++				cpumask_set_cpu(i, &per_cpu(zx_cluster_core_bits, cpu));
+ 		}
+ 	}
+ 
+ 	for_each_present_cpu(cpu) {
+ 		subnode_id = zx_topology_subnode_id(cpu);
+ 
+-		for (i = 0; i < 8; i++) {
+-			nr = (subnode_id << 3) + i;
+-			cpumask_set_cpu(nr, &per_cpu(zx_subnode_core_bits, cpu));
++		for_each_present_cpu(i) {
++			if (zx_topology_subnode_id(i) == subnode_id)
++				cpumask_set_cpu(i, &per_cpu(zx_subnode_core_bits, cpu));
+ 		}
+ 	}
+ }
+@@ -2829,6 +2829,7 @@ static void kx7000_uncore_cpu_init(void)
+ {
+ 	u64 val;
+ 	int cpu;
++
+ 	uncore_msr_uncores = kx7000_msr_uncores;
+ 
+ 	/* clear bit 16 of MSR 0x1877 so that HIF can work normally */
+diff --git a/arch/x86/events/zhaoxin/uncore.h b/arch/x86/events/zhaoxin/uncore.h
+index d17c7d26944b..5f33ad0fc3b0 100644
+--- a/arch/x86/events/zhaoxin/uncore.h
++++ b/arch/x86/events/zhaoxin/uncore.h
+@@ -45,9 +45,9 @@ struct zhaoxin_uncore_type {
+ 	unsigned int fixed_ctl;
+ 	unsigned int box_ctl;
+ 	union {
+-                unsigned int msr_offset;
+-                unsigned int mmio_offset;
+-        };
++		unsigned int msr_offset;
++		unsigned int mmio_offset;
++	};
+ 	unsigned int num_shared_regs:8;
+ 	unsigned int single_fixed:1;
+ 	unsigned int pair_ctr_ctl:1;
+-- 
+2.20.1
+

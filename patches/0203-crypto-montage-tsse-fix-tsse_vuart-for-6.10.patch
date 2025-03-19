@@ -1,0 +1,67 @@
+From a5628f6a790e11209e480025a99ac976ac4f40ca Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Thu, 22 Aug 2024 13:53:41 +0800
+Subject: [PATCH 203/360] crypto: montage: tsse: fix tsse_vuart for >= 6.10
+
+The following commit removed structs such as circ_buf and uart_circ_empty.
+
+    commit 1788cf6a91d9fa9aa61fc2917afe192c23d67f6a
+    Author: Jiri Slaby (SUSE) <jirislaby@kernel.org>
+    Date:   Fri Apr 5 08:08:23 2024 +0200
+
+        tty: serial: switch from circ_buf to kfifo
+
+Adapt module code in accordance with this commit to fix build.
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ drivers/crypto/montage/tsse/tsse_vuart.c | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/crypto/montage/tsse/tsse_vuart.c b/drivers/crypto/montage/tsse/tsse_vuart.c
+index f49d4ffc9f3c..7036444f9540 100644
+--- a/drivers/crypto/montage/tsse/tsse_vuart.c
++++ b/drivers/crypto/montage/tsse/tsse_vuart.c
+@@ -128,7 +128,7 @@ static void vuart_stop_tx(struct uart_port *port)
+ 
+ static void vuart_tx_chars(struct uart_port *port)
+ {
+-	struct circ_buf *xmit = &port->state->xmit;
++	struct tty_port *tport = &port->state->port;
+ 	struct tsse_vuart *vuart = (struct tsse_vuart *)port;
+ 	int count;
+ 
+@@ -137,21 +137,25 @@ static void vuart_tx_chars(struct uart_port *port)
+ 		return;
+ 	}
+ 
+-	if (uart_tx_stopped(port) || uart_circ_empty(xmit)) {
++	if (uart_tx_stopped(port) || kfifo_is_empty(&tport->xmit_fifo)) {
+ 		vuart_stop_tx(port);
+ 		return;
+ 	}
+ 
+ 	count = vuart->tx_loadsz;
+ 	do {
+-		vuart_serial_out(port, VUART_TX, xmit->buf[xmit->tail]);
+-		xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
++		unsigned char c;
++
++		if (!uart_fifo_get(port, &c))
++			break;
++
++		vuart_serial_out(port, UART_TX, c);
+ 		port->icount.tx++;
+-		if (uart_circ_empty(xmit))
++		if (kfifo_is_empty(&tport->xmit_fifo))
+ 			break;
+ 	} while (--count > 0);
+ 
+-	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
++	if (kfifo_len(&tport->xmit_fifo) < WAKEUP_CHARS)
+ 		uart_write_wakeup(port);
+ }
+ 
+-- 
+2.20.1
+

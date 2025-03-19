@@ -1,0 +1,56 @@
+From a31d924d08245fd234383a5d7d7d303e6b1b771a Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Wed, 13 Nov 2024 10:56:16 +0800
+Subject: [PATCH 219/360] hwmon: zhaoxin-cputemp: convert to the .remove_new
+ (void) callback
+
+With commit 74a5b94b6221 ("ARM: Convert to platform remove callback
+returning void"), the .remove() callback for platform drivers was
+refactored into void (previously int), with the callback renamed as
+.remove_new().
+
+Follow the commit and refactor this driver.
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ drivers/hwmon/zhaoxin-cputemp.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/hwmon/zhaoxin-cputemp.c b/drivers/hwmon/zhaoxin-cputemp.c
+index fdc0c5ba5e0c..52caff040a2a 100644
+--- a/drivers/hwmon/zhaoxin-cputemp.c
++++ b/drivers/hwmon/zhaoxin-cputemp.c
+@@ -184,13 +184,12 @@ static int zhaoxin_cputemp_probe(struct platform_device *pdev)
+ 	return err;
+ }
+ 
+-static int zhaoxin_cputemp_remove(struct platform_device *pdev)
++static void zhaoxin_cputemp_remove(struct platform_device *pdev)
+ {
+ 	struct zhaoxin_cputemp_data *data = platform_get_drvdata(pdev);
+ 
+ 	hwmon_device_unregister(data->hwmon_dev);
+ 	sysfs_remove_group(&pdev->dev.kobj, &zhaoxin_cputemp_group);
+-	return 0;
+ }
+ 
+ static struct platform_driver zhaoxin_cputemp_driver = {
+@@ -198,7 +197,7 @@ static struct platform_driver zhaoxin_cputemp_driver = {
+ 		.name = DRVNAME,
+ 	},
+ 	.probe = zhaoxin_cputemp_probe,
+-	.remove = zhaoxin_cputemp_remove,
++	.remove_new = zhaoxin_cputemp_remove,
+ };
+ 
+ struct pdev_entry {
+@@ -330,4 +329,4 @@ MODULE_LICENSE("GPL");
+ module_init(zhaoxin_cputemp_init)
+ module_exit(zhaoxin_cputemp_exit)
+ 
+-MODULE_IMPORT_NS(HWMON_THERMAL);
+\ No newline at end of file
++MODULE_IMPORT_NS(HWMON_THERMAL);
+-- 
+2.20.1
+

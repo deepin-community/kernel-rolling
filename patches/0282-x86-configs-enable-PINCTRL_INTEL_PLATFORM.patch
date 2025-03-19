@@ -1,0 +1,31 @@
+From 54cd19ddd3bfb94d038365ff1229ee3b7118db91 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Tue, 19 Nov 2024 14:31:29 +0800
+Subject: [PATCH 282/360] x86: configs: enable PINCTRL_INTEL_PLATFORM
+
+This is required for touchpad to function on Asus Vivobook S 2024 LED.
+
+Lest the I2C touchpad (Elan) fails to probe:
+
+  i2c i2c-ASCE1200:00: deferred probe pending: (reason unknown)
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ arch/x86/configs/deepin_x86_desktop_defconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index af32e0dd9a91..82210be89b6b 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -2072,6 +2072,7 @@ CONFIG_PINCTRL_SX150X=y
+ CONFIG_PINCTRL_BAYTRAIL=y
+ CONFIG_PINCTRL_CHERRYVIEW=y
+ CONFIG_PINCTRL_LYNXPOINT=m
++CONFIG_PINCTRL_INTEL_PLATFORM=m
+ CONFIG_PINCTRL_ALDERLAKE=m
+ CONFIG_PINCTRL_BROXTON=m
+ CONFIG_PINCTRL_CANNONLAKE=m
+-- 
+2.20.1
+

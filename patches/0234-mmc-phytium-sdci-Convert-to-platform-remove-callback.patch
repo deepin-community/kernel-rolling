@@ -1,0 +1,46 @@
+From c2b57fed780dead9644a7b2c2367da0a7679ef9c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 18:48:21 +0800
+Subject: [PATCH 234/360] mmc: phytium-sdci: Convert to platform remove
+ callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/mmc/host/phytium-sdci.c:1426:19: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+ 1426 |         .remove = phytium_sdci_remove,
+      |                   ^~~~~~~~~~~~~~~~~~~
+drivers/mmc/host/phytium-sdci.c:1426:19: note: (near initialization for ‘phytium_sdci_driver.<anonymous>.remove’)
+---
+ drivers/mmc/host/phytium-sdci.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/mmc/host/phytium-sdci.c b/drivers/mmc/host/phytium-sdci.c
+index 9453cc95e430..dcd6cd2af4f0 100644
+--- a/drivers/mmc/host/phytium-sdci.c
++++ b/drivers/mmc/host/phytium-sdci.c
+@@ -1329,7 +1329,7 @@ static int phytium_sdci_probe(struct platform_device *pdev)
+ 	return ret;
+ }
+ 
+-static int phytium_sdci_remove(struct platform_device *pdev)
++static void phytium_sdci_remove(struct platform_device *pdev)
+ {
+ 	struct mmc_host *mmc;
+ 	struct phytium_sdci_host *host;
+@@ -1347,8 +1347,6 @@ static int phytium_sdci_remove(struct platform_device *pdev)
+ 				  host->dma_rx.buf, host->dma_rx.bd_addr);
+ 
+ 	mmc_free_host(host->mmc);
+-
+-	return 0;
+ }
+ 
+ #ifdef CONFIG_PM_SLEEP
+-- 
+2.20.1
+

@@ -1,0 +1,39 @@
+From 82dfe0d1ee7b5d4aa2061a22bdd1ff4a5f597a92 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=9D=8E=E6=88=90=E5=88=9A?= <lichenggang@uniontech.com>
+Date: Fri, 26 Apr 2024 11:26:04 +0800
+Subject: [PATCH 106/360] fix: ls2k500sfb build error,
+ gpio_device_find_by_label should be used
+
+---
+ drivers/video/fbdev/ls2k500sfb.c | 10 ++--------
+ 1 file changed, 2 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/video/fbdev/ls2k500sfb.c b/drivers/video/fbdev/ls2k500sfb.c
+index 00a83ea7c1e3..22764b333285 100644
+--- a/drivers/video/fbdev/ls2k500sfb.c
++++ b/drivers/video/fbdev/ls2k500sfb.c
+@@ -283,19 +283,13 @@ irqreturn_t ls2k500sfb_interrupt(int irq, void *arg)
+ #define GPIO_INTPOL ((void *)IO_BASE+0x1fe00000+0x510)
+ #define GPIO_INTEN ((void *)IO_BASE+0x1fe00000+0x514)
+ 
+-static int gpiochip_match_name(struct gpio_chip *chip, void *data)
+-{
+-	const char *name = data;
+-
+-	return !strcmp(chip->label, name);
+-}
+ static int get_gpio_irq_from_acpi_table(int gpio)
+ {
+ 	struct gpio_chip *chip;
+ 	struct gpio_desc *desc;
+ 
+-	chip = gpiochip_find("LOON0007:00", gpiochip_match_name);
+-	if (!chip)
++	chip->gpiodev = gpio_device_find_by_label("LOON0007:00");
++	if (!chip->gpiodev)
+ 		return -ENOENT;
+ 	desc = gpiochip_request_own_desc(chip, gpio, "reboot", GPIO_LOOKUP_FLAGS_DEFAULT, GPIOD_IN);
+ 	if (!desc)
+-- 
+2.20.1
+

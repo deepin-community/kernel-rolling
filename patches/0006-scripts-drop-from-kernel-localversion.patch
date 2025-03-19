@@ -1,0 +1,27 @@
+From afcaeda6873871e7494a8d75a2cccf3ec82f080d Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.xyz>
+Date: Thu, 23 May 2024 18:01:40 +0800
+Subject: [PATCH 006/360] scripts: drop + from kernel localversion
+
+We simply do not use the + suffix to denote distribution packaging.
+
+Drop the + suffix.
+---
+ scripts/setlocalversion | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/scripts/setlocalversion b/scripts/setlocalversion
+index 5818465abba9..5e8d6e43f691 100755
+--- a/scripts/setlocalversion
++++ b/scripts/setlocalversion
+@@ -113,7 +113,6 @@ scm_version()
+ 		# If only the short version is requested, don't bother
+ 		# running further git commands
+ 		if $short; then
+-			echo "+"
+ 			return
+ 		fi
+ 
+-- 
+2.20.1
+

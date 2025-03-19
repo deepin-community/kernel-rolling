@@ -1,0 +1,28 @@
+From 31057a0c421de9d6c61ec6201f2f4b21aaf95f7f Mon Sep 17 00:00:00 2001
+From: WangYuli <wangyuli@uniontech.com>
+Date: Tue, 8 Oct 2024 01:16:38 +0800
+Subject: [PATCH 246/360] deepin: OWNERS: Add winnscode to reviewers
+
+Bring in a real heavyweight expert to involve in our development.
+
+Signed-off-by: WangYuli <wangyuli@uniontech.com>
+---
+ deepin/OWNERS | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/deepin/OWNERS b/deepin/OWNERS
+index 49189a40db39..0c06820f3f9a 100644
+--- a/deepin/OWNERS
++++ b/deepin/OWNERS
+@@ -23,4 +23,5 @@ reviewers:
+ - myml
+ - Rabenda
+ - shy129
+-- Wenlp
+\ No newline at end of file
++- Wenlp
++- winnscode
+\ No newline at end of file
+-- 
+2.20.1
+

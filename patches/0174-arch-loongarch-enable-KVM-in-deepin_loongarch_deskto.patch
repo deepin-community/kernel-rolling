@@ -1,0 +1,29 @@
+From a9c47797d958b00ba547875fb5c68a07d4ea223a Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Thu, 25 Jul 2024 13:17:59 +0800
+Subject: [PATCH 174/360] arch: loongarch: enable KVM in
+ deepin_loongarch_desktop_defconfig
+
+Enable KVM support for our desktop defconfig.
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index edb337ed1414..70755781597d 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -82,6 +82,8 @@ CONFIG_ACPI_CONFIGFS=m
+ CONFIG_ACPI_PFRUT=m
+ CONFIG_ACPI_FFH=y
+ CONFIG_PMIC_OPREGION=y
++CONFIG_VIRTUALIZATION=y
++CONFIG_KVM=m
+ CONFIG_COMPAT_32BIT_TIME=y
+ CONFIG_LOCK_EVENT_COUNTS=y
+ CONFIG_MODULES=y
+-- 
+2.20.1
+

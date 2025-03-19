@@ -1,0 +1,43 @@
+From 5382537a1deffd6f0b03123fa89792b5eb65f961 Mon Sep 17 00:00:00 2001
+From: Wentao Guan <guanwentao@uniontech.com>
+Date: Tue, 14 Jan 2025 14:25:49 +0800
+Subject: [PATCH 348/360] deepin: config: disable BLK_DEV_THROTTLING_LOW
+
+The config is enabled in deepin arm64 and loongarch,
+but disable in x86, I check the commit has upstreamed.
+So disable it to make config tidy.
+bf20ab538c81b: ("blk-throttle: remove CONFIG_BLK_DEV_THROTTLING_LOW")
+
+Signed-off-by: Wentao Guan <guanwentao@uniontech.com>
+---
+ arch/arm64/configs/deepin_arm64_desktop_defconfig         | 1 -
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 1 -
+ 2 files changed, 2 deletions(-)
+
+diff --git a/arch/arm64/configs/deepin_arm64_desktop_defconfig b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+index 1417bcd5e392..fb62d741f238 100644
+--- a/arch/arm64/configs/deepin_arm64_desktop_defconfig
++++ b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+@@ -166,7 +166,6 @@ CONFIG_MODVERSIONS=y
+ CONFIG_MODULE_SRCVERSION_ALL=y
+ CONFIG_BLK_DEV_ZONED=y
+ CONFIG_BLK_DEV_THROTTLING=y
+-CONFIG_BLK_DEV_THROTTLING_LOW=y
+ CONFIG_BLK_WBT=y
+ CONFIG_BLK_CGROUP_IOLATENCY=y
+ CONFIG_BLK_CGROUP_FC_APPID=y
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index d8a715868450..f106ca5ce71e 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -100,7 +100,6 @@ CONFIG_MODULE_SIG_SHA512=y
+ CONFIG_MODULE_ALLOW_MISSING_NAMESPACE_IMPORTS=y
+ CONFIG_BLK_DEV_ZONED=y
+ CONFIG_BLK_DEV_THROTTLING=y
+-CONFIG_BLK_DEV_THROTTLING_LOW=y
+ CONFIG_BLK_WBT=y
+ CONFIG_BLK_CGROUP_IOLATENCY=y
+ CONFIG_BLK_CGROUP_FC_APPID=y
+-- 
+2.20.1
+

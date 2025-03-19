@@ -1,0 +1,79 @@
+From ea6205e5d21b835791c7793dcb4ffbdd3f9f903c Mon Sep 17 00:00:00 2001
+From: Wentao Guan <guanwentao@uniontech.com>
+Date: Mon, 6 Jan 2025 16:43:50 +0800
+Subject: [PATCH 305/360] deepin: config: adjust PSI and RCU config
+
+config: adjust PSI and RCU config
+[1] CONFIG_PSI: It has already enabled in x86 and loongarch config,
+enable it on arm64 config.
+[2] CONFIG_RCU_BOOST:
+Config helps to boost the priority of preempted RCU readers that
+block the current preemptible RCU grace period for too long.
+Enable CONFIG_RCU_BOOST for x86, arm64, loongarch architectures.
+Link:https://android.googlesource.com/kernel/common/+/83571e3b13db8d4ce64cc62644b35181125867cf
+[3] CONFIG_RCU_LAZY:
+It is still disabled by default. Must specify
+rcutree.enable_rcu_lazy and rcu_nocbs=all in boot time parameter
+to actually enable it.
+Link:https://android.googlesource.com/kernel/common/+/61dd43b723d3553a794be6a279ec330db059ea98
+[4] CONFIG_RCU_EXPERT, CONFIG_RCU_NOCB_CPU:
+Enable configs needed for RCU perf/power optimizations
+Link:https://android.googlesource.com/kernel/common/+/e9b2f28785260537f78edc901e65592f9e1869af
+
+Signed-off-by: Wentao Guan <guanwentao@uniontech.com>
+---
+ arch/arm64/configs/deepin_arm64_desktop_defconfig         | 3 +++
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 2 ++
+ arch/x86/configs/deepin_x86_desktop_defconfig             | 2 ++
+ 3 files changed, 7 insertions(+)
+
+diff --git a/arch/arm64/configs/deepin_arm64_desktop_defconfig b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+index 0a883e78e87b..25a3f847aa3e 100644
+--- a/arch/arm64/configs/deepin_arm64_desktop_defconfig
++++ b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+@@ -12,9 +12,12 @@ CONFIG_BPF_JIT_ALWAYS_ON=y
+ CONFIG_BPF_LSM=y
+ CONFIG_PREEMPT=y
+ CONFIG_SCHED_CORE=y
++CONFIG_PSI=y
+ CONFIG_RCU_EXPERT=y
++CONFIG_RCU_BOOST=y
+ CONFIG_RCU_NOCB_CPU=y
+ CONFIG_RCU_LAZY=y
++CONFIG_RCU_LAZY_DEFAULT_OFF=y
+ CONFIG_IKCONFIG=y
+ CONFIG_IKCONFIG_PROC=y
+ CONFIG_LOG_CPU_MAX_BUF_SHIFT=15
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index e8a975015b8b..af71e4735ae0 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -21,8 +21,10 @@ CONFIG_TASK_XACCT=y
+ CONFIG_TASK_IO_ACCOUNTING=y
+ CONFIG_PSI=y
+ CONFIG_RCU_EXPERT=y
++CONFIG_RCU_BOOST=y
+ CONFIG_RCU_NOCB_CPU=y
+ CONFIG_RCU_LAZY=y
++CONFIG_RCU_LAZY_DEFAULT_OFF=y
+ CONFIG_IKCONFIG=y
+ CONFIG_IKCONFIG_PROC=y
+ CONFIG_IKHEADERS=m
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index 55485619c89e..a67666f35311 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -19,8 +19,10 @@ CONFIG_TASK_XACCT=y
+ CONFIG_TASK_IO_ACCOUNTING=y
+ CONFIG_PSI=y
+ CONFIG_RCU_EXPERT=y
++CONFIG_RCU_BOOST=y
+ CONFIG_RCU_NOCB_CPU=y
+ CONFIG_RCU_LAZY=y
++CONFIG_RCU_LAZY_DEFAULT_OFF=y
+ CONFIG_IKCONFIG=y
+ CONFIG_IKCONFIG_PROC=y
+ CONFIG_IKHEADERS=m
+-- 
+2.20.1
+

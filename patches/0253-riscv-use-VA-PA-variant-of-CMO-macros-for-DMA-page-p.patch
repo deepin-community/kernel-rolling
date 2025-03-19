@@ -1,0 +1,43 @@
+From 1ada58a36593f5c47bf8cd686518bc1093e65cd1 Mon Sep 17 00:00:00 2001
+From: Icenowy Zheng <uwu@icenowy.me>
+Date: Wed, 4 Jan 2023 15:41:46 +0800
+Subject: [PATCH 253/360] riscv: use VA+PA variant of CMO macros for DMA page
+ preparation
+
+When doing DMA page preparation, both the VA and the PA are easily
+accessible from struct page.
+
+Use the alternative macro variant that takes both VA and PA as
+parameters, thus in case the ISA extension used support PA directly, the
+overhead for re-converting VA to PA can be omitted.
+
+Suggested-by: Guo Ren <guoren@kernel.org>
+Signed-off-by: Icenowy Zheng <uwu@icenowy.me>
+---
+ arch/riscv/mm/dma-noncoherent.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/arch/riscv/mm/dma-noncoherent.c b/arch/riscv/mm/dma-noncoherent.c
+index 16f4d7ea3e64..f69eb918069f 100644
+--- a/arch/riscv/mm/dma-noncoherent.c
++++ b/arch/riscv/mm/dma-noncoherent.c
+@@ -117,6 +117,7 @@ void arch_sync_dma_for_cpu(phys_addr_t paddr, size_t size,
+ void arch_dma_prep_coherent(struct page *page, size_t size)
+ {
+ 	void *flush_addr = page_address(page);
++	phys_addr_t paddr = PFN_PHYS(page_to_pfn(page));
+ 
+ #ifdef CONFIG_RISCV_NONSTANDARD_CACHE_OPS
+ 	if (unlikely(noncoherent_cache_ops.wback_inv)) {
+@@ -125,7 +126,7 @@ void arch_dma_prep_coherent(struct page *page, size_t size)
+ 	}
+ #endif
+ 
+-	ALT_CMO_OP(FLUSH, flush_addr, size, riscv_cbom_block_size);
++	ALT_CMO_OP_VPA(FLUSH, flush_addr, paddr, size, riscv_cbom_block_size);
+ }
+ 
+ void arch_setup_dma_ops(struct device *dev, bool coherent)
+-- 
+2.20.1
+

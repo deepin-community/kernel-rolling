@@ -1,0 +1,46 @@
+From 51c3406f510426393eaec6ab2e1383c7b6fa341d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Thu, 14 Nov 2024 10:06:51 +0800
+Subject: [PATCH 244/360] iio: adc: phytium: Convert to platform remove
+ callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/iio/adc/phytium-adc.c:684:27: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+  684 |         .remove         = phytium_adc_remove,
+      |                           ^~~~~~~~~~~~~~~~~~
+drivers/iio/adc/phytium-adc.c:684:27: note: (near initialization for ‘phytium_adc_driver.<anonymous>.remove’)
+---
+ drivers/iio/adc/phytium-adc.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/iio/adc/phytium-adc.c b/drivers/iio/adc/phytium-adc.c
+index ed95b0f1d3f2..0e56387f757d 100644
+--- a/drivers/iio/adc/phytium-adc.c
++++ b/drivers/iio/adc/phytium-adc.c
+@@ -630,7 +630,7 @@ static int phytium_adc_probe(struct platform_device *pdev)
+ 	return iio_device_register(indio_dev);
+ }
+ 
+-static int phytium_adc_remove(struct platform_device *pdev)
++static void phytium_adc_remove(struct platform_device *pdev)
+ {
+ 	struct iio_dev *indio_dev = platform_get_drvdata(pdev);
+ 	struct phytium_adc *adc = iio_priv(indio_dev);
+@@ -638,8 +638,6 @@ static int phytium_adc_remove(struct platform_device *pdev)
+ 	phytium_adc_power_setup(adc, false);
+ 	iio_device_unregister(indio_dev);
+ 	kfree(adc->scan_data);
+-
+-	return 0;
+ }
+ 
+ static const struct of_device_id phytium_of_match[] = {
+-- 
+2.20.1
+

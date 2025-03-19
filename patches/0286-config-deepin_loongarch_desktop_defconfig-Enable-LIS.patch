@@ -1,0 +1,30 @@
+From d4a53fcf2a45d0e55976af7b73ee181598d74aef Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <guanwentao@uniontech.com>
+Date: Tue, 19 Nov 2024 03:10:27 +0000
+Subject: [PATCH 286/360] config: deepin_loongarch_desktop_defconfig: Enable
+ LIST_HARDENED
+
+Linux kernel 6.6 introduced CONFIG_LIST_HARDENED, of which CONFIG_DEBUG_LIST is a superset [1]. Since CONFIG_DEBUG_LIST selects CONFIG_LIST_HARDENED, configs that already selected CONFIG_DEBUG_LIST were not prompted for CONFIG_LIST_HARDENED.
+Since CONFIG_DEBUG_LIST has never been designed with performance in mind, non-debug kernels should prefer CONFIG_LIST_HARDENED. The main benefit is improved performance; the only downside is slightly worse error reporting (the WARNING is turned into an access fault in some cases). Hardening-wise there is no functional difference.
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=aebc7b0d8d91bbc69e976909963046bc48bca4fd
+
+Link: https://gitlab.archlinux.org/archlinux/packaging/packages/linux/-/issues/26
+---
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index a6eeba7c360f..7f85babcf71c 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -5858,6 +5858,7 @@ CONFIG_LSM="lockdown,yama,loadpin,safesetid,integrity,apparmor,selinux,smack,tom
+ CONFIG_INIT_STACK_NONE=y
+ CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y
+ CONFIG_ZERO_CALL_USED_REGS=y
++CONFIG_LIST_HARDENED=y
+ CONFIG_CRYPTO_USER=y
+ CONFIG_CRYPTO_PCRYPT=y
+ CONFIG_CRYPTO_CRYPTD=y
+-- 
+2.20.1
+

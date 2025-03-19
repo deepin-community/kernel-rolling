@@ -1,0 +1,46 @@
+From b70efecd01fd895b1c8216bddbcf1c984c7d8d8e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 19:07:01 +0800
+Subject: [PATCH 240/360] perf: phytium_pcie_pmu: Convert to platform remove
+ callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/perf/phytium/phytium_pcie_pmu.c:811:19: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+  811 |         .remove = phytium_pcie_pmu_remove,
+      |                   ^~~~~~~~~~~~~~~~~~~~~~~
+drivers/perf/phytium/phytium_pcie_pmu.c:811:19: note: (near initialization for ‘phytium_pcie_pmu_driver.<anonymous>.remove’)
+---
+ drivers/perf/phytium/phytium_pcie_pmu.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/perf/phytium/phytium_pcie_pmu.c b/drivers/perf/phytium/phytium_pcie_pmu.c
+index 621b65b46385..929518402c22 100644
+--- a/drivers/perf/phytium/phytium_pcie_pmu.c
++++ b/drivers/perf/phytium/phytium_pcie_pmu.c
+@@ -788,7 +788,7 @@ static int phytium_pcie_pmu_probe(struct platform_device *pdev)
+ 	return ret;
+ }
+ 
+-static int phytium_pcie_pmu_remove(struct platform_device *pdev)
++static void phytium_pcie_pmu_remove(struct platform_device *pdev)
+ {
+ 	struct phytium_pcie_pmu *pcie_pmu = platform_get_drvdata(pdev);
+ 
+@@ -797,8 +797,6 @@ static int phytium_pcie_pmu_remove(struct platform_device *pdev)
+ 	perf_pmu_unregister(&pcie_pmu->pmu);
+ 	cpuhp_state_remove_instance_nocalls(
+ 		phytium_pcie_pmu_hp_state, &pcie_pmu->node);
+-
+-	return 0;
+ }
+ 
+ static struct platform_driver phytium_pcie_pmu_driver = {
+-- 
+2.20.1
+

@@ -1,0 +1,115 @@
+From cc9e5c7dd0142e10791023059c7ff948683f6c11 Mon Sep 17 00:00:00 2001
+From: tianwei <tianwei@phytium.com.cn>
+Date: Wed, 15 May 2024 08:51:12 +0000
+Subject: [PATCH 066/360] optee: phytium: Add Phytium optee driver support
+
+This patch adds the Phytium optee driver support.
+
+Signed-off-by: Chen Baozi <chenbaozi@phytium.com.cn>
+Signed-off-by: Wang Yinfeng <wangyinfeng@phytium.com.cn>
+Signed-off-by: Tian Wei <tianwei@phytium.com.cn>
+---
+ drivers/tee/optee/Kconfig   | 30 ++++++++++++++++++++++++++++++
+ drivers/tee/optee/smc_abi.c | 20 +++++++++++++++++++-
+ 2 files changed, 49 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/tee/optee/Kconfig b/drivers/tee/optee/Kconfig
+index 7bb7990d0b07..3fd91bafac52 100644
+--- a/drivers/tee/optee/Kconfig
++++ b/drivers/tee/optee/Kconfig
+@@ -25,3 +25,33 @@ config OPTEE_INSECURE_LOAD_IMAGE
+ 
+ 	  Additional documentation on kernel security risks are at
+ 	  Documentation/tee/op-tee.rst.
++
++if OPTEE
++
++choice
++	prompt "Default conduit method"
++	default OPTEE_DEFAULT_METHOD_NONE
++	help
++	  This option sets the default conduit method for OP-TEE in case
++	  firmware misses "method" property. If in doubt, select "none"
++	  which depends on firmware to provide the value.
++
++config OPTEE_DEFAULT_METHOD_NONE
++	bool "none"
++	help
++	  There is no default conduit method used by the driver. Require
++	  firmware to provide the method explicitly.
++
++config OPTEE_DEFAULT_METHOD_HVC
++	bool "hvc"
++	help
++	  Use the "hvc" as default conduit method.
++
++config OPTEE_DEFAULT_METHOD_SMC
++	bool "smc"
++	help
++	  Use the "smc" as default conduit method.
++
++endchoice
++
++endif
+diff --git a/drivers/tee/optee/smc_abi.c b/drivers/tee/optee/smc_abi.c
+index e9456e3e74cc..eb43ec257fc1 100644
+--- a/drivers/tee/optee/smc_abi.c
++++ b/drivers/tee/optee/smc_abi.c
+@@ -6,6 +6,7 @@
+ 
+ #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+ 
++#include <linux/acpi.h>
+ #include <linux/arm-smccc.h>
+ #include <linux/cpuhotplug.h>
+ #include <linux/errno.h>
+@@ -1407,6 +1408,14 @@ static void optee_smccc_hvc(unsigned long a0, unsigned long a1,
+ 	arm_smccc_hvc(a0, a1, a2, a3, a4, a5, a6, a7, res);
+ }
+ 
++#if defined(CONFIG_OPTEE_DEFAULT_METHOD_HVC)
++#define DEFAULT_CONDUIT_METHOD optee_smccc_hvc
++#elif defined(CONFIG_OPTEE_DEFAULT_METHOD_SMC)
++#define DEFAULT_CONDUIT_METHOD optee_smccc_smc
++#else
++#define DEFAULT_CONDUIT_METHOD ERR_PTR(-ENXIO)
++#endif
++
+ static optee_invoke_fn *get_invoke_func(struct device *dev)
+ {
+ 	const char *method;
+@@ -1415,7 +1424,7 @@ static optee_invoke_fn *get_invoke_func(struct device *dev)
+ 
+ 	if (device_property_read_string(dev, "method", &method)) {
+ 		pr_warn("missing \"method\" property\n");
+-		return ERR_PTR(-ENXIO);
++		return DEFAULT_CONDUIT_METHOD;
+ 	}
+ 
+ 	if (!strcmp("hvc", method))
+@@ -1815,6 +1824,14 @@ static const struct of_device_id optee_dt_match[] = {
+ };
+ MODULE_DEVICE_TABLE(of, optee_dt_match);
+ 
++#ifdef CONFIG_ACPI
++static const struct acpi_device_id optee_acpi_match[] = {
++	{ "PHYT8003" },
++	{ }
++};
++MODULE_DEVICE_TABLE(acpi, optee_acpi_match);
++#endif
++
+ static struct platform_driver optee_driver = {
+ 	.probe  = optee_probe,
+ 	.remove_new = optee_smc_remove,
+@@ -1822,6 +1839,7 @@ static struct platform_driver optee_driver = {
+ 	.driver = {
+ 		.name = "optee",
+ 		.of_match_table = optee_dt_match,
++		.acpi_match_table = ACPI_PTR(optee_acpi_match),
+ 	},
+ };
+ 
+-- 
+2.20.1
+

@@ -1,0 +1,53 @@
+From 6e4e6ed2081714e8126a6541f938e4e5518850b6 Mon Sep 17 00:00:00 2001
+From: Icenowy Zheng <uwu@icenowy.me>
+Date: Wed, 4 Jan 2023 15:41:45 +0800
+Subject: [PATCH 252/360] riscv: use VA+PA variant of CMO macros for DMA
+ synchorization
+
+DMA synchorization is done on PA and the VA is calculated from the PA.
+
+Use the alternative macro variant that takes both VA and PA as
+parameters, thus in case the ISA extension used support PA directly, the
+overhead for re-converting VA to PA can be omitted.
+
+Suggested-by: Guo Ren <guoren@kernel.org>
+Signed-off-by: Icenowy Zheng <uwu@icenowy.me>
+Reviewed-by: Guo Ren <guoren@kernel.org>
+---
+ arch/riscv/mm/dma-noncoherent.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/arch/riscv/mm/dma-noncoherent.c b/arch/riscv/mm/dma-noncoherent.c
+index cb89d7e0ba88..16f4d7ea3e64 100644
+--- a/arch/riscv/mm/dma-noncoherent.c
++++ b/arch/riscv/mm/dma-noncoherent.c
+@@ -25,7 +25,7 @@ static inline void arch_dma_cache_wback(phys_addr_t paddr, size_t size)
+ 		return;
+ 	}
+ #endif
+-	ALT_CMO_OP(CLEAN, vaddr, size, riscv_cbom_block_size);
++	ALT_CMO_OP_VPA(CLEAN, vaddr, paddr, size, riscv_cbom_block_size);
+ }
+ 
+ static inline void arch_dma_cache_inv(phys_addr_t paddr, size_t size)
+@@ -39,7 +39,7 @@ static inline void arch_dma_cache_inv(phys_addr_t paddr, size_t size)
+ 	}
+ #endif
+ 
+-	ALT_CMO_OP(INVAL, vaddr, size, riscv_cbom_block_size);
++	ALT_CMO_OP_VPA(INVAL, vaddr, paddr, size, riscv_cbom_block_size);
+ }
+ 
+ static inline void arch_dma_cache_wback_inv(phys_addr_t paddr, size_t size)
+@@ -53,7 +53,7 @@ static inline void arch_dma_cache_wback_inv(phys_addr_t paddr, size_t size)
+ 	}
+ #endif
+ 
+-	ALT_CMO_OP(FLUSH, vaddr, size, riscv_cbom_block_size);
++	ALT_CMO_OP_VPA(FLUSH, vaddr, paddr, size, riscv_cbom_block_size);
+ }
+ 
+ static inline bool arch_sync_dma_clean_before_fromdevice(void)
+-- 
+2.20.1
+

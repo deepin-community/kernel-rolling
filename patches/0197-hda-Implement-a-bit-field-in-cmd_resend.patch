@@ -1,0 +1,30 @@
+From 9ab4f6414034065b100bc9daa1262d45f5ac9589 Mon Sep 17 00:00:00 2001
+From: WangYuli <wangyuli@uniontech.com>
+Date: Mon, 8 Jul 2024 02:33:16 +0800
+Subject: [PATCH 197/360] hda: Implement a bit field in cmd_resend
+
+A ':1' bit field gives the compiler the option to squeeze it in
+with other booleans, thereby optimizing memory usage.
+
+Suggested-by: Icenowy <uwu@icenowy.me>
+Signed-off-by: WangYuli <wangyuli@uniontech.com>
+---
+ include/sound/hdaudio.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/sound/hdaudio.h b/include/sound/hdaudio.h
+index 5a22756376fe..08b0b9957200 100644
+--- a/include/sound/hdaudio.h
++++ b/include/sound/hdaudio.h
+@@ -352,7 +352,7 @@ struct hdac_bus {
+ 	bool not_use_interrupts:1;	/* prohibiting the RIRB IRQ */
+ 	bool access_sdnctl_in_dword:1;	/* accessing the sdnctl register by dword */
+ 	bool use_pio_for_commands:1;	/* Use PIO instead of CORB for commands */
+-	bool cmd_resend;		/* command resend */
++	bool cmd_resend:1;		/* command resend */
+ 
+ 	int poll_count;
+ 
+-- 
+2.20.1
+

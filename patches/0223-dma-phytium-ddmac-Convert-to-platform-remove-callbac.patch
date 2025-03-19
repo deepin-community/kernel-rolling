@@ -1,0 +1,46 @@
+From 588109db1c4a4d96b29ac8edd866d05dacd18348 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 18:01:29 +0800
+Subject: [PATCH 223/360] dma: phytium-ddmac: Convert to platform remove
+ callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/pci/controller/pcie-phytium-ep.c:462:19: note: (near initialization for ‘phytium_pcie_ep_driver.<anonymous>.remove’)
+drivers/dma/phytium/phytium-ddmac.c:948:27: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+  948 |         .remove         = phytium_ddma_remove,
+      |                           ^~~~~~~~~~~~~~~~~~~
+---
+ drivers/dma/phytium/phytium-ddmac.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/dma/phytium/phytium-ddmac.c b/drivers/dma/phytium/phytium-ddmac.c
+index 62bfbeb9c477..f6ff6df92b8d 100644
+--- a/drivers/dma/phytium/phytium-ddmac.c
++++ b/drivers/dma/phytium/phytium-ddmac.c
+@@ -843,7 +843,7 @@ static void phytium_ddma_chan_remove(struct phytium_ddma_chan *chan)
+ 	list_del(&chan->vchan.chan.device_node);
+ }
+ 
+-static int phytium_ddma_remove(struct platform_device *pdev)
++static void phytium_ddma_remove(struct platform_device *pdev)
+ {
+ 	struct phytium_ddma_device *ddma = platform_get_drvdata(pdev);
+ 	struct phytium_ddma_chan *chan = NULL;
+@@ -859,8 +859,6 @@ static int phytium_ddma_remove(struct platform_device *pdev)
+ 
+ 	phytium_ddma_irq_disable(ddma);
+ 	phytium_ddma_disable(ddma);
+-
+-	return 0;
+ }
+ 
+ #ifdef CONFIG_PM_SLEEP
+-- 
+2.20.1
+

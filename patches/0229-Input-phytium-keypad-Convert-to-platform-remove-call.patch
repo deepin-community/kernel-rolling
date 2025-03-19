@@ -1,0 +1,44 @@
+From 5235f59581caf87d5cf1fae3ca25c97de03298e7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 18:29:07 +0800
+Subject: [PATCH 229/360] Input: phytium-keypad: Convert to platform remove
+ callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/input/keyboard/phytium-keypad.c:562:23: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+  562 |         .remove     = phytium_keypad_remove,
+      |                       ^~~~~~~~~~~~~~~~~~~~~
+drivers/input/keyboard/phytium-keypad.c:562:23: note: (near initialization for ‘phytium_keypad_driver.<anonymous>.remove’)
+---
+ drivers/input/keyboard/phytium-keypad.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/input/keyboard/phytium-keypad.c b/drivers/input/keyboard/phytium-keypad.c
+index 1f7f9b2da6bc..1d4919f80ab5 100644
+--- a/drivers/input/keyboard/phytium-keypad.c
++++ b/drivers/input/keyboard/phytium-keypad.c
+@@ -498,14 +498,12 @@ static int phytium_keypad_probe(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
+-static int phytium_keypad_remove(struct platform_device *pdev)
++static void phytium_keypad_remove(struct platform_device *pdev)
+ {
+ 	struct phytium_keypad *keypad = platform_get_drvdata(pdev);
+ 
+ 	input_unregister_device(keypad->input_dev);
+ 	devm_kfree(&pdev->dev, keypad);
+-
+-	return 0;
+ }
+ 
+ #ifdef CONFIG_PM_SLEEP
+-- 
+2.20.1
+

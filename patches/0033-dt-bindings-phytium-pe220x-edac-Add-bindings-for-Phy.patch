@@ -1,0 +1,67 @@
+From cdb4430a29cd09791732e2d250bb94f6459dbedf Mon Sep 17 00:00:00 2001
+From: yuanxia <yuanxia2073@phytium.com.cn>
+Date: Wed, 15 May 2024 09:55:45 +0800
+Subject: [PATCH 033/360] dt-bindings: phytium-pe220x-edac: Add bindings for
+ Phytium pe220x EDAC
+
+This patch document the DT bindings for Phytium pe220x EDAC.
+
+Signed-off-by: yuanxia <yuanxia2073@phytium.com.cn>
+Signed-off-by: Zhu Honglei <zhuhonglei1714@phytium.com.cn>
+Signed-off-by: Lan Hengyu <lanhengyu1395@phytium.com.cn>
+Signed-off-by: Li Mingzhe <limingzhe1839@phytium.com.cn>
+Signed-off-by: Wang Yinfeng <wangyinfeng@phytium.com.cn>
+---
+ .../bindings/edac/phytium,pe220x-edac.yaml    | 40 +++++++++++++++++++
+ 1 file changed, 40 insertions(+)
+ create mode 100644 Documentation/devicetree/bindings/edac/phytium,pe220x-edac.yaml
+
+diff --git a/Documentation/devicetree/bindings/edac/phytium,pe220x-edac.yaml b/Documentation/devicetree/bindings/edac/phytium,pe220x-edac.yaml
+new file mode 100644
+index 000000000000..8bb94a303b97
+--- /dev/null
++++ b/Documentation/devicetree/bindings/edac/phytium,pe220x-edac.yaml
+@@ -0,0 +1,40 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/edac/phytium,pe220x-edac.yaml
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Phytium Pe220x SoC EDAC node
++maintainers:
++  - Zhu Honglei <zhuhonglei1714@phytium.com.cn>
++
++description: |
++        EDAC node is defined to describe on-chip error detection and correction.
++
++properties:
++  compatible:
++    const: phytium,pe220x-edac
++
++  reg:
++    maxItems: 3
++
++  interrupts:
++    minItems: 2
++    items:
++      - description: Interrupt-specifier for RAS error IRQ(s).
++
++required:
++  - compatible: Shall be "phytium,pe220x-edac".
++  - reg: Shall be the Pe220x RAS resource.
++  - interrupts: Interrupt-specifier for RAS error IRQ(s).
++
++examples:
++  - |
++	edac: edac@32b28000 {
++		compatible = "phytium,pe220x-edac";
++		reg = <0x0 0x32b28000 0x0 0x1000>,
++			<0x0 0x31400000 0x0 0x1000>,
++			<0x0 0x31401000 0x0 0x1000>;
++		interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>,
++				<GIC_SPI 1 IRQ_TYPE_LEVEL_HIGH>,
++	};
+-- 
+2.20.1
+

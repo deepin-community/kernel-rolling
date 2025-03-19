@@ -1,0 +1,62 @@
+From fc4bf451c2fddeb2315420eea13046d104776d2e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 18:56:26 +0800
+Subject: [PATCH 236/360] mmc: host: phytium-mci-plat: Convert to platform
+ remove callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/mmc/host/phytium-mci-plat.c:181:19: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+  181 |         .remove = phytium_mci_remove,
+      |                   ^~~~~~~~~~~~~~~~~~
+drivers/mmc/host/phytium-mci-plat.c:181:19: note: (near initialization for ‘phytium_mci_driver.<anonymous>.remove’)
+---
+ drivers/mmc/host/phytium-mci-plat.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/mmc/host/phytium-mci-plat.c b/drivers/mmc/host/phytium-mci-plat.c
+index a774f09a7a2e..1e28a128575e 100644
+--- a/drivers/mmc/host/phytium-mci-plat.c
++++ b/drivers/mmc/host/phytium-mci-plat.c
+@@ -127,7 +127,7 @@ static int phytium_mci_probe(struct platform_device *pdev)
+ 	return ret;
+ }
+ 
+-static int phytium_mci_remove(struct platform_device *pdev)
++static void phytium_mci_remove(struct platform_device *pdev)
+ {
+ 	struct mmc_host *mmc;
+ 	struct phytium_mci_host *host;
+@@ -135,14 +135,14 @@ static int phytium_mci_remove(struct platform_device *pdev)
+ 	mmc = platform_get_drvdata(pdev);
+ 	if (!mmc) {
+ 		dev_info(&pdev->dev, "%s %d: mmc is null.\n", __func__, __LINE__);
+-		return -1;
++		return;
+ 	}
+ 	host = mmc_priv(mmc);
+ 	if (!host) {
+ 		dev_info(&pdev->dev, "%s %d: host is null.\n", __func__, __LINE__);
+ 		mmc_remove_host(mmc);
+ 		mmc_free_host(mmc);
+-		return -1;
++		return;
+ 	}
+ 	del_timer(&host->hotplug_timer);
+ 	mmc_remove_host(host->mmc);
+@@ -155,7 +155,6 @@ static int phytium_mci_remove(struct platform_device *pdev)
+ 	phytium_mci_deinit_hw(host);
+ 	mmc_free_host(mmc);
+ 	platform_set_drvdata(pdev, NULL);
+-	return 0;
+ }
+ 
+ static const struct of_device_id phytium_mci_of_ids[] = {
+-- 
+2.20.1
+

@@ -1,0 +1,54 @@
+From 2e6362ece200e2d08a9917b8ae5f5698848eed5b Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Thu, 13 Jun 2024 16:04:50 +0800
+Subject: [PATCH 151/360] ata: libata: disabling PhyRdy Change Interrupt based
+ on actual LPM capability
+
+zhaoxin inclusion
+category: bugfix
+CVE: NA
+
+-----------------
+
+The ahci spec mentions that PhyRdy Change Interrupt and Link Power
+Management (LPM) do not coexist.
+
+However, before enabling LPM, the driver did not check whether the host
+supports LPM, but directly disabled PhyRdy Change Interrupt.
+
+Increase the judgment on the actual support of LPM, and disable PhyRdy
+Change Interrupt only when it is supported.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ drivers/ata/libata-eh.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/ata/libata-eh.c b/drivers/ata/libata-eh.c
+index 3b303d4ae37a..7c3c485d05c3 100644
+--- a/drivers/ata/libata-eh.c
++++ b/drivers/ata/libata-eh.c
+@@ -3422,6 +3422,8 @@ static int ata_eh_set_lpm(struct ata_link *link, enum ata_lpm_policy policy,
+ 			  struct ata_device **r_failed_dev)
+ {
+ 	struct ata_port *ap = ata_is_host_link(link) ? link->ap : NULL;
++	struct device *device = ap ? ap->host->dev : NULL;
++	struct pci_dev *pdev = (!device || !dev_is_pci(device)) ? NULL : to_pci_dev(device);
+ 	struct ata_eh_context *ehc = &link->eh_context;
+ 	struct ata_device *dev, *link_dev = NULL, *lpm_dev = NULL;
+ 	enum ata_lpm_policy old_policy = link->lpm_policy;
+@@ -3430,6 +3432,11 @@ static int ata_eh_set_lpm(struct ata_link *link, enum ata_lpm_policy policy,
+ 	unsigned int err_mask;
+ 	int rc;
+ 
++	/* if controller does not support lpm, then sets no LPM flags*/
++	if ((pdev && pdev->vendor == PCI_VENDOR_ID_ZHAOXIN) &&
++	    !(~ap->host->flags & (ATA_HOST_NO_PART | ATA_HOST_NO_SSC | ATA_HOST_NO_DEVSLP)))
++		link->flags |= ATA_LFLAG_NO_LPM;
++
+ 	/* if the link or host doesn't do LPM, noop */
+ 	if (!IS_ENABLED(CONFIG_SATA_HOST) ||
+ 	    (link->flags & ATA_LFLAG_NO_LPM) || (ap && !ap->ops->set_lpm))
+-- 
+2.20.1
+

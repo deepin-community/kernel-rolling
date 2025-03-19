@@ -1,0 +1,68 @@
+From 744e4da5da3f94a4f6be1bb8156da283613f3ced Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Mon, 18 Nov 2024 15:32:50 +0800
+Subject: [PATCH 268/360] x86: zhaoxin_kh40000: drop unused noncontiguous
+ alloc/free methods
+
+In commit bb0e391975f8 ("dma-mapping: fix vmap and mmap of noncontiougs
+allocations"), the alloc/free_noncontiguous() methods were dropped as
+leftovers from the direct DMA calls refactor in v6.12 - commit
+b5c58b2fdc42 ("dma-mapping: direct calls for dma-iommu").
+
+Drop these methods in zhaoxin_kh40000.c to fix build.
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ arch/x86/kernel/zhaoxin_kh40000.c | 17 -----------------
+ 1 file changed, 17 deletions(-)
+
+diff --git a/arch/x86/kernel/zhaoxin_kh40000.c b/arch/x86/kernel/zhaoxin_kh40000.c
+index ca1c1bce431c..0db5b33a658a 100644
+--- a/arch/x86/kernel/zhaoxin_kh40000.c
++++ b/arch/x86/kernel/zhaoxin_kh40000.c
+@@ -153,7 +153,6 @@ static void kh40000_dma_direct_unmap_resource(struct device *dev, dma_addr_t add
+ }
+ 
+ const struct dma_map_ops kh40000_dma_direct_ops = {
+-	.flags			= DMA_F_PCI_P2PDMA_SUPPORTED,
+ 	.alloc			= kh40000_dma_direct_alloc,
+ 	.sync_sg_for_cpu	= kh40000_dma_direct_sync_sg_for_cpu,
+ 	.unmap_page		= kh40000_dma_direct_unmap_page,
+@@ -209,19 +208,6 @@ static void kh40000_dma_common_free_pages(struct device *dev, size_t size, struc
+ 	iommu_dma_ops->free_pages(dev, size, page, dma_handle, dir);
+ }
+ 
+-static struct sg_table *kh40000_iommu_dma_alloc_noncontiguous(struct device *dev,
+-		size_t size, enum dma_data_direction dir, gfp_t gfp,
+-		unsigned long attrs)
+-{
+-	return iommu_dma_ops->alloc_noncontiguous(dev, size, dir, gfp, attrs);
+-}
+-
+-static void kh40000_iommu_dma_free_noncontiguous(struct device *dev, size_t size,
+-		struct sg_table *sgt, enum dma_data_direction dir)
+-{
+-	return iommu_dma_ops->free_noncontiguous(dev, size, sgt, dir);
+-}
+-
+ static int kh40000_iommu_dma_mmap(struct device *dev, struct vm_area_struct *vma,
+ 		void *cpu_addr, dma_addr_t dma_addr, size_t size,
+ 		unsigned long attrs)
+@@ -323,14 +309,11 @@ static size_t kh40000_iommu_dma_opt_mapping_size(void)
+ }
+ 
+ const struct dma_map_ops kh40000_dma_iommu_ops = {
+-	.flags			= DMA_F_PCI_P2PDMA_SUPPORTED,
+ 	.alloc			= kh40000_iommu_dma_alloc,
+ 	.free			= kh40000_iommu_dma_free,
+ 	.unmap_page		= kh40000_iommu_dma_unmap_page,
+ 	.alloc_pages_op		= kh40000_dma_common_alloc_pages,
+ 	.free_pages		= kh40000_dma_common_free_pages,
+-	.alloc_noncontiguous	= kh40000_iommu_dma_alloc_noncontiguous,
+-	.free_noncontiguous	= kh40000_iommu_dma_free_noncontiguous,
+ 	.mmap			= kh40000_iommu_dma_mmap,
+ 	.get_sgtable		= kh40000_iommu_dma_get_sgtable,
+ 	.map_page		= kh40000_iommu_dma_map_page,
+-- 
+2.20.1
+

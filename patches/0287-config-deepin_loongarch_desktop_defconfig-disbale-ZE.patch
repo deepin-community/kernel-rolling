@@ -1,0 +1,105 @@
+From 218a5806c8bfdba934a5fea88319c870ab3cd6ff Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <guanwentao@uniontech.com>
+Date: Wed, 20 Nov 2024 04:29:10 +0000
+Subject: [PATCH 287/360] config: deepin_loongarch_desktop_defconfig: disbale
+ ZERO_CALL_USED_REG
+
+It show -10% performance overhead in loongarch,
+as other arch configs do, disable it in loongarch now.
+If we sure need security enhance, we can bring it back.
+
+Unixbench micro test:
+1 parallel: 1167.0 1288.6 10.4%
+8 parallel: 4301.6 4791.3 11.3%
+
+Log:
+1 parallel:
+before:
+System Benchmarks Index Values               BASELINE       RESULT    INDEX
+Dhrystone 2 using register variables         116700.0   40211977.7   3445.8
+Double-Precision Whetstone                       55.0       5025.3    913.7
+Execl Throughput                                 43.0       3602.6    837.8
+File Copy 1024 bufsize 2000 maxblocks          3960.0     541638.0   1367.8
+File Copy 256 bufsize 500 maxblocks            1655.0     141748.0    856.5
+File Copy 4096 bufsize 8000 maxblocks          5800.0    1656091.0   2855.3
+Pipe Throughput                               12440.0     787709.6    633.2
+Pipe-based Context Switching                   4000.0      82120.6    205.3
+Process Creation                                126.0       7469.1    592.8
+Shell Scripts (1 concurrent)                     42.4      11985.3   2826.7
+Shell Scripts (8 concurrent)                      6.0       4240.7   7067.9
+System Call Overhead                          15000.0     704474.0    469.6
+                                                                   ========
+System Benchmarks Index Score                                        1167.0
+
+after disable config:
+
+Dhrystone 2 using register variables         116700.0   41690728.5   3572.5
+Double-Precision Whetstone                       55.0       5026.8    914.0
+Execl Throughput                                 43.0       4006.3    931.7
+File Copy 1024 bufsize 2000 maxblocks          3960.0     637314.0   1609.4
+File Copy 256 bufsize 500 maxblocks            1655.0     170265.0   1028.8
+File Copy 4096 bufsize 8000 maxblocks          5800.0    1896428.0   3269.7
+Pipe Throughput                               12440.0     867146.6    697.1
+Pipe-based Context Switching                   4000.0      94776.9    236.9
+Process Creation                                126.0       7901.1    627.1
+Shell Scripts (1 concurrent)                     42.4      12825.9   3025.0
+Shell Scripts (8 concurrent)                      6.0       4622.5   7704.2
+System Call Overhead                          15000.0     790876.8    527.3
+                                                                   ========
+System Benchmarks Index Score                                        1288.6
+
+8 parallel:
+before:
+System Benchmarks Index Values               BASELINE       RESULT    INDEX
+Dhrystone 2 using register variables         116700.0  221465392.9  18977.3
+Double-Precision Whetstone                       55.0      36704.9   6673.6
+Execl Throughput                                 43.0      19620.7   4563.0
+File Copy 1024 bufsize 2000 maxblocks          3960.0    1007204.0   2543.4
+File Copy 256 bufsize 500 maxblocks            1655.0     259253.0   1566.5
+File Copy 4096 bufsize 8000 maxblocks          5800.0    3193191.0   5505.5
+Pipe Throughput                               12440.0    4382384.7   3522.8
+Pipe-based Context Switching                   4000.0     645803.9   1614.5
+Process Creation                                126.0      36849.0   2924.5
+Shell Scripts (1 concurrent)                     42.4      40227.1   9487.5
+Shell Scripts (8 concurrent)                      6.0       5220.6   8701.0
+System Call Overhead                          15000.0    3459103.6   2306.1
+                                                                   ========
+System Benchmarks Index Score                                        4301.6
+
+after disable config:
+
+Dhrystone 2 using register variables         116700.0  221216371.2  18956.0
+Double-Precision Whetstone                       55.0      36708.4   6674.3
+Execl Throughput                                 43.0      21867.6   5085.5
+File Copy 1024 bufsize 2000 maxblocks          3960.0    1188570.0   3001.4
+File Copy 256 bufsize 500 maxblocks            1655.0     327965.0   1981.7
+File Copy 4096 bufsize 8000 maxblocks          5800.0    3632452.0   6262.8
+Pipe Throughput                               12440.0    4855414.6   3903.1
+Pipe-based Context Switching                   4000.0     759442.0   1898.6
+Process Creation                                126.0      40174.7   3188.5
+Shell Scripts (1 concurrent)                     42.4      43971.7  10370.7
+Shell Scripts (8 concurrent)                      6.0       5664.2   9440.3
+System Call Overhead                          15000.0    3959683.3   2639.8
+                                                                   ========
+System Benchmarks Index Score                                        4791.3
+
+Signed-off-by: Wentao Guan <guanwentao@uniontech.com>
+---
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index 7f85babcf71c..51413b0a466e 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -5857,7 +5857,6 @@ CONFIG_DEFAULT_SECURITY_APPARMOR=y
+ CONFIG_LSM="lockdown,yama,loadpin,safesetid,integrity,apparmor,selinux,smack,tomoyo,bpf"
+ CONFIG_INIT_STACK_NONE=y
+ CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y
+-CONFIG_ZERO_CALL_USED_REGS=y
+ CONFIG_LIST_HARDENED=y
+ CONFIG_CRYPTO_USER=y
+ CONFIG_CRYPTO_PCRYPT=y
+-- 
+2.20.1
+

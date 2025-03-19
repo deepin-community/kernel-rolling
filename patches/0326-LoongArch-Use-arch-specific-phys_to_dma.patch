@@ -1,0 +1,91 @@
+From 9e174fd033598432aeb2a78122c322c3446d6a7b Mon Sep 17 00:00:00 2001
+From: Binbin Zhou <zhoubinbin@loongson.cn>
+Date: Fri, 14 Feb 2025 17:23:42 +0800
+Subject: [PATCH 326/360] LoongArch: Use arch specific phys_to_dma
+
+To be compatible with OLD firmware which has no _DMA method,
+we should use arch specific phys_to_dma.
+
+Signed-off-by: Hongchen Zhang <zhanghongchen@loongson.cn>
+Signed-off-by: Binbin Zhou <zhoubinbin@loongson.cn>
+---
+ arch/loongarch/Kconfig                  |  1 +
+ arch/loongarch/include/asm/dma-direct.h | 21 +++++++++++++++++++++
+ arch/loongarch/kernel/dma.c             | 14 ++++++++++++++
+ 3 files changed, 36 insertions(+)
+ create mode 100644 arch/loongarch/include/asm/dma-direct.h
+
+diff --git a/arch/loongarch/Kconfig b/arch/loongarch/Kconfig
+index d9fce0fd475a..14df8186a2f2 100644
+--- a/arch/loongarch/Kconfig
++++ b/arch/loongarch/Kconfig
+@@ -166,6 +166,7 @@ config LOONGARCH
+ 	select HAVE_SETUP_PER_CPU_AREA if NUMA
+ 	select HAVE_STACK_VALIDATION if HAVE_OBJTOOL
+ 	select HAVE_STACKPROTECTOR
++	select ARCH_HAS_PHYS_TO_DMA
+ 	select HAVE_SYSCALL_TRACEPOINTS
+ 	select HAVE_TIF_NOHZ
+ 	select HAVE_VIRT_CPU_ACCOUNTING_GEN if !SMP
+diff --git a/arch/loongarch/include/asm/dma-direct.h b/arch/loongarch/include/asm/dma-direct.h
+new file mode 100644
+index 000000000000..a8fbae3bd5da
+--- /dev/null
++++ b/arch/loongarch/include/asm/dma-direct.h
+@@ -0,0 +1,21 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef _ASM_LOONGARCH_DMA_DIRECT_H
++#define _ASM_LOONGARCH_DMA_DIRECT_H
++
++extern int node_id_offset;
++
++static inline dma_addr_t phys_to_dma(struct device *dev, phys_addr_t paddr)
++{
++	long nid = (paddr >> 44) & 0xf;
++
++	return ((nid << 44) ^ paddr) | (nid << node_id_offset);
++}
++
++static inline phys_addr_t dma_to_phys(struct device *dev, dma_addr_t daddr)
++{
++	long nid = (daddr >> node_id_offset) & 0xf;
++
++	return ((nid << node_id_offset) ^ daddr) | (nid << 44);
++}
++
++#endif /* _ASM_LOONGARCH_DMA_DIRECT_H */
+diff --git a/arch/loongarch/kernel/dma.c b/arch/loongarch/kernel/dma.c
+index 429555fb4e13..e24b6f9ea208 100644
+--- a/arch/loongarch/kernel/dma.c
++++ b/arch/loongarch/kernel/dma.c
+@@ -4,6 +4,15 @@
+  */
+ #include <linux/acpi.h>
+ #include <linux/dma-direct.h>
++#include <asm/loongson.h>
++
++/*
++ * We extract 4bit node id (bit 44~47) from Loongson-3's
++ * 48bit physical address space and embed it into 40bit.
++ */
++
++int node_id_offset;
++EXPORT_SYMBOL_GPL(node_id_offset);
+ 
+ void acpi_arch_dma_setup(struct device *dev)
+ {
+@@ -11,6 +20,11 @@ void acpi_arch_dma_setup(struct device *dev)
+ 	u64 mask, end;
+ 	const struct bus_dma_region *map = NULL;
+ 
++	if (node_id_offset == 0) {
++		node_id_offset = ((readl(LS7A_DMA_CFG) & LS7A_DMA_NODE_MASK) >> LS7A_DMA_NODE_SHF);
++		node_id_offset += 36;
++	}
++
+ 	ret = acpi_dma_get_range(dev, &map);
+ 	if (!ret && map) {
+ 		end = dma_range_map_max(map);
+-- 
+2.20.1
+

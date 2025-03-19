@@ -1,0 +1,56 @@
+From 9c96c563e695502602d675cb1fcad7c74fe39e5d Mon Sep 17 00:00:00 2001
+From: WangYuli <wangyuli@uniontech.com>
+Date: Thu, 16 May 2024 14:25:14 +0800
+Subject: [PATCH 028/360] usb: xhci: Avoid use xhci_plat_phytium_pe220x when OF
+ disabled
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+xhci_plat_phytium_pe220x is only defined when OF is enabled.
+This would cause a compile error:
+
+drivers/usb/host/xhci-plat.c:532:33: error: ‘xhci_plat_phytium_pe220x’ undeclared here (not in a function); did you mean ‘xhci_plat_runtime_resume’?
+  { "PHYT0039", (kernel_ulong_t)&xhci_plat_phytium_pe220x },
+                                 ^~~~~~~~~~~~~~~~~~~~~~~~
+                                 xhci_plat_runtime_resume
+  CC [M]  drivers/usb/dwc3/core.o
+
+It should be moved.
+
+Reported-by: jianghaoa <jianghaoa@uniontech.com>
+Signed-off-by: guanwentao <guanwentao@uniontech.com>
+Signed-off-by: WangYuli <wangyuli@uniontech.com>
+---
+ drivers/usb/host/xhci-plat.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/usb/host/xhci-plat.c b/drivers/usb/host/xhci-plat.c
+index 1c64a349de27..ab23850ae462 100644
+--- a/drivers/usb/host/xhci-plat.c
++++ b/drivers/usb/host/xhci-plat.c
+@@ -100,6 +100,10 @@ static int xhci_plat_start(struct usb_hcd *hcd)
+ 	return xhci_run(hcd);
+ }
+ 
++static const struct xhci_plat_priv xhci_plat_phytium_pe220x = {
++	.quirks = XHCI_RESET_ON_RESUME,
++};
++
+ #ifdef CONFIG_OF
+ static const struct xhci_plat_priv xhci_plat_marvell_armada = {
+ 	.init_quirk = xhci_mvebu_mbus_init_quirk,
+@@ -113,10 +117,6 @@ static const struct xhci_plat_priv xhci_plat_brcm = {
+ 	.quirks = XHCI_RESET_ON_RESUME | XHCI_SUSPEND_RESUME_CLKS,
+ };
+ 
+-static const struct xhci_plat_priv xhci_plat_phytium_pe220x = {
+-	.quirks = XHCI_RESET_ON_RESUME,
+-};
+-
+ static const struct of_device_id usb_xhci_of_match[] = {
+ 	{
+ 		.compatible = "generic-xhci",
+-- 
+2.20.1
+

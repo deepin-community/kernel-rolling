@@ -1,0 +1,40 @@
+From f5487a854e78360f513443010413c4d201de198d Mon Sep 17 00:00:00 2001
+From: Wentao Guan <guanwentao@uniontech.com>
+Date: Sun, 23 Feb 2025 23:06:35 +0800
+Subject: [PATCH 344/360] pci/quirks: LS7A2000: Fix quirks runs on every
+ platform
+
+The quirk function be complied and run everywhere machine.
+I saw it that in my daliy test kernel initcall_debug log.
+As Kconfig MACH_LOONGSON64 say, limit quirks it by this config.
+
+Fixes: 8f6b9680af3e ("pci/quirks: LS7A2000: Fix pm transition of devices under pcie port")
+Signed-off-by: Wentao Guan <guanwentao@uniontech.com>
+---
+ drivers/pci/quirks.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/pci/quirks.c b/drivers/pci/quirks.c
+index 6009670fc9a1..5974f75f50bc 100644
+--- a/drivers/pci/quirks.c
++++ b/drivers/pci/quirks.c
+@@ -396,6 +396,8 @@ static void quirk_tigerpoint_bm_sts(struct pci_dev *dev)
+ DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_TGP_LPC, quirk_tigerpoint_bm_sts);
+ #endif
+ 
++#if defined(CONFIG_MACH_LOONGSON64)
++
+ #define DEV_PCIE_PORT_4	0x7a39
+ #define DEV_PCIE_PORT_5	0x7a49
+ #define DEV_PCIE_PORT_6	0x7a59
+@@ -425,6 +427,7 @@ static void loongson_d3_and_link_quirk(struct pci_dev *dev)
+ 	}
+ }
+ DECLARE_PCI_FIXUP_ENABLE(PCI_ANY_ID, PCI_ANY_ID, loongson_d3_and_link_quirk);
++#endif
+ 
+ /* Chipsets where PCI->PCI transfers vanish or hang */
+ static void quirk_nopcipci(struct pci_dev *dev)
+-- 
+2.20.1
+

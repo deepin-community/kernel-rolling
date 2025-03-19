@@ -1,0 +1,29 @@
+From 3c4f1d3183ebd86bf96c44e0e20513d0beade369 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Thu, 20 Jun 2024 02:20:10 +0800
+Subject: [PATCH 087/360] defconfig: enable phytmac for
+ deepin_arm64_desktop_defconfig
+
+As f837b44 introduce ethernet driver phytmac for D3000 (#222),
+enable config CONFIG_PHYTMAC{,_PLATFORM,PCI}=m.
+---
+ arch/arm64/configs/deepin_arm64_desktop_defconfig | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/arch/arm64/configs/deepin_arm64_desktop_defconfig b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+index 665ddf6409b6..00d0dc28e54a 100644
+--- a/arch/arm64/configs/deepin_arm64_desktop_defconfig
++++ b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+@@ -1464,6 +1464,9 @@ CONFIG_TXGBE=m
+ CONFIG_WIZNET_W5100=m
+ CONFIG_WIZNET_W5300=m
+ CONFIG_WIZNET_BUS_DIRECT=y
++CONFIG_PHYTMAC=m
++CONFIG_PHYTMAC_PLATFORM=m
++CONFIG_PHYTMAC_PCI=m
+ CONFIG_FDDI=m
+ CONFIG_DEFXX=m
+ CONFIG_SKFP=m
+-- 
+2.20.1
+

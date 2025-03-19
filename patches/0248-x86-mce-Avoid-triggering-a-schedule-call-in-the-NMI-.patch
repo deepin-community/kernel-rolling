@@ -1,0 +1,54 @@
+From 98745cacdcddefd20c30cc0f3a87d6a7899460ac Mon Sep 17 00:00:00 2001
+From: LeoLiu-oc <leoliu-oc@zhaoxin.com>
+Date: Mon, 4 Nov 2024 18:02:54 +0800
+Subject: [PATCH 248/360] x86/mce: Avoid triggering a schedule call in the NMI
+ context
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+In the original patch solution, when a UCR-type DRAM error occurs, the
+flow does not enter do_machine_check->mce_panic; instead, it exits after
+executing do_machine_check and continues with the
+irqentry_exit_to_user_mode function. This flow triggers a schedule call.
+
+Since irqentry_nmi_enter calls
+__preempt_count_add(NMI_OFFSET + HARDIRQ_OFFSET), if a schedule occurs
+without executing irqentry_nmi_exit, the system will call the
+preempt_disable() function. Then, __schedule will call schedule_debug or
+determine in_atomic_preempt_off() to be true, leading to __schedule_bug
+and reporting the following error:
+BUG: scheduling while atomic:……
+
+Therefore, it is necessary to adjust the position of irqentry_nmi_enter.
+
+Signed-off-by: LeoLiu-oc <leoliu-oc@zhaoxin.com>
+---
+ arch/x86/kernel/cpu/mce/core.c | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/arch/x86/kernel/cpu/mce/core.c b/arch/x86/kernel/cpu/mce/core.c
+index ff05c0e0bd81..d8cf2b13496e 100644
+--- a/arch/x86/kernel/cpu/mce/core.c
++++ b/arch/x86/kernel/cpu/mce/core.c
+@@ -2156,15 +2156,11 @@ static __always_inline void exc_machine_check_user(struct pt_regs *regs)
+ {
+ 	irqentry_state_t irq_state;
+ 
+-	irq_state = irqentry_nmi_enter(regs);
+-
+ 	irqentry_enter_from_user_mode(regs);
+-
++	irq_state = irqentry_nmi_enter(regs);
+ 	do_machine_check(regs);
+-
+-	irqentry_exit_to_user_mode(regs);
+-
+ 	irqentry_nmi_exit(regs, irq_state);
++	irqentry_exit_to_user_mode(regs);
+ }
+ 
+ #ifdef CONFIG_X86_64
+-- 
+2.20.1
+

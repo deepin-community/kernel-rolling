@@ -1,0 +1,212 @@
+From bc06427246678f0b334dad443be3a31559f51797 Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Fri, 16 Aug 2024 17:20:47 +0800
+Subject: [PATCH 259/360] x86/mce/zhaoxin: Update mcelog to decode PCIE,
+ ZDI/ZPI and DRAM errors
+
+1. Adjusted some code logic
+Avoid having no log information when a CPER_SEC_PROC_GENERIC type error
+occurs on non-Zhaoxin platforms.
+2. Optimized some code
+Removed some redundant function parameters and adjusted the types of some
+function parameters.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ arch/x86/include/asm/mce.h     |  4 ++--
+ arch/x86/kernel/acpi/apei.c    | 14 +++++++++-----
+ arch/x86/kernel/cpu/mce/apei.c | 18 ++++++++++--------
+ drivers/acpi/apei/apei-base.c  |  3 ++-
+ drivers/acpi/apei/ghes.c       | 19 +++++++++----------
+ include/acpi/apei.h            |  2 +-
+ 6 files changed, 33 insertions(+), 27 deletions(-)
+
+diff --git a/arch/x86/include/asm/mce.h b/arch/x86/include/asm/mce.h
+index c593ab11b9f8..f522badf8ffe 100644
+--- a/arch/x86/include/asm/mce.h
++++ b/arch/x86/include/asm/mce.h
+@@ -298,11 +298,11 @@ struct cper_sec_mem_err;
+ extern void apei_mce_report_mem_error(int corrected,
+ 				      struct cper_sec_mem_err *mem_err);
+ 
+-extern void zx_apei_mce_report_mem_error(int corrected, struct cper_sec_mem_err *mem_err);
++extern void zx_apei_mce_report_mem_error(struct cper_sec_mem_err *mem_err);
+ struct cper_sec_pcie;
+ extern void zx_apei_mce_report_pcie_error(int corrected, struct cper_sec_pcie *pcie_err);
+ struct cper_sec_proc_generic;
+-extern void zx_apei_mce_report_zdi_error(int corrected, struct cper_sec_proc_generic *zdi_err);
++extern void zx_apei_mce_report_zdi_error(struct cper_sec_proc_generic *zdi_err);
+ 
+ /*
+  * Enumerate new IP types and HWID values in AMD processors which support
+diff --git a/arch/x86/kernel/acpi/apei.c b/arch/x86/kernel/acpi/apei.c
+index 26d9963b66bd..e3782035d7c3 100644
+--- a/arch/x86/kernel/acpi/apei.c
++++ b/arch/x86/kernel/acpi/apei.c
+@@ -42,7 +42,7 @@ void arch_apei_report_mem_error(int sev, struct cper_sec_mem_err *mem_err)
+ #ifdef CONFIG_X86_MCE
+ 	if (boot_cpu_data.x86_vendor == X86_VENDOR_ZHAOXIN ||
+ 	    boot_cpu_data.x86_vendor == X86_VENDOR_CENTAUR)
+-		zx_apei_mce_report_mem_error(sev, mem_err);
++		zx_apei_mce_report_mem_error(mem_err);
+ 	else
+ 		apei_mce_report_mem_error(sev, mem_err);
+ #endif
+@@ -57,13 +57,17 @@ void arch_apei_report_pcie_error(int sev, struct cper_sec_pcie *pcie_err)
+ #endif
+ }
+ 
+-void arch_apei_report_zdi_error(int sev, struct cper_sec_proc_generic *zdi_err)
++bool arch_apei_report_zdi_error(guid_t *sec_type, struct cper_sec_proc_generic *zdi_err)
+ {
+ #ifdef CONFIG_X86_MCE
+-	if (boot_cpu_data.x86_vendor == X86_VENDOR_ZHAOXIN ||
+-	    boot_cpu_data.x86_vendor == X86_VENDOR_CENTAUR)
+-		zx_apei_mce_report_zdi_error(sev, zdi_err);
++	if ((boot_cpu_data.x86_vendor == X86_VENDOR_CENTAUR ||
++	     boot_cpu_data.x86_vendor == X86_VENDOR_ZHAOXIN) &&
++	    (guid_equal(sec_type, &CPER_SEC_PROC_GENERIC))) {
++		zx_apei_mce_report_zdi_error(zdi_err);
++		return true;
++	}
+ #endif
++	return false;
+ }
+ 
+ int arch_apei_report_x86_error(struct cper_ia_proc_ctx *ctx_info, u64 lapic_id)
+diff --git a/arch/x86/kernel/cpu/mce/apei.c b/arch/x86/kernel/cpu/mce/apei.c
+index 503cf8042dfd..2e0b279821cf 100644
+--- a/arch/x86/kernel/cpu/mce/apei.c
++++ b/arch/x86/kernel/cpu/mce/apei.c
+@@ -63,7 +63,7 @@ void apei_mce_report_mem_error(int severity, struct cper_sec_mem_err *mem_err)
+ }
+ EXPORT_SYMBOL_GPL(apei_mce_report_mem_error);
+ 
+-void zx_apei_mce_report_mem_error(int severity, struct cper_sec_mem_err *mem_err)
++void zx_apei_mce_report_mem_error(struct cper_sec_mem_err *mem_err)
+ {
+ 	struct mce m;
+ 	int apei_error = 0;
+@@ -92,18 +92,19 @@ void zx_apei_mce_report_mem_error(int severity, struct cper_sec_mem_err *mem_err
+ 		apei_error = apei_write_mce(&m);
+ 		break;
+ 	case 8:
+-		if (mem_err->requestor_id == 2)
++		if (mem_err->requestor_id == 2) {
+ 			m.status = 0x98200040000400b0;
+-		else if (mem_err->requestor_id == 3) {
++		} else if (mem_err->requestor_id == 3) {
+ 			m.status = 0xba400000000600a0;
+ 			apei_error = apei_write_mce(&m);
+-		} else if (mem_err->requestor_id == 4)
++		} else if (mem_err->requestor_id == 4) {
+ 			m.status = 0x98200100000300b0;
+-		else if (mem_err->requestor_id == 5) {
++		} else if (mem_err->requestor_id == 5) {
+ 			m.status = 0xba000000000500b0;
+ 			apei_error = apei_write_mce(&m);
+-		} else
++		} else {
+ 			pr_info("Undefined Parity error\n");
++		}
+ 		break;
+ 	case 10:
+ 		if (mem_err->requestor_id == 6) {
+@@ -112,8 +113,9 @@ void zx_apei_mce_report_mem_error(int severity, struct cper_sec_mem_err *mem_err
+ 		} else if (mem_err->requestor_id == 7) {
+ 			m.status = 0xba000000000800b0;
+ 			apei_error = apei_write_mce(&m);
+-		} else
++		} else {
+ 			pr_info("Undefined dvad error\n");
++		}
+ 		break;
+ 	case 13:
+ 		m.status = 0x9c200040000100c0;
+@@ -163,7 +165,7 @@ void zx_apei_mce_report_pcie_error(int severity, struct cper_sec_pcie *pcie_err)
+ }
+ EXPORT_SYMBOL_GPL(zx_apei_mce_report_pcie_error);
+ 
+-void zx_apei_mce_report_zdi_error(int severity, struct cper_sec_proc_generic *zdi_err)
++void zx_apei_mce_report_zdi_error(struct cper_sec_proc_generic *zdi_err)
+ {
+ 	struct mce m;
+ 	int apei_error = 0;
+diff --git a/drivers/acpi/apei/apei-base.c b/drivers/acpi/apei/apei-base.c
+index f652c46dc8dd..238c821af086 100644
+--- a/drivers/acpi/apei/apei-base.c
++++ b/drivers/acpi/apei/apei-base.c
+@@ -778,8 +778,9 @@ void __weak arch_apei_report_pcie_error(int sev, struct cper_sec_pcie *pcie_err)
+ }
+ EXPORT_SYMBOL_GPL(arch_apei_report_pcie_error);
+ 
+-void __weak arch_apei_report_zdi_error(int sev, struct cper_sec_proc_generic *zdi_err)
++bool __weak arch_apei_report_zdi_error(guid_t *sec_type, struct cper_sec_proc_generic *zdi_err)
+ {
++	return false;
+ }
+ EXPORT_SYMBOL_GPL(arch_apei_report_zdi_error);
+ 
+diff --git a/drivers/acpi/apei/ghes.c b/drivers/acpi/apei/ghes.c
+index e3611713bf5b..bd19f277605b 100644
+--- a/drivers/acpi/apei/ghes.c
++++ b/drivers/acpi/apei/ghes.c
+@@ -769,7 +769,7 @@ static bool ghes_do_proc(struct ghes *ghes,
+ 
+ 			atomic_notifier_call_chain(&ghes_report_chain, sev, mem_err);
+ 
+-			arch_apei_report_mem_error(sec_sev, mem_err);
++			arch_apei_report_mem_error(sev, mem_err);
+ 			queued = ghes_handle_memory_failure(gdata, sev, sync);
+ 		}
+ 		else if (guid_equal(sec_type, &CPER_SEC_PCIE)) {
+@@ -792,17 +792,16 @@ static bool ghes_do_proc(struct ghes *ghes,
+ 			struct cxl_cper_event_rec *rec = acpi_hest_get_payload(gdata);
+ 
+ 			cxl_cper_post_event(CXL_CPER_EVENT_MEM_MODULE, rec);
+-		} else if (guid_equal(sec_type, &CPER_SEC_PROC_GENERIC)) {
+-			struct cper_sec_proc_generic *zdi_err = acpi_hest_get_payload(gdata);
+-
+-			arch_apei_report_zdi_error(sec_sev, zdi_err);
+ 		} else {
+ 			void *err = acpi_hest_get_payload(gdata);
+ 
+-			ghes_defer_non_standard_event(gdata, sev);
+-			log_non_standard_event(sec_type, fru_id, fru_text,
+-					       sec_sev, err,
+-					       gdata->error_data_length);
++			if (!arch_apei_report_zdi_error(sec_type,
++							(struct cper_sec_proc_generic *)err)) {
++				ghes_defer_non_standard_event(gdata, sev);
++				log_non_standard_event(sec_type, fru_id, fru_text,
++						       sec_sev, err,
++						       gdata->error_data_length);
++			}
+ 		}
+ 	}
+ 
+@@ -1233,7 +1232,7 @@ static int ghes_in_nmi_queue_one_entry(struct ghes *ghes,
+ 				struct cper_sec_proc_generic *zdi_err =
+ 							acpi_hest_get_payload(gdata);
+ 
+-				arch_apei_report_zdi_error(sev, zdi_err);
++				arch_apei_report_zdi_error(sec_type, zdi_err);
+ 			}
+ 		}
+ 		ghes_print_queued_estatus();
+diff --git a/include/acpi/apei.h b/include/acpi/apei.h
+index fcb5814a3f43..808cfa7d16b1 100644
+--- a/include/acpi/apei.h
++++ b/include/acpi/apei.h
+@@ -53,7 +53,7 @@ int erst_clear(u64 record_id);
+ int arch_apei_enable_cmcff(struct acpi_hest_header *hest_hdr, void *data);
+ void arch_apei_report_mem_error(int sev, struct cper_sec_mem_err *mem_err);
+ void arch_apei_report_pcie_error(int sev, struct cper_sec_pcie *pcie_err);
+-void arch_apei_report_zdi_error(int sev, struct cper_sec_proc_generic *zdi_err);
++bool arch_apei_report_zdi_error(guid_t *sec_type, struct cper_sec_proc_generic *zdi_err);
+ 
+ #endif
+ #endif
+-- 
+2.20.1
+

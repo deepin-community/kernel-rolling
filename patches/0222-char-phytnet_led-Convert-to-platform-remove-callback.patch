@@ -1,0 +1,47 @@
+From f3915bad5eaa2987c03fca535cb98d3854b274da Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 17:59:19 +0800
+Subject: [PATCH 222/360] char: phytnet_led: Convert to platform remove
+ callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555a6: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/char/phytnetled/phytnet_led.c:314:19: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+  314 |         .remove = net_led_remove,
+      |                   ^~~~~~~~~~~~~~
+drivers/char/phytnetled/phytnet_led.c:314:19: note: (near initialization for ‘net_led_driver.<anonymous>.remove’)
+cc1: all warnings being treated as errors
+---
+ drivers/char/phytnetled/phytnet_led.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/char/phytnetled/phytnet_led.c b/drivers/char/phytnetled/phytnet_led.c
+index 3009cf038b66..c0d5ebfd3f94 100644
+--- a/drivers/char/phytnetled/phytnet_led.c
++++ b/drivers/char/phytnetled/phytnet_led.c
+@@ -277,7 +277,7 @@ net_led_probe(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
+-static int
++static void
+ net_led_remove(struct platform_device *pdev)
+ {
+ 	struct led_data *phytnet_led = platform_get_drvdata(pdev);
+@@ -299,8 +299,6 @@ net_led_remove(struct platform_device *pdev)
+ 	}
+ 
+ 	devm_kfree(&pdev->dev, phytnet_led);
+-
+-	return 0;
+ }
+ 
+ static struct platform_driver net_led_driver = {
+-- 
+2.20.1
+

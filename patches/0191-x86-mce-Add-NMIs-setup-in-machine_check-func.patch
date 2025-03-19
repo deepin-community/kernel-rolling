@@ -1,0 +1,63 @@
+From 9dcefa3bfe2f1a3e4a111d873a6254d7c0198843 Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Fri, 16 Aug 2024 18:11:29 +0800
+Subject: [PATCH 191/360] x86/mce: Add NMIs setup in machine_check func
+
+zhaoxin inclusion
+category: other
+
+-------------------
+
+This will lead to console_owner_lock issue and HPET dead loop issue.
+
+For example, The HPET dead loop issue:
+CPU x                               CPU x
+----                                ----
+read_hpet()
+  arch_spin_trylock(&hpet.lock)
+  [CPU x got the hpet.lock]         #MCE happened
+                                    do_machine_check()
+                                      mce_panic()
+                                        panic()
+                                          kmsg_dump()
+                                            pstore_dump()
+                                              pstore_record_init()
+                                                ktime_get_real_fast_ns()
+                                                  read_hpet()
+                                                  [dead loops]
+This may lead to read_hpet dead loops.
+
+The console_owner_lock issue is similar.
+
+To avoid these issues, add NMIs setup When Handling #MC Exceptions.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ arch/x86/kernel/cpu/mce/core.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/arch/x86/kernel/cpu/mce/core.c b/arch/x86/kernel/cpu/mce/core.c
+index f6b55c6d0c58..ff05c0e0bd81 100644
+--- a/arch/x86/kernel/cpu/mce/core.c
++++ b/arch/x86/kernel/cpu/mce/core.c
+@@ -2154,11 +2154,17 @@ static __always_inline void exc_machine_check_kernel(struct pt_regs *regs)
+ 
+ static __always_inline void exc_machine_check_user(struct pt_regs *regs)
+ {
++	irqentry_state_t irq_state;
++
++	irq_state = irqentry_nmi_enter(regs);
++
+ 	irqentry_enter_from_user_mode(regs);
+ 
+ 	do_machine_check(regs);
+ 
+ 	irqentry_exit_to_user_mode(regs);
++
++	irqentry_nmi_exit(regs, irq_state);
+ }
+ 
+ #ifdef CONFIG_X86_64
+-- 
+2.20.1
+

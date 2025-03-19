@@ -1,0 +1,61 @@
+From 75d81624a9c2a3c44947c87d12e90fab4437ff97 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Tue, 31 Dec 2024 10:48:48 +0800
+Subject: [PATCH 297/360] arch: configs: enable RCU_LAZY
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This was tested to have improved power consumption figures during idle.
+
+Reported-by: 忘怀 <otgwt@outlook.com>
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ arch/arm64/configs/deepin_arm64_desktop_defconfig         | 1 +
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 3 +++
+ arch/x86/configs/deepin_x86_desktop_defconfig             | 3 +++
+ 3 files changed, 7 insertions(+)
+
+diff --git a/arch/arm64/configs/deepin_arm64_desktop_defconfig b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+index e835fe9f2aa2..a28bf3753dfd 100644
+--- a/arch/arm64/configs/deepin_arm64_desktop_defconfig
++++ b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+@@ -14,6 +14,7 @@ CONFIG_PREEMPT=y
+ CONFIG_SCHED_CORE=y
+ CONFIG_RCU_EXPERT=y
+ CONFIG_RCU_NOCB_CPU=y
++CONFIG_RCU_LAZY=y
+ CONFIG_IKCONFIG=y
+ CONFIG_IKCONFIG_PROC=y
+ CONFIG_LOG_CPU_MAX_BUF_SHIFT=15
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index 40fcba7753b6..e8a975015b8b 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -20,6 +20,9 @@ CONFIG_TASK_DELAY_ACCT=y
+ CONFIG_TASK_XACCT=y
+ CONFIG_TASK_IO_ACCOUNTING=y
+ CONFIG_PSI=y
++CONFIG_RCU_EXPERT=y
++CONFIG_RCU_NOCB_CPU=y
++CONFIG_RCU_LAZY=y
+ CONFIG_IKCONFIG=y
+ CONFIG_IKCONFIG_PROC=y
+ CONFIG_IKHEADERS=m
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index b721e36d364b..55485619c89e 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -18,6 +18,9 @@ CONFIG_TASK_DELAY_ACCT=y
+ CONFIG_TASK_XACCT=y
+ CONFIG_TASK_IO_ACCOUNTING=y
+ CONFIG_PSI=y
++CONFIG_RCU_EXPERT=y
++CONFIG_RCU_NOCB_CPU=y
++CONFIG_RCU_LAZY=y
+ CONFIG_IKCONFIG=y
+ CONFIG_IKCONFIG_PROC=y
+ CONFIG_IKHEADERS=m
+-- 
+2.20.1
+

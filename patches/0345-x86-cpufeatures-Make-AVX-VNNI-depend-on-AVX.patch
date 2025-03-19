@@ -1,0 +1,31 @@
+From fc2dee775e1247d95dde121e19d37386005f9ac7 Mon Sep 17 00:00:00 2001
+From: Eric Biggers <ebiggers@google.com>
+Date: Wed, 19 Feb 2025 22:01:24 -0800
+Subject: [PATCH 345/360] x86/cpufeatures: Make AVX-VNNI depend on AVX
+
+The 'noxsave' boot option disables support for AVX, but support for the
+AVX-VNNI feature was still declared on CPUs that support it.  Fix this.
+
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Cc: Dave Hansen <dave.hansen@linux.intel.com>
+Link: https://lore.kernel.org/r/20250220060124.89622-1-ebiggers@kernel.org
+---
+ arch/x86/kernel/cpu/cpuid-deps.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/x86/kernel/cpu/cpuid-deps.c b/arch/x86/kernel/cpu/cpuid-deps.c
+index 8bd84114c2d9..df838e3bdbe0 100644
+--- a/arch/x86/kernel/cpu/cpuid-deps.c
++++ b/arch/x86/kernel/cpu/cpuid-deps.c
+@@ -45,6 +45,7 @@ static const struct cpuid_dep cpuid_deps[] = {
+ 	{ X86_FEATURE_AES,			X86_FEATURE_XMM2      },
+ 	{ X86_FEATURE_SHA_NI,			X86_FEATURE_XMM2      },
+ 	{ X86_FEATURE_GFNI,			X86_FEATURE_XMM2      },
++	{ X86_FEATURE_AVX_VNNI,			X86_FEATURE_AVX       },
+ 	{ X86_FEATURE_FMA,			X86_FEATURE_AVX       },
+ 	{ X86_FEATURE_VAES,			X86_FEATURE_AVX       },
+ 	{ X86_FEATURE_VPCLMULQDQ,		X86_FEATURE_AVX       },
+-- 
+2.20.1
+

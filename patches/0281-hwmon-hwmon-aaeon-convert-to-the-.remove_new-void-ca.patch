@@ -1,0 +1,61 @@
+From 6e9ce9758ae5dcccab574e172daeca1fea0d5f27 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Tue, 19 Nov 2024 13:37:30 +0800
+Subject: [PATCH 281/360] hwmon: hwmon-aaeon: convert to the .remove_new (void)
+ callback
+
+With commit 74a5b94b6221 ("ARM: Convert to platform remove callback
+returning void"), the .remove() callback for platform drivers was
+refactored into void (previously int), with the callback renamed as
+.remove_new().
+
+Follow the commit and refactor this driver.
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ drivers/hwmon/hwmon-aaeon.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/hwmon/hwmon-aaeon.c b/drivers/hwmon/hwmon-aaeon.c
+index 146da10309bb..0e8017eac23f 100644
+--- a/drivers/hwmon/hwmon-aaeon.c
++++ b/drivers/hwmon/hwmon-aaeon.c
+@@ -49,7 +49,7 @@ static ssize_t name_show(struct device *dev, struct device_attribute *devattr,
+ 			 char *buf);
+ static int aaeon_get_version(void);
+ static int aaeon_hwmon_probe(struct platform_device *pdev);
+-static int aaeon_hwmon_remove(struct platform_device *pdev);
++static void aaeon_hwmon_remove(struct platform_device *pdev);
+ 
+ static const char * const temp_sensors_name_table[] = {
+ 			"CPU_Temp",
+@@ -409,7 +409,7 @@ aaeon_hwmon_remove_sysfs_files(struct platform_device *pdev,
+ 				data->bfpi_version);
+ }
+ 
+-static int aaeon_hwmon_remove(struct platform_device *pdev)
++static void aaeon_hwmon_remove(struct platform_device *pdev)
+ {
+ 	struct aaeon_hwmon_data *data = platform_get_drvdata(pdev);
+ 
+@@ -417,8 +417,6 @@ static int aaeon_hwmon_remove(struct platform_device *pdev)
+ 		hwmon_device_unregister(data->hwmon_dev);
+ 
+ 	aaeon_hwmon_remove_sysfs_files(pdev, data);
+-
+-	return 0;
+ }
+ 
+ static int aaeon_get_version(void)
+@@ -556,7 +554,7 @@ static struct platform_driver aaeon_hwmon_driver = {
+ 		.owner = THIS_MODULE,
+ 	},
+ 	.probe = aaeon_hwmon_probe,
+-	.remove = aaeon_hwmon_remove,
++	.remove_new = aaeon_hwmon_remove,
+ };
+ 
+ module_platform_driver_probe(aaeon_hwmon_driver, aaeon_hwmon_probe);
+-- 
+2.20.1
+

@@ -1,0 +1,36 @@
+From 852e777bdd3614a77b20b8ad0ecf73537011fb53 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Thu, 26 Dec 2024 10:26:44 +0800
+Subject: [PATCH 295/360] DEEPIN: arm64: configs: enable Renesas xHCI modules
+
+Enable CONFIG_USB_XHCI_PCI_RENESAS and CONFIG_USB_RENESAS_USB3 as modules
+to fix boot issue on Phytium D3000.
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ arch/arm64/configs/deepin_arm64_desktop_defconfig | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/deepin_arm64_desktop_defconfig b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+index e6874297e0f0..e835fe9f2aa2 100644
+--- a/arch/arm64/configs/deepin_arm64_desktop_defconfig
++++ b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+@@ -3355,6 +3355,7 @@ CONFIG_USB_LEDS_TRIGGER_USBPORT=m
+ CONFIG_USB_MON=m
+ CONFIG_USB_XHCI_HCD=y
+ CONFIG_USB_XHCI_DBGCAP=y
++CONFIG_USB_XHCI_PCI_RENESAS=m
+ CONFIG_USB_XHCI_HISTB=m
+ CONFIG_USB_XHCI_MTK=m
+ CONFIG_USB_XHCI_MVEBU=m
+@@ -3480,6 +3481,7 @@ CONFIG_USB_UEAGLEATM=m
+ CONFIG_USB_XUSBATM=m
+ CONFIG_USB_ISP1301=m
+ CONFIG_USB_GADGET=m
++CONFIG_USB_RENESAS_USB3=m
+ CONFIG_TYPEC=m
+ CONFIG_TYPEC_TCPM=m
+ CONFIG_TYPEC_TCPCI=m
+-- 
+2.20.1
+

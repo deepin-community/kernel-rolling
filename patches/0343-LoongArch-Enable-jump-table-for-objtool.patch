@@ -1,0 +1,51 @@
+From 9c3226989fe1ea8b3d48262288e7293bc592da7e Mon Sep 17 00:00:00 2001
+From: Binbin Zhou <zhoubinbin@loongson.cn>
+Date: Wed, 19 Feb 2025 12:42:24 +0800
+Subject: [PATCH 343/360] LoongArch: Enable jump table for objtool
+
+For now, it is time to remove -fno-jump-tables to enable jump table for
+objtool if the compiler has -mannotate-tablejump, otherwise it is better
+to remain -fno-jump-tables to keep compatibility with older compilers.
+
+Signed-off-by: Tiezhu Yang <yangtiezhu@loongson.cn>
+Signed-off-by: Huacai Chen <chenhuacai@loongson.cn>
+Signed-off-by: Binbin Zhou <zhoubinbin@loongson.cn>
+---
+ arch/loongarch/Kconfig  | 3 +++
+ arch/loongarch/Makefile | 6 +++++-
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/arch/loongarch/Kconfig b/arch/loongarch/Kconfig
+index 14df8186a2f2..6eb73a7077f5 100644
+--- a/arch/loongarch/Kconfig
++++ b/arch/loongarch/Kconfig
+@@ -285,6 +285,9 @@ config AS_HAS_LBT_EXTENSION
+ config AS_HAS_LVZ_EXTENSION
+ 	def_bool $(as-instr,hvcl 0)
+ 
++config CC_HAS_ANNOTATE_TABLEJUMP
++	def_bool $(cc-option,-mannotate-tablejump)
++
+ menu "Kernel type and options"
+ 
+ source "kernel/Kconfig.hz"
+diff --git a/arch/loongarch/Makefile b/arch/loongarch/Makefile
+index 567bd122a9ee..22873ee9664b 100644
+--- a/arch/loongarch/Makefile
++++ b/arch/loongarch/Makefile
+@@ -101,7 +101,11 @@ KBUILD_AFLAGS			+= $(call cc-option,-mthin-add-sub) $(call cc-option,-Wa$(comma)
+ KBUILD_CFLAGS			+= $(call cc-option,-mthin-add-sub) $(call cc-option,-Wa$(comma)-mthin-add-sub)
+ 
+ ifdef CONFIG_OBJTOOL
+-KBUILD_CFLAGS			+= -fno-jump-tables
++ifdef CONFIG_CC_HAS_ANNOTATE_TABLEJUMP
++KBUILD_CFLAGS			+= $(call cc-option,-mannotate-tablejump)
++else
++KBUILD_CFLAGS			+= -fno-jump-tables # keep compatibility with older compilers
++endif
+ endif
+ 
+ KBUILD_RUSTFLAGS		+= --target=loongarch64-unknown-none-softfloat -Ccode-model=small
+-- 
+2.20.1
+

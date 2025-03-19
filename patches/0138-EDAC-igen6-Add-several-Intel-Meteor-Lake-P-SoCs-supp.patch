@@ -1,0 +1,41 @@
+From 059c170ddd36881064abe21a35716432a0449c0a Mon Sep 17 00:00:00 2001
+From: Qiuxu Zhuo <qiuxu.zhuo@intel.com>
+Date: Mon, 11 Sep 2023 21:58:12 +0800
+Subject: [PATCH 138/360] EDAC/igen6: Add several Intel Meteor Lake-P SoCs
+ support
+
+Mainline: commit 6807434ff044 ("EDAC/igen6: Add Intel Meteor Lake-P SoCs support")
+from: v6.8-rc1
+
+Add several Intel Meteor Lake-P SoC compute die IDs for EDAC support.
+These Meteor Lake-P SoCs use similar memory controller and IBECC as
+Alder Lake-P SoC.
+
+Intel-SIG: Upstream commit 6807434ff044 ("EDAC/igen6: Add Intel Meteor Lake-P SoCs support").
+
+Signed-off-by: Qiuxu Zhuo <qiuxu.zhuo@intel.com>
+[ Qingdong Shi: amend commit log ]
+Signed-off-by: Qingdong Shi <qingdong.shi@intel.com>
+---
+ drivers/edac/igen6_edac.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/drivers/edac/igen6_edac.c b/drivers/edac/igen6_edac.c
+index 833532babf90..9b3c7f8bc7eb 100644
+--- a/drivers/edac/igen6_edac.c
++++ b/drivers/edac/igen6_edac.c
+@@ -307,6 +307,11 @@ static int get_mchbar(struct pci_dev *pdev, u64 *mchbar)
+ #define DID_MTL_PS_SKU3	0x7d23
+ #define DID_MTL_PS_SKU4	0x7d24
+ 
++/* Compute die IDs for Meteor Lake-P with IBECC */
++#define DID_MTL_P_SKU1	0x7d01
++#define DID_MTL_P_SKU2	0x7d02
++#define DID_MTL_P_SKU3	0x7d14
++
+ static int get_mchbar(struct pci_dev *pdev, u64 *mchbar)
+ {
+ 	union  {
+-- 
+2.20.1
+

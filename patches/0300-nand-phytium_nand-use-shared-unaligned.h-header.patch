@@ -1,0 +1,28 @@
+From 4618882dcbd932e7446023b027a63d9f577dccee Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Thu, 2 Jan 2025 11:22:18 +0800
+Subject: [PATCH 300/360] nand: phytium_nand: use shared unaligned.h header
+
+Change <asm/unaligned.h> => <linux/unaligned.h> per upstream changes.
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ drivers/mtd/nand/raw/phytium_nand.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/mtd/nand/raw/phytium_nand.h b/drivers/mtd/nand/raw/phytium_nand.h
+index 549e9b293584..58f46f6ec7de 100644
+--- a/drivers/mtd/nand/raw/phytium_nand.h
++++ b/drivers/mtd/nand/raw/phytium_nand.h
+@@ -16,7 +16,7 @@
+ #include <linux/slab.h>
+ #include <linux/mfd/syscon.h>
+ #include <linux/regmap.h>
+-#include <asm/unaligned.h>
++#include <linux/unaligned.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/workqueue.h>
+ #include <linux/mtd/partitions.h>
+-- 
+2.20.1
+

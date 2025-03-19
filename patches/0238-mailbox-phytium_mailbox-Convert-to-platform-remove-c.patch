@@ -1,0 +1,44 @@
+From d3042c2fb8f8650b5f8564282abd76843cecb92c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 19:03:24 +0800
+Subject: [PATCH 238/360] mailbox: phytium_mailbox: Convert to platform remove
+ callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+
+Log:
+drivers/mailbox/phytium_mailbox.c:184:19: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+  184 |         .remove = phytium_mbox_remove,
+      |                   ^~~~~~~~~~~~~~~~~~~
+drivers/mailbox/phytium_mailbox.c:184:19: note: (near initialization for ‘phytium_mbox_driver.<anonymous>.remove’)
+---
+ drivers/mailbox/phytium_mailbox.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/mailbox/phytium_mailbox.c b/drivers/mailbox/phytium_mailbox.c
+index afab8f401556..67b80793e9b7 100644
+--- a/drivers/mailbox/phytium_mailbox.c
++++ b/drivers/mailbox/phytium_mailbox.c
+@@ -170,13 +170,11 @@ static int phytium_mbox_probe(struct platform_device *pdev)
+ 	return err;
+ }
+ 
+-static int phytium_mbox_remove(struct platform_device *pdev)
++static void phytium_mbox_remove(struct platform_device *pdev)
+ {
+ 	struct phytium_mbox *mbox = platform_get_drvdata(pdev);
+ 
+ 	mbox_controller_unregister(&mbox->mbox);
+-
+-	return 0;
+ }
+ 
+ static struct platform_driver phytium_mbox_driver = {
+-- 
+2.20.1
+

@@ -1,0 +1,45 @@
+From ffcbb7316cd4b57ea7bf2d13fea4560601f23496 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Tue, 27 Aug 2024 10:08:58 +0800
+Subject: [PATCH 205/360] edac: phytium_edac: fix build for >= 6.10
+
+Adapt edac_device_alloc_ctl_info() to changes in:
+
+commit 48bc8869c5ddb0d8d0b6ee81aa81cf1287a20815
+Author: Jiri Slaby (SUSE) <jirislaby@kernel.org>
+Date:   Tue Feb 13 12:20:48 2024 +0100
+
+    EDAC: Remove dynamic attributes from edac_device_alloc_ctl_info()
+
+    Dynamic attributes are not passed from any caller of
+    edac_device_alloc_ctl_info(). Drop this unused/untested functionality
+    completely.
+
+    Signed-off-by: Jiri Slaby (SUSE) <jirislaby@kernel.org>
+    Signed-off-by: Borislav Petkov (AMD) <bp@alien8.de>
+    Link: https://lore.kernel.org/r/20240213112051.27715-5-jirislaby@kernel.org
+    Signed-off-by: Borislav Petkov (AMD) <bp@alien8.de>
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ drivers/edac/phytium_edac.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/edac/phytium_edac.c b/drivers/edac/phytium_edac.c
+index 6b85e5dd0370..b661dd8dabed 100644
+--- a/drivers/edac/phytium_edac.c
++++ b/drivers/edac/phytium_edac.c
+@@ -246,8 +246,8 @@ static int phytium_edac_device_add(struct phytium_edac *edac)
+ 
+ 	edac_dev = edac_device_alloc_ctl_info(
+ 					sizeof(struct edac_device_ctl_info),
+-					      "ras", 1, "soc", 1, 0, NULL,
+-					      0, edac_device_alloc_index());
++					      "ras", 1, "soc", 1, 0,
++					      edac_device_alloc_index());
+ 	if (!edac_dev)
+ 		res = -ENOMEM;
+ 
+-- 
+2.20.1
+

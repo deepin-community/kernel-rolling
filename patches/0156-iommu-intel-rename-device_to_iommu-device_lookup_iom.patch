@@ -1,0 +1,36 @@
+From 05419a988284fb472efc34438756727cc75dc349 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Mon, 8 Jul 2024 17:46:52 +0800
+Subject: [PATCH 156/360] iommu: intel: rename device_to_iommu() =>
+ device_lookup_iommu()
+
+Adapt to changes in 1903ef8f0d77680e6eb36bd0cc3ea3aa6e95a050:
+
+...
+
+    Rename the original device_to_iommu() function to a more meaningful name,
+    device_lookup_iommu(), to avoid mis-using it.
+
+...
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ drivers/iommu/intel/iommu.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/iommu/intel/iommu.c b/drivers/iommu/intel/iommu.c
+index fee2d1499551..b14ddd4fb0dc 100644
+--- a/drivers/iommu/intel/iommu.c
++++ b/drivers/iommu/intel/iommu.c
+@@ -3195,7 +3195,7 @@ static inline int acpi_rmrr_andd_probe(struct device *dev)
+ 
+ 	ret = iommu_probe_device(dev);
+ 
+-	iommu = device_to_iommu(dev, &bus, &devfn);
++	iommu = device_lookup_iommu(dev, &bus, &devfn);
+ 	if (!iommu) {
+ 		pr_info("dpoint-- cannot get acpi device corresponding iommu\n");
+ 		return -EINVAL;
+-- 
+2.20.1
+

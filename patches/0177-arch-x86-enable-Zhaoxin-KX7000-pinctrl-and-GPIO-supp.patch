@@ -1,0 +1,30 @@
+From 77cc6500f5c9d23800f932862c6579c6816dd5b3 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Wed, 24 Jul 2024 14:48:14 +0800
+Subject: [PATCH 177/360] arch: x86: enable Zhaoxin KX7000 pinctrl and GPIO
+ support
+
+This driver was previously disabled due to a build failure and was addressed
+by a Zhaoxin patch revision. Enable this feature.
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ arch/x86/configs/deepin_x86_desktop_defconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index a7eb899a709b..c566225c17cd 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -2175,7 +2175,7 @@ CONFIG_PINCTRL_METEORLAKE=m
+ CONFIG_PINCTRL_SUNRISEPOINT=m
+ CONFIG_PINCTRL_TIGERLAKE=m
+ CONFIG_PINCTRL_MERRIFIELD=m
+-# CONFIG_PINCTRL_KX7000 is not set
++CONFIG_PINCTRL_KX7000=m
+ CONFIG_GPIO_SYSFS=y
+ CONFIG_GPIO_AMDPT=m
+ CONFIG_GPIO_DWAPB=m
+-- 
+2.20.1
+

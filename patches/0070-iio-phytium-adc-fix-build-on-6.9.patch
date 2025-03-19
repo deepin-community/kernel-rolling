@@ -1,0 +1,32 @@
+From a8c0b0bb0aa73d5840c3633a8c4b865eb5df4e12 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Fri, 28 Jun 2024 10:56:27 +0800
+Subject: [PATCH 070/360] iio: phytium-adc: fix build on 6.9
+
+Include in addition <linux/mod_devicetable.h> and <linux/property.h> to fix
+numerous implicit function declarations.
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ drivers/iio/adc/phytium-adc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/iio/adc/phytium-adc.c b/drivers/iio/adc/phytium-adc.c
+index c62ee2cda926..ed95b0f1d3f2 100644
+--- a/drivers/iio/adc/phytium-adc.c
++++ b/drivers/iio/adc/phytium-adc.c
+@@ -12,8 +12,10 @@
+ #include <linux/io.h>
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+-#include <linux/platform_device.h>
++#include <linux/mod_devicetable.h>
+ #include <linux/of_device.h>
++#include <linux/platform_device.h>
++#include <linux/property.h>
+ 
+ #include <linux/iio/iio.h>
+ #include <linux/iio/events.h>
+-- 
+2.20.1
+

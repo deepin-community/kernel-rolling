@@ -1,0 +1,35 @@
+From f227450266bf3b478c203788b9f234ad53b3c149 Mon Sep 17 00:00:00 2001
+From: WangYuli <wangyuli@uniontech.com>
+Date: Thu, 21 Nov 2024 13:48:59 +0800
+Subject: [PATCH 292/360] net: macb: phytium-gem: donot convert the enum
+ constant to a boolean
+
+Fix follow error with clang-19:
+
+drivers/net/ethernet/cadence/macb_main.c:724:71: error: converting the enum constant to a boolean [-Werror,-Wint-in-bool-context]
+  724 |         if (macb_is_gem(bp) && (state->interface == PHY_INTERFACE_MODE_SGMII ||
+      |                                                                              ^
+1 error generated.
+
+Signed-off-by: WangYuli <wangyuli@uniontech.com>
+---
+ drivers/net/ethernet/cadence/macb_main.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/cadence/macb_main.c b/drivers/net/ethernet/cadence/macb_main.c
+index 60847cdb516e..ecb4335975ca 100644
+--- a/drivers/net/ethernet/cadence/macb_main.c
++++ b/drivers/net/ethernet/cadence/macb_main.c
+@@ -683,7 +683,8 @@ static void macb_mac_config(struct phylink_config *config, unsigned int mode,
+ 	 * Must be written after PCSSEL is set in NCFGR,
+ 	 * otherwise writes will not take effect.
+ 	 */
+-	if (macb_is_gem(bp) && state->interface == PHY_INTERFACE_MODE_SGMII) {
++	if (macb_is_gem(bp) && (state->interface == PHY_INTERFACE_MODE_SGMII ||
++				state->interface == PHY_INTERFACE_MODE_2500BASEX)) {
+ 		u32 pcsctrl, old_pcsctrl;
+ 
+ 		old_pcsctrl = gem_readl(bp, PCSCNTRL);
+-- 
+2.20.1
+

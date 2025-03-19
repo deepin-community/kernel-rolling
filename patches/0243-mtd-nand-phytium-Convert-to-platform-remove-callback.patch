@@ -1,0 +1,42 @@
+From b41453e6fa3961e2319fd1c846a0ab10475ffb2e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Thu, 14 Nov 2024 10:05:11 +0800
+Subject: [PATCH 243/360] mtd: nand: phytium: Convert to platform remove
+ callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/mtd/nand/raw/phytium_nand_plat.c:132:19: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+  132 |         .remove = phytium_nfc_plat_remove,
+      |                   ^~~~~~~~~~~~~~~~~~~~~~~
+drivers/mtd/nand/raw/phytium_nand_plat.c:132:19: note: (near initialization for ‘phytium_nfc_plat_driver.<anonymous>.remove’)
+---
+ drivers/mtd/nand/raw/phytium_nand_plat.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/mtd/nand/raw/phytium_nand_plat.c b/drivers/mtd/nand/raw/phytium_nand_plat.c
+index 604dbeffe1a5..3065cf769190 100644
+--- a/drivers/mtd/nand/raw/phytium_nand_plat.c
++++ b/drivers/mtd/nand/raw/phytium_nand_plat.c
+@@ -85,11 +85,10 @@ static int phytium_nfc_plat_probe(struct platform_device *pdev)
+ 	return ret;
+ }
+ 
+-static int phytium_nfc_plat_remove(struct platform_device *pdev)
++static void phytium_nfc_plat_remove(struct platform_device *pdev)
+ {
+ 	struct phytium_nfc *nfc = platform_get_drvdata(pdev);
+-
+-	return phytium_nand_remove(nfc);
++	phytium_nand_remove(nfc);
+ }
+ 
+ static int __maybe_unused phytium_nfc_plat_prepare(struct device *dev)
+-- 
+2.20.1
+

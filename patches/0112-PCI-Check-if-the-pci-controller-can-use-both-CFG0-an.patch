@@ -1,0 +1,41 @@
+From 4e9a72b11937a4bf77ffd8d37a71b4e02fe00cb9 Mon Sep 17 00:00:00 2001
+From: Yanteng Si <siyanteng@loongson.cn>
+Date: Mon, 20 May 2024 10:20:21 +0800
+Subject: [PATCH 112/360] PCI: Check if the pci controller can use both CFG0
+ and CFG1 mode to access configuration space
+
+Fix patch "PCI: loongson: Use generic 8/16/32-bit
+config ops on LS2K/LS7A"
+
+Signed-off-by: Tianli Xiong <xiongtianli@loongson.cn>
+Signed-off-by: Yanteng Si <siyanteng@loongson.cn>
+---
+ drivers/pci/controller/pci-loongson.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/pci/controller/pci-loongson.c b/drivers/pci/controller/pci-loongson.c
+index 8329a11c2f4e..e2c6c1cfc054 100644
+--- a/drivers/pci/controller/pci-loongson.c
++++ b/drivers/pci/controller/pci-loongson.c
+@@ -329,6 +329,7 @@ static int loongson_pci_probe(struct platform_device *pdev)
+ 	struct device_node *node = dev->of_node;
+ 	struct pci_host_bridge *bridge;
+ 	struct resource *regs;
++	unsigned int num = 0;
+ 
+ 	if (!node)
+ 		return -ENODEV;
+@@ -353,7 +354,9 @@ static int loongson_pci_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	if (priv->data->flags & FLAG_CFG1) {
+-		regs = platform_get_resource(pdev, IORESOURCE_MEM, 1);
++		if (priv->cfg0_base)
++			num = 1;
++		regs = platform_get_resource(pdev, IORESOURCE_MEM, num);
+ 		if (!regs)
+ 			dev_info(dev, "missing mem resource for cfg1\n");
+ 		else {
+-- 
+2.20.1
+

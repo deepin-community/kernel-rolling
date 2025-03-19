@@ -1,0 +1,45 @@
+From 61e6f4774e04dcbb0cb54a0bdc89a307854b91fd Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 19:10:33 +0800
+Subject: [PATCH 242/360] char: ipmi: kcs_bmc_phytium: Convert to platform
+ remove callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/char/ipmi/kcs_bmc_phytium.c:431:19: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+  431 |         .remove = phytium_kcs_remove,
+      |                   ^~~~~~~~~~~~~~~~~~
+drivers/char/ipmi/kcs_bmc_phytium.c:431:19: note: (near initialization for ‘phytium_kcs_bmc_driver.<anonymous>.remove’)
+---
+ drivers/char/ipmi/kcs_bmc_phytium.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/drivers/char/ipmi/kcs_bmc_phytium.c b/drivers/char/ipmi/kcs_bmc_phytium.c
+index 08aec675adf5..fdbd0515d718 100644
+--- a/drivers/char/ipmi/kcs_bmc_phytium.c
++++ b/drivers/char/ipmi/kcs_bmc_phytium.c
+@@ -400,7 +400,7 @@ static int phytium_kcs_probe(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
+-static int phytium_kcs_remove(struct platform_device *pdev)
++static void phytium_kcs_remove(struct platform_device *pdev)
+ {
+ 	struct phytium_kcs_bmc *priv = platform_get_drvdata(pdev);
+ 	struct kcs_bmc_device *kcs_bmc = &priv->kcs_bmc;
+@@ -413,7 +413,6 @@ static int phytium_kcs_remove(struct platform_device *pdev)
+ 	priv->obe.remove = true;
+ 	spin_unlock_irq(&priv->obe.lock);
+ 	del_timer_sync(&priv->obe.timer);
+-	return 0;
+ }
+ 
+ static const struct of_device_id phytium_kcs_bmc_match[] = {
+-- 
+2.20.1
+

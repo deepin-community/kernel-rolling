@@ -1,0 +1,85 @@
+From 754b88c349e238071f453b00a5f44c9d3312bab9 Mon Sep 17 00:00:00 2001
+From: Geoff Levand <geoff@infradead.org>
+Date: Wed, 13 Jun 2018 10:56:08 -0700
+Subject: [PATCH 310/360] arm64/acpi: Add fixup for HPE m400 quirks
+
+Adds a new ACPI init routine acpi_fixup_m400_quirks that adds
+a work-around for HPE ProLiant m400 APEI firmware problems.
+
+The work-around disables APEI when CONFIG_ACPI_APEI is set and
+m400 firmware is detected.  Without this fixup m400 systems
+experience errors like these on startup:
+
+  [Hardware Error]: Hardware error from APEI Generic Hardware Error Source: 2
+  [Hardware Error]: event severity: fatal
+  [Hardware Error]:  Error 0, type: fatal
+  [Hardware Error]:   section_type: memory error
+  [Hardware Error]:   error_status: 0x0000000000001300
+  [Hardware Error]:   error_type: 10, invalid address
+  Kernel panic - not syncing: Fatal hardware error!
+
+Signed-off-by: Geoff Levand <geoff@infradead.org>
+[bwh: Adjust context and indentation to apply to Linux 6.10]
+---
+ arch/arm64/kernel/acpi.c | 31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
+
+diff --git a/arch/arm64/kernel/acpi.c b/arch/arm64/kernel/acpi.c
+index 53f66b53bc25..a398da83c91b 100644
+--- a/arch/arm64/kernel/acpi.c
++++ b/arch/arm64/kernel/acpi.c
+@@ -36,6 +36,8 @@
+ #include <asm/daifflags.h>
+ #include <asm/smp_plat.h>
+ 
++#include <acpi/apei.h>
++
+ int acpi_noirq = 1;		/* skip ACPI IRQ initialization */
+ int acpi_disabled = 1;
+ EXPORT_SYMBOL(acpi_disabled);
+@@ -177,6 +179,33 @@ static int __init acpi_fadt_sanity_check(void)
+ 	return ret;
+ }
+ 
++/*
++ * acpi_fixup_m400_quirks - Work-around for HPE ProLiant m400 APEI firmware
++ * problems.
++ */
++static void __init acpi_fixup_m400_quirks(void)
++{
++	acpi_status status;
++	struct acpi_table_header *header;
++#if !defined(CONFIG_ACPI_APEI)
++	int hest_disable = HEST_DISABLED;
++#endif
++
++	if (!IS_ENABLED(CONFIG_ACPI_APEI) || hest_disable != HEST_ENABLED)
++		return;
++
++	status = acpi_get_table(ACPI_SIG_HEST, 0, &header);
++
++	if (ACPI_SUCCESS(status) && !strncmp(header->oem_id, "HPE   ", 6) &&
++		!strncmp(header->oem_table_id, "ProLiant", 8) &&
++		MIDR_IMPLEMENTOR(read_cpuid_id()) == ARM_CPU_IMP_APM) {
++		hest_disable = HEST_DISABLED;
++		pr_info("Disabled APEI for m400.\n");
++	}
++
++	acpi_put_table(header);
++}
++
+ /*
+  * acpi_boot_table_init() called from setup_arch(), always.
+  *	1. find RSDP and get its address, and then find XSDT
+@@ -257,6 +286,8 @@ void __init acpi_boot_table_init(void)
+ 
+ 		if (IS_ENABLED(CONFIG_ACPI_BGRT))
+ 			acpi_table_parse(ACPI_SIG_BGRT, acpi_parse_bgrt);
++
++		acpi_fixup_m400_quirks();
+ 	}
+ }
+ 
+-- 
+2.20.1
+

@@ -1,0 +1,64 @@
+From 88c52723f3d955c6a512f31f720c171fcfd66c1a Mon Sep 17 00:00:00 2001
+From: Yanteng Si <siyanteng@loongson.cn>
+Date: Tue, 14 May 2024 10:03:12 +0800
+Subject: [PATCH 105/360] LoongArch: Update defconfig
+
+Update deepin_loongarch_desktop_defconfig and loongson3_defconfig.
+
+Signed-off-by: Chong Qiao <qiaochong@loongson.cn>
+Signed-off-by: Hongchen Zhang <zhanghongchen@loongson.cn>
+Signed-off-by: Yanteng Si <siyanteng@loongson.cn>
+---
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 5 +++++
+ arch/loongarch/configs/loongson3_defconfig                | 5 +++++
+ 2 files changed, 10 insertions(+)
+
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index 8c26855f2627..1840a22e224b 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -70,6 +70,10 @@ CONFIG_ACPI_TAD=m
+ CONFIG_ACPI_DOCK=y
+ CONFIG_ACPI_IPMI=m
+ CONFIG_ACPI_PCI_SLOT=y
++CONFIG_CPU_FREQ=y
++CONFIG_CPU_FREQ_STAT=y
++CONFIG_CPU_FREQ_GOV_POWERSAVE=y
++CONFIG_LOONGSON3_ACPI_CPUFREQ=y
+ CONFIG_ACPI_HOTPLUG_MEMORY=y
+ CONFIG_ACPI_HED=y
+ CONFIG_ACPI_CUSTOM_METHOD=y
+@@ -3622,6 +3626,7 @@ CONFIG_FB_ASILIANT=y
+ CONFIG_FB_IMSTT=y
+ CONFIG_FB_UVESA=m
+ CONFIG_FB_EFI=y
++CONFIG_FB_LS2K500=m
+ CONFIG_FB_OPENCORES=m
+ CONFIG_FB_S1D13XXX=m
+ CONFIG_FB_RIVA=m
+diff --git a/arch/loongarch/configs/loongson3_defconfig b/arch/loongarch/configs/loongson3_defconfig
+index 75b366407a60..cb64b0cfa250 100644
+--- a/arch/loongarch/configs/loongson3_defconfig
++++ b/arch/loongarch/configs/loongson3_defconfig
+@@ -69,6 +69,10 @@ CONFIG_ACPI_DOCK=y
+ CONFIG_ACPI_IPMI=m
+ CONFIG_ACPI_HOTPLUG_CPU=y
+ CONFIG_ACPI_PCI_SLOT=y
++CONFIG_CPU_FREQ=y
++CONFIG_CPU_FREQ_STAT=y
++CONFIG_CPU_FREQ_GOV_POWERSAVE=y
++CONFIG_LOONGSON3_ACPI_CPUFREQ=y
+ CONFIG_ACPI_HOTPLUG_MEMORY=y
+ CONFIG_VIRTUALIZATION=y
+ CONFIG_KVM=m
+@@ -704,6 +708,7 @@ CONFIG_DRM_LOONGSON=y
+ CONFIG_FB=y
+ CONFIG_FB_EFI=y
+ CONFIG_FB_RADEON=y
++CONFIG_FB_LS2K500=m
+ CONFIG_LCD_CLASS_DEVICE=y
+ CONFIG_LCD_PLATFORM=m
+ # CONFIG_VGA_CONSOLE is not set
+-- 
+2.20.1
+

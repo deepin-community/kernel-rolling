@@ -1,0 +1,28 @@
+From 4b535f12304a8420cd59371cd0fc87ddef7b3ad8 Mon Sep 17 00:00:00 2001
+From: Chen Baozi <chenbaozi@phytium.com.cn>
+Date: Fri, 14 Jul 2023 08:33:59 +0800
+Subject: [PATCH 013/360] PCI: Add Phytium vendor ID
+
+Update pci_ids.h with the vendor ID for Phytium.
+
+Signed-off-by: Chen Baozi <chenbaozi@phytium.com.cn>
+Signed-off-by: Jiakun Shuai <shuaijiakun1288@phytium.com.cn>
+Change-Id: Ie0ea6afa71a8ba2f66f8426c1db063cd734d985c
+---
+ include/linux/pci_ids.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/linux/pci_ids.h b/include/linux/pci_ids.h
+index 22f6b018cff8..33f50053d361 100644
+--- a/include/linux/pci_ids.h
++++ b/include/linux/pci_ids.h
+@@ -3244,4 +3244,6 @@
+ 
+ #define PCI_VENDOR_ID_NCUBE		0x10ff
+ 
++#define PCI_VENDOR_ID_PHYTIUM		0x1db7
++
+ #endif /* _LINUX_PCI_IDS_H */
+-- 
+2.20.1
+

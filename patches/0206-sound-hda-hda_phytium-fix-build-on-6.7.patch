@@ -1,0 +1,27 @@
+From 89e81d3e75b85fb71f2704da75a159053cb6ae41 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Tue, 27 Aug 2024 10:10:19 +0800
+Subject: [PATCH 206/360] sound: hda: hda_phytium: fix build on >= 6.7
+
+Add missing include for <linux/platform_device.h>.
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ sound/pci/hda/hda_phytium.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/sound/pci/hda/hda_phytium.c b/sound/pci/hda/hda_phytium.c
+index 0e6f6f11749c..41c2b68a5192 100644
+--- a/sound/pci/hda/hda_phytium.c
++++ b/sound/pci/hda/hda_phytium.c
+@@ -30,6 +30,7 @@
+ #include <linux/acpi.h>
+ #include <linux/dma-map-ops.h>
+ #include <sound/hda_codec.h>
++#include <linux/platform_device.h>
+ #include "hda_controller.h"
+ #include "hda_phytium.h"
+ 
+-- 
+2.20.1
+

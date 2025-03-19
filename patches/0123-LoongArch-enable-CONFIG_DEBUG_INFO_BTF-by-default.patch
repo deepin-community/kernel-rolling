@@ -1,0 +1,48 @@
+From 6a238ecb36844d5f951a05dcccbacfcaa6c117b2 Mon Sep 17 00:00:00 2001
+From: Yanteng Si <siyanteng@loongson.cn>
+Date: Mon, 27 May 2024 10:20:21 +0800
+Subject: [PATCH 123/360] LoongArch: enable CONFIG_DEBUG_INFO_BTF by default
+
+CONFIG_DEBUG_INFO_BTF is required by bpftool,so enable it.
+
+Signed-off-by: Hongchen Zhang <zhanghongchen@loongson.cn>
+Signed-off-by: Tiezhu Yang <yangtiezhu@loongson.cn>
+Signed-off-by: Yanteng Si <siyanteng@loongson.cn>
+---
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 2 ++
+ arch/loongarch/configs/loongson3_defconfig                | 6 ++++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index 4883b7ea1b62..561a55b17db6 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -5973,6 +5973,8 @@ CONFIG_FONT_TER16x32=y
+ CONFIG_FONT_6x8=y
+ CONFIG_PRINTK_TIME=y
+ CONFIG_DYNAMIC_DEBUG=y
++CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y
++CONFIG_DEBUG_INFO_BTF=y
+ CONFIG_DEBUG_INFO_DWARF5=y
+ CONFIG_GDB_SCRIPTS=y
+ CONFIG_STRIP_ASM_SYMS=y
+diff --git a/arch/loongarch/configs/loongson3_defconfig b/arch/loongarch/configs/loongson3_defconfig
+index cb64b0cfa250..a6088f88f44f 100644
+--- a/arch/loongarch/configs/loongson3_defconfig
++++ b/arch/loongarch/configs/loongson3_defconfig
+@@ -980,6 +980,12 @@ CONFIG_DMA_CMA=y
+ CONFIG_DMA_NUMA_CMA=y
+ CONFIG_CMA_SIZE_MBYTES=0
+ CONFIG_PRINTK_TIME=y
++CONFIG_PRINTK_CALLER=y
++CONFIG_BOOT_PRINTK_DELAY=y
++CONFIG_DYNAMIC_DEBUG=y
++CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y
++CONFIG_DEBUG_INFO_BTF=y
++CONFIG_FRAME_WARN=4096
+ CONFIG_STRIP_ASM_SYMS=y
+ CONFIG_MAGIC_SYSRQ=y
+ CONFIG_DEBUG_FS=y
+-- 
+2.20.1
+

@@ -1,0 +1,78 @@
+From 0e783e5511f87e764cae6582125ca63d661d6861 Mon Sep 17 00:00:00 2001
+From: Yanteng Si <siyanteng@loongson.cn>
+Date: Mon, 27 May 2024 10:20:21 +0800
+Subject: [PATCH 121/360] drm/radeon: Workaround radeon driver bug for Loongson
+
+Radeon driver can not handle the interrupt is faster than DMA data, so
+irq handler must update an old ih.rptr value in IH_RB_RPTR register to
+enable interrupt again when interrupt is faster than DMA data.
+
+Signed-off-by: Huacai Chen <chenhuacai@loongson.cn>
+Signed-off-by: Zhijie Zhang <zhangzhijie@loongson.cn>
+Signed-off-by: Yanteng Si <siyanteng@loongson.cn>
+---
+ drivers/gpu/drm/radeon/cik.c       | 3 +++
+ drivers/gpu/drm/radeon/evergreen.c | 3 +++
+ drivers/gpu/drm/radeon/r600.c      | 3 +++
+ drivers/gpu/drm/radeon/si.c        | 3 +++
+ 4 files changed, 12 insertions(+)
+
+diff --git a/drivers/gpu/drm/radeon/cik.c b/drivers/gpu/drm/radeon/cik.c
+index 11a492f21157..3ff8321e43e0 100644
+--- a/drivers/gpu/drm/radeon/cik.c
++++ b/drivers/gpu/drm/radeon/cik.c
+@@ -8093,6 +8093,9 @@ int cik_irq_process(struct radeon_device *rdev)
+ 	if (queue_thermal)
+ 		schedule_work(&rdev->pm.dpm.thermal.work);
+ 	rdev->ih.rptr = rptr;
++#ifdef CONFIG_LOONGARCH
++	WREG32(IH_RB_RPTR, rptr);
++#endif
+ 	atomic_set(&rdev->ih.lock, 0);
+ 
+ 	/* make sure wptr hasn't changed while processing */
+diff --git a/drivers/gpu/drm/radeon/evergreen.c b/drivers/gpu/drm/radeon/evergreen.c
+index bc4ab71613a5..a0b3e6268e6b 100644
+--- a/drivers/gpu/drm/radeon/evergreen.c
++++ b/drivers/gpu/drm/radeon/evergreen.c
+@@ -4919,6 +4919,9 @@ int evergreen_irq_process(struct radeon_device *rdev)
+ 	if (queue_thermal && rdev->pm.dpm_enabled)
+ 		schedule_work(&rdev->pm.dpm.thermal.work);
+ 	rdev->ih.rptr = rptr;
++#ifdef CONFIG_LOONGARCH
++	WREG32(IH_RB_RPTR, rptr);
++#endif
+ 	atomic_set(&rdev->ih.lock, 0);
+ 
+ 	/* make sure wptr hasn't changed while processing */
+diff --git a/drivers/gpu/drm/radeon/r600.c b/drivers/gpu/drm/radeon/r600.c
+index 8b62f7faa5b9..df075e025801 100644
+--- a/drivers/gpu/drm/radeon/r600.c
++++ b/drivers/gpu/drm/radeon/r600.c
+@@ -4328,6 +4328,9 @@ int r600_irq_process(struct radeon_device *rdev)
+ 	if (queue_thermal && rdev->pm.dpm_enabled)
+ 		schedule_work(&rdev->pm.dpm.thermal.work);
+ 	rdev->ih.rptr = rptr;
++#ifdef CONFIG_LOONGARCH
++	WREG32(IH_RB_RPTR, rptr);
++#endif
+ 	atomic_set(&rdev->ih.lock, 0);
+ 
+ 	/* make sure wptr hasn't changed while processing */
+diff --git a/drivers/gpu/drm/radeon/si.c b/drivers/gpu/drm/radeon/si.c
+index 6c95575ce109..e2908c0f58e9 100644
+--- a/drivers/gpu/drm/radeon/si.c
++++ b/drivers/gpu/drm/radeon/si.c
+@@ -6423,6 +6423,9 @@ int si_irq_process(struct radeon_device *rdev)
+ 	if (queue_thermal && rdev->pm.dpm_enabled)
+ 		schedule_work(&rdev->pm.dpm.thermal.work);
+ 	rdev->ih.rptr = rptr;
++#ifdef CONFIG_LOONGARCH
++	WREG32(IH_RB_RPTR, rptr);
++#endif
+ 	atomic_set(&rdev->ih.lock, 0);
+ 
+ 	/* make sure wptr hasn't changed while processing */
+-- 
+2.20.1
+

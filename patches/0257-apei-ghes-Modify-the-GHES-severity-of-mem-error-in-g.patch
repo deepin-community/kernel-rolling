@@ -1,0 +1,33 @@
+From 1cba19a4653c1f2cbf82a83eec33f977eec38f9f Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Wed, 10 Jul 2024 16:27:38 +0800
+Subject: [PATCH 257/360] apei: ghes: Modify the GHES severity of mem error in
+ ghes_do_proc
+
+When executing arch_apei_report_mem_error, replace the previous 'sev'with
+'sec_sev'. 'sev' represents the overall severity, which is the highest
+severity among individual errors in GHES. However, during
+arch_apei_report_mem_error, it should be specific to each individual
+error.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ drivers/acpi/apei/ghes.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/acpi/apei/ghes.c b/drivers/acpi/apei/ghes.c
+index cff6685fa6cc..9832839e41ab 100644
+--- a/drivers/acpi/apei/ghes.c
++++ b/drivers/acpi/apei/ghes.c
+@@ -769,7 +769,7 @@ static bool ghes_do_proc(struct ghes *ghes,
+ 
+ 			atomic_notifier_call_chain(&ghes_report_chain, sev, mem_err);
+ 
+-			arch_apei_report_mem_error(sev, mem_err);
++			arch_apei_report_mem_error(sec_sev, mem_err);
+ 			queued = ghes_handle_memory_failure(gdata, sev, sync);
+ 		}
+ 		else if (guid_equal(sec_type, &CPER_SEC_PCIE)) {
+-- 
+2.20.1
+

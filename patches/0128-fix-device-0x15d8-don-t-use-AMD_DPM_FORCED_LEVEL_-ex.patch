@@ -1,0 +1,55 @@
+From aacf43ab6709eae4b11637b741249f71723ac390 Mon Sep 17 00:00:00 2001
+From: hongao <hongao@uniontech.com>
+Date: Wed, 7 Jun 2023 14:11:56 +0800
+Subject: [PATCH 128/360] fix: device 0x15d8 don't use AMD_DPM_FORCED_LEVEL_*
+ except AMD_DPM_FORCED_LEVEL_AUTO
+
+Some devices have stablity issue on AMD_DPM_FORCED_LEVEL_* except AMD_DPM_FORCED_LEVEL_AUTO.
+Don't use these AMD_DPM_FORCED_LEVEL
+
+Bug: https://pms.uniontech.com/bug-view-203541.html
+
+Signed-off-by: hongao <hongao@uniontech.com>
+Change-Id: I84069c201713a4f86a3d492e35a86bd5f59b2d54
+(cherry picked from commit 669fa93ed09c5c27233bc8ad0c9ba1a125ae4e96)
+---
+ drivers/gpu/drm/amd/pm/amdgpu_pm.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/drivers/gpu/drm/amd/pm/amdgpu_pm.c b/drivers/gpu/drm/amd/pm/amdgpu_pm.c
+index 0fa6fbee1978..cc68358d923b 100644
+--- a/drivers/gpu/drm/amd/pm/amdgpu_pm.c
++++ b/drivers/gpu/drm/amd/pm/amdgpu_pm.c
+@@ -304,6 +304,7 @@ static ssize_t amdgpu_set_power_dpm_force_performance_level(struct device *dev,
+ {
+ 	struct drm_device *ddev = dev_get_drvdata(dev);
+ 	struct amdgpu_device *adev = drm_to_adev(ddev);
++	struct pci_dev *pdev = adev->pdev;
+ 	enum amd_dpm_forced_level level;
+ 	int ret = 0;
+ 
+@@ -342,6 +343,13 @@ static ssize_t amdgpu_set_power_dpm_force_performance_level(struct device *dev,
+ 		return ret;
+ 	}
+ 
++	//Some devices have stablity issue on AMD_DPM_FORCED_LEVEL_* except AMD_DPM_FORCED_LEVEL_AUTO. Don't use these AMD_DPM_FORCED_LEVEL
++	if(pdev->device == 0x15d8 && (level != AMD_DPM_FORCED_LEVEL_AUTO))
++	{
++		pr_warn("device 0x%04X don't allow dpm force level %d\n", pdev->device, level);
++		return count;
++	}
++
+ 	mutex_lock(&adev->pm.stable_pstate_ctx_lock);
+ 	if (amdgpu_dpm_force_performance_level(adev, level)) {
+ 		pm_runtime_mark_last_busy(ddev->dev);
+@@ -349,6 +357,7 @@ static ssize_t amdgpu_set_power_dpm_force_performance_level(struct device *dev,
+ 		mutex_unlock(&adev->pm.stable_pstate_ctx_lock);
+ 		return -EINVAL;
+ 	}
++  
+ 	/* override whatever a user ctx may have set */
+ 	adev->pm.stable_pstate_ctx = NULL;
+ 	mutex_unlock(&adev->pm.stable_pstate_ctx_lock);
+-- 
+2.20.1
+

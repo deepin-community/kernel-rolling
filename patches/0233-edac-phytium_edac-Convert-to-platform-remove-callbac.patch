@@ -1,0 +1,43 @@
+From d8e2e8f00766200c21e7392eae70e3d702916154 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 18:44:05 +0800
+Subject: [PATCH 233/360] edac: phytium_edac: Convert to platform remove
+ callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/edac/phytium_edac.c:470:19: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+  470 |         .remove = phytium_edac_remove,
+      |                   ^~~~~~~~~~~~~~~~~~~
+drivers/edac/phytium_edac.c:470:19: note: (near initialization for ‘phytium_edac_driver.<anonymous>.remove’)
+---
+ drivers/edac/phytium_edac.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/edac/phytium_edac.c b/drivers/edac/phytium_edac.c
+index b661dd8dabed..03cee73915b8 100644
+--- a/drivers/edac/phytium_edac.c
++++ b/drivers/edac/phytium_edac.c
+@@ -450,13 +450,11 @@ static int phytium_edac_probe(struct platform_device *pdev)
+ 	return ret;
+ }
+ 
+-static int phytium_edac_remove(struct platform_device *pdev)
++static void phytium_edac_remove(struct platform_device *pdev)
+ {
+ 	struct phytium_edac *edac = dev_get_drvdata(&pdev->dev);
+ 
+ 	phytium_edac_device_remove(edac);
+-
+-	return 0;
+ }
+ 
+ static const struct of_device_id phytium_edac_of_match[] = {
+-- 
+2.20.1
+

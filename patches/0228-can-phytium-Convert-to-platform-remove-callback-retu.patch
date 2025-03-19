@@ -1,0 +1,46 @@
+From 86dd075df9fca0c78604a6650f9fcbdb6f3632e8 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 18:25:19 +0800
+Subject: [PATCH 228/360] can: phytium: Convert to platform remove callback
+ returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/net/can/phytium/phytium_can_platform.c:220:19: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+  220 |         .remove = phytium_can_plat_remove,
+      |                   ^~~~~~~~~~~~~~~~~~~~~~~
+drivers/net/can/phytium/phytium_can_platform.c:220:19: note: (near initialization for ‘phytium_can_plat_driver.<anonymous>.remove’)
+---
+ drivers/net/can/phytium/phytium_can_platform.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/net/can/phytium/phytium_can_platform.c b/drivers/net/can/phytium/phytium_can_platform.c
+index f6c0d7a90113..d16584967ba0 100644
+--- a/drivers/net/can/phytium/phytium_can_platform.c
++++ b/drivers/net/can/phytium/phytium_can_platform.c
+@@ -173,7 +173,7 @@ static __maybe_unused int phytium_can_plat_resume(struct device *dev)
+ 	return phytium_can_resume(dev);
+ }
+ 
+-static int phytium_can_plat_remove(struct platform_device *pdev)
++static void phytium_can_plat_remove(struct platform_device *pdev)
+ {
+ 	struct net_device *dev = platform_get_drvdata(pdev);
+ 	struct phytium_can_dev *cdev = netdev_priv(dev);
+@@ -181,8 +181,6 @@ static int phytium_can_plat_remove(struct platform_device *pdev)
+ 	phytium_can_unregister(cdev);
+ 
+ 	phytium_can_free_dev(cdev->net);
+-
+-	return 0;
+ }
+ 
+ static int __maybe_unused phytium_can_runtime_suspend(struct device *dev)
+-- 
+2.20.1
+

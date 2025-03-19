@@ -1,0 +1,196 @@
+From e9ff40bdeb251510cfb8d40696bbf975fc15c22a Mon Sep 17 00:00:00 2001
+From: WangYuli <wangyuli@uniontech.com>
+Date: Sun, 11 Aug 2024 10:36:05 +0800
+Subject: [PATCH 187/360] deepin: Add OWNERS for deepin kernel
+
+Introduce OWNERS files to streamline the code review process and
+foster greater involvement from members of deepin/UOS kernel
+development team in deepin kernel development efforts.
+
+Link: https://www.kubernetes.dev/docs/guide/owners/
+Link: https://github.com/deepin-community/template-repository
+Signed-off-by: WangYuli <wangyuli@uniontech.com>
+---
+ MAINTAINERS              | 10 ++++++++++
+ arch/loongarch/OWNERS    |  5 +++++
+ arch/mips/OWNERS         |  5 +++++
+ deepin/OWNERS            | 26 ++++++++++++++++++++++++++
+ drivers/OWNERS           |  5 +++++
+ drivers/bluetooth/OWNERS |  4 ++++
+ drivers/gpu/OWNERS       |  5 +++++
+ drivers/net/OWNERS       |  4 ++++
+ mm/OWNERS                |  4 ++++
+ net/OWNERS               |  4 ++++
+ security/OWNERS          |  4 ++++
+ 11 files changed, 76 insertions(+)
+ create mode 100644 arch/loongarch/OWNERS
+ create mode 100644 arch/mips/OWNERS
+ create mode 100644 deepin/OWNERS
+ create mode 100644 drivers/OWNERS
+ create mode 100644 drivers/bluetooth/OWNERS
+ create mode 100644 drivers/gpu/OWNERS
+ create mode 100644 drivers/net/OWNERS
+ create mode 100644 mm/OWNERS
+ create mode 100644 net/OWNERS
+ create mode 100644 security/OWNERS
+
+diff --git a/MAINTAINERS b/MAINTAINERS
+index a0d4d241573e..071a2d6b4677 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -6306,6 +6306,16 @@ F:	arch/mips/dec/
+ F:	arch/mips/include/asm/dec/
+ F:	arch/mips/include/asm/mach-dec/
+ 
++DEEPIN CJKTTY-PATCHES
++M:	"WangYuli" <wangyuli@uniontech.com>
++S:	Maintained
++F:	lib/fonts/font_cjk*
++
++DEEPIN OWNERS
++M:	"WangYuli" <wangyuli@uniontech.com>
++S:	Maintained
++F:	OWNERS
++
+ DEFXX FDDI NETWORK DRIVER
+ M:	"Maciej W. Rozycki" <macro@orcam.me.uk>
+ S:	Maintained
+diff --git a/arch/loongarch/OWNERS b/arch/loongarch/OWNERS
+new file mode 100644
+index 000000000000..a808047489ea
+--- /dev/null
++++ b/arch/loongarch/OWNERS
+@@ -0,0 +1,5 @@
++# See the OWNERS docs at https://go.k8s.io/owners
++
++reviewers:
++- allinaent
++- JohnsPony
+\ No newline at end of file
+diff --git a/arch/mips/OWNERS b/arch/mips/OWNERS
+new file mode 100644
+index 000000000000..a808047489ea
+--- /dev/null
++++ b/arch/mips/OWNERS
+@@ -0,0 +1,5 @@
++# See the OWNERS docs at https://go.k8s.io/owners
++
++reviewers:
++- allinaent
++- JohnsPony
+\ No newline at end of file
+diff --git a/deepin/OWNERS b/deepin/OWNERS
+new file mode 100644
+index 000000000000..49189a40db39
+--- /dev/null
++++ b/deepin/OWNERS
+@@ -0,0 +1,26 @@
++# See the OWNERS docs at https://go.k8s.io/owners
++
++approvers:
++- Avenger-285714
++- matrix-wsk
++- MingcongBai
++- opsiff
++emeritus_approvers:
++- deepin-community/deepin-sysdev-team
++- hudeng-go
++- UTsweetyfish
++- xzl01
++- YukariChiba
++- zccrs
++- Zeno-sole
++reviewers:
++- BLumia
++- chenchongbiao
++- Clansty
++- huangbibo
++- justforlxz
++- morduang
++- myml
++- Rabenda
++- shy129
++- Wenlp
+\ No newline at end of file
+diff --git a/drivers/OWNERS b/drivers/OWNERS
+new file mode 100644
+index 000000000000..a808047489ea
+--- /dev/null
++++ b/drivers/OWNERS
+@@ -0,0 +1,5 @@
++# See the OWNERS docs at https://go.k8s.io/owners
++
++reviewers:
++- allinaent
++- JohnsPony
+\ No newline at end of file
+diff --git a/drivers/bluetooth/OWNERS b/drivers/bluetooth/OWNERS
+new file mode 100644
+index 000000000000..ddece097a4bf
+--- /dev/null
++++ b/drivers/bluetooth/OWNERS
+@@ -0,0 +1,4 @@
++# See the OWNERS docs at https://go.k8s.io/owners
++
++reviewers:
++- hello666888999
+\ No newline at end of file
+diff --git a/drivers/gpu/OWNERS b/drivers/gpu/OWNERS
+new file mode 100644
+index 000000000000..b2865d133224
+--- /dev/null
++++ b/drivers/gpu/OWNERS
+@@ -0,0 +1,5 @@
++# See the OWNERS docs at https://go.k8s.io/owners
++
++reviewers:
++- hongaoo
++- Ink-Paper
+\ No newline at end of file
+diff --git a/drivers/net/OWNERS b/drivers/net/OWNERS
+new file mode 100644
+index 000000000000..ddece097a4bf
+--- /dev/null
++++ b/drivers/net/OWNERS
+@@ -0,0 +1,4 @@
++# See the OWNERS docs at https://go.k8s.io/owners
++
++reviewers:
++- hello666888999
+\ No newline at end of file
+diff --git a/mm/OWNERS b/mm/OWNERS
+new file mode 100644
+index 000000000000..bb88b15201bd
+--- /dev/null
++++ b/mm/OWNERS
+@@ -0,0 +1,4 @@
++# See the OWNERS docs at https://go.k8s.io/owners
++
++reviewers:
++- xu-lang
+\ No newline at end of file
+diff --git a/net/OWNERS b/net/OWNERS
+new file mode 100644
+index 000000000000..ddece097a4bf
+--- /dev/null
++++ b/net/OWNERS
+@@ -0,0 +1,4 @@
++# See the OWNERS docs at https://go.k8s.io/owners
++
++reviewers:
++- hello666888999
+\ No newline at end of file
+diff --git a/security/OWNERS b/security/OWNERS
+new file mode 100644
+index 000000000000..bb88b15201bd
+--- /dev/null
++++ b/security/OWNERS
+@@ -0,0 +1,4 @@
++# See the OWNERS docs at https://go.k8s.io/owners
++
++reviewers:
++- xu-lang
+\ No newline at end of file
+-- 
+2.20.1
+

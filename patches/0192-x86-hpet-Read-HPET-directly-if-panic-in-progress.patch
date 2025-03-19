@@ -1,0 +1,57 @@
+From 2f26ed9f1dd4b2ffefb1a8d69f6cf0df4e6c126f Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Fri, 16 Aug 2024 18:15:57 +0800
+Subject: [PATCH 192/360] x86/hpet: Read HPET directly if panic in progress
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+zhaoxin inclusion
+category: other
+
+-------------------
+
+When the clocksource of the system is HPET，a CPU executing read_hpet might
+be interrupted by #GP/#PF to executing the panic，this may lead to
+read_hpet dead loops:
+
+CPU x				    CPU x
+----                                ----
+read_hpet()
+  arch_spin_trylock(&hpet.lock)
+  [CPU x got the hpet.lock]         #GP/#PF happened
+                                    panic()
+                                      kmsg_dump()
+                                        pstore_dump()
+                                          pstore_record_init()
+                                            ktime_get_real_fast_ns()
+                                              read_hpet()
+                                              [dead loops]
+
+To avoid this dead loops, read HPET directly if panic in progress.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ arch/x86/kernel/hpet.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/arch/x86/kernel/hpet.c b/arch/x86/kernel/hpet.c
+index c96ae8fee95e..ecadd0698d6a 100644
+--- a/arch/x86/kernel/hpet.c
++++ b/arch/x86/kernel/hpet.c
+@@ -804,6 +804,12 @@ static u64 read_hpet(struct clocksource *cs)
+ 	if (in_nmi())
+ 		return (u64)hpet_readl(HPET_COUNTER);
+ 
++	/*
++	 * Read HPET directly if panic in progress.
++	 */
++	if (unlikely(atomic_read(&panic_cpu) != PANIC_CPU_INVALID))
++		return (u64)hpet_readl(HPET_COUNTER);
++
+ 	/*
+ 	 * Read the current state of the lock and HPET value atomically.
+ 	 */
+-- 
+2.20.1
+

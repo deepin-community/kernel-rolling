@@ -1,0 +1,28 @@
+From 064c327c2e37e221452004e144ff8fac2a9b595f Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <guanwentao@uniontech.com>
+Date: Mon, 23 Dec 2024 15:38:14 +0800
+Subject: [PATCH 302/360] deepin: arm64: config: Enable Enable ftrace syscall
+
+It has already enabled in x86 and loongarch config,
+it well used in some applications.
+I don`t know why miss it, but we can directly enable it now.
+
+Signed-off-by: Wentao Guan <guanwentao@uniontech.com>
+---
+ arch/arm64/configs/deepin_arm64_desktop_defconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/configs/deepin_arm64_desktop_defconfig b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+index e7401a581d2f..1c2f2c184733 100644
+--- a/arch/arm64/configs/deepin_arm64_desktop_defconfig
++++ b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+@@ -4162,5 +4162,6 @@ CONFIG_MAGIC_SYSRQ=y
+ CONFIG_SCHEDSTATS=y
+ CONFIG_RCU_CPU_STALL_TIMEOUT=60
+ # CONFIG_RCU_TRACE is not set
++CONFIG_FTRACE_SYSCALLS=y
+ # CONFIG_STRICT_DEVMEM is not set
+ # CONFIG_RUNTIME_TESTING_MENU is not set
+-- 
+2.20.1
+

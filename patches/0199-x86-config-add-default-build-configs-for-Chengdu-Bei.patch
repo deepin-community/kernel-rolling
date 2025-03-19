@@ -1,0 +1,33 @@
+From 1ec4d11d660c1e3d0f98debeaaba15adf074fddf Mon Sep 17 00:00:00 2001
+From: WangYuli <wangyuli@uniontech.com>
+Date: Mon, 12 Aug 2024 13:02:04 +0800
+Subject: [PATCH 199/360] x86: config: add default build configs for Chengdu
+ BeiZhongWangXin N5/N6 Network Card drivers
+
+Enable bzwx for x86.
+
+Signed-off-by: Hui Li <xiaohuihui@bzwx-kj.com>
+Signed-off-by: Hongyi Du <duhongyi@bzwx-kj.com>
+Signed-off-by: Xiaojun Zhao <xiaojun@bzwx-kj.com>
+Signed-off-by: WangYuli <wangyuli@uniontech.com>
+---
+ arch/x86/configs/deepin_x86_desktop_defconfig | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index b5520b60edd4..234bf7942eb5 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -1385,6 +1385,9 @@ CONFIG_WIZNET_W5100_SPI=m
+ CONFIG_XILINX_AXI_EMAC=m
+ CONFIG_XILINX_LL_TEMAC=m
+ CONFIG_PCMCIA_XIRC2PS=m
++CONFIG_NCE=m
++CONFIG_NE6X=m
++CONFIG_NE6XVF=m
+ CONFIG_FDDI=y
+ CONFIG_DEFXX=m
+ CONFIG_SKFP=m
+-- 
+2.20.1
+

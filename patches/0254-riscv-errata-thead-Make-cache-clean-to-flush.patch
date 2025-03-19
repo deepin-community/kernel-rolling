@@ -1,0 +1,26 @@
+From d0d22b02430e86e0fb578f8751d4b33af507285a Mon Sep 17 00:00:00 2001
+From: Xiaoguang Xing <xiaoguang.xing@sophgo.com>
+Date: Thu, 19 Oct 2023 17:55:11 +0800
+Subject: [PATCH 254/360] riscv: errata: thead: Make cache clean to flush
+
+Signed-off-by: Xiaoguang Xing <xiaoguang.xing@sophgo.com>
+---
+ arch/riscv/include/asm/errata_list.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/riscv/include/asm/errata_list.h b/arch/riscv/include/asm/errata_list.h
+index e0b2529a1b2d..ba6be5471d76 100644
+--- a/arch/riscv/include/asm/errata_list.h
++++ b/arch/riscv/include/asm/errata_list.h
+@@ -131,7 +131,7 @@ asm volatile(ALTERNATIVE(						\
+ #define THEAD_flush_A0	".long 0x0275000b"
+ #define THEAD_SYNC_S	".long 0x0190000b"
+ #define THEAD_inval_PA_A0	".long 0x02a5000b"
+-#define THEAD_clean_PA_A0	".long 0x0295000b"
++#define THEAD_clean_PA_A0	".long 0x02b5000b"
+ #define THEAD_flush_PA_A0	".long 0x02b5000b"
+ 
+ #define ALT_CMO_OP(_op, _start, _size, _cachesize)			\
+-- 
+2.20.1
+

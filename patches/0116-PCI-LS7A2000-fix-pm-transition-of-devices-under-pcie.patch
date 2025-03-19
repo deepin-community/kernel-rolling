@@ -1,0 +1,40 @@
+From 16e089fdf699470d5bbc79c71c86ec159ac0f8cf Mon Sep 17 00:00:00 2001
+From: Yanteng Si <siyanteng@loongson.cn>
+Date: Mon, 20 May 2024 10:20:21 +0800
+Subject: [PATCH 116/360] PCI: LS7A2000: fix pm transition of devices under
+ pcie port
+
+Signed-off-by: Jianmin Lv <lvjianmin@loongson.cn>
+Signed-off-by: Yanteng Si <siyanteng@loongson.cn>
+---
+ drivers/pci/controller/pci-loongson.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/drivers/pci/controller/pci-loongson.c b/drivers/pci/controller/pci-loongson.c
+index d3e00c56797c..aaaa5d0f6417 100644
+--- a/drivers/pci/controller/pci-loongson.c
++++ b/drivers/pci/controller/pci-loongson.c
+@@ -81,6 +81,20 @@ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_LOONGSON,
+ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_LOONGSON,
+ 			DEV_LS7A_LPC, system_bus_quirk);
+ 
++static void loongson_d3_quirk(struct pci_dev *pdev)
++{
++	pdev->dev_flags |= PCI_DEV_FLAGS_NO_D3;
++	pdev->no_d1d2 = 1;
++}
++DECLARE_PCI_FIXUP_ENABLE(PCI_VENDOR_ID_LOONGSON,
++			DEV_LS7A_PCIE_PORT3, loongson_d3_quirk);
++DECLARE_PCI_FIXUP_ENABLE(PCI_VENDOR_ID_LOONGSON,
++			DEV_LS7A_PCIE_PORT4, loongson_d3_quirk);
++DECLARE_PCI_FIXUP_ENABLE(PCI_VENDOR_ID_LOONGSON,
++			DEV_LS7A_PCIE_PORT5, loongson_d3_quirk);
++DECLARE_PCI_FIXUP_ENABLE(PCI_VENDOR_ID_LOONGSON,
++			DEV_LS7A_PCIE_PORT6, loongson_d3_quirk);
++
+ /*
+  * Some Loongson PCIe ports have hardware limitations on their Maximum Read
+  * Request Size. They can't handle anything larger than this.  Sane
+-- 
+2.20.1
+

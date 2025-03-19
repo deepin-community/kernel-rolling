@@ -1,0 +1,49 @@
+From dedfe9b80fd00177ec3aea01c7744e36c6d55c9d Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Mon, 2 Sep 2024 16:07:03 +0800
+Subject: [PATCH 267/360] Replace alloc_pages with alloc_pages_op in
+ zhaoxin_kh40000.c
+
+Since alloc_pages name in dma_map_ops was modified in 603c70bab467 ("
+change alloc_pages name in dma_map_ops to avoid name conflicts"), the same
+modification needs to be made in zhaoxin_kh40000.c as well.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ arch/x86/kernel/zhaoxin_kh40000.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/arch/x86/kernel/zhaoxin_kh40000.c b/arch/x86/kernel/zhaoxin_kh40000.c
+index 67d7a044f63e..ca1c1bce431c 100644
+--- a/arch/x86/kernel/zhaoxin_kh40000.c
++++ b/arch/x86/kernel/zhaoxin_kh40000.c
+@@ -162,7 +162,7 @@ const struct dma_map_ops kh40000_dma_direct_ops = {
+ 	.unmap_resource		= kh40000_dma_direct_unmap_resource,
+ 	.dma_supported		= dma_direct_supported,
+ 	.free			= dma_direct_free,
+-	.alloc_pages		= dma_direct_alloc_pages,
++	.alloc_pages_op		= dma_direct_alloc_pages,
+ 	.free_pages		= dma_direct_free_pages,
+ 	.sync_single_for_device	= dma_direct_sync_single_for_device,
+ 	.sync_sg_for_device	= dma_direct_sync_sg_for_device,
+@@ -200,7 +200,7 @@ static void kh40000_iommu_dma_free(struct device *dev, size_t size, void *cpu_ad
+ static struct page *kh40000_dma_common_alloc_pages(struct device *dev, size_t size,
+ 		dma_addr_t *dma_handle, enum dma_data_direction dir, gfp_t gfp)
+ {
+-	return iommu_dma_ops->alloc_pages(dev, size, dma_handle, dir, gfp);
++	return iommu_dma_ops->alloc_pages_op(dev, size, dma_handle, dir, gfp);
+ }
+ 
+ static void kh40000_dma_common_free_pages(struct device *dev, size_t size, struct page *page,
+@@ -327,7 +327,7 @@ const struct dma_map_ops kh40000_dma_iommu_ops = {
+ 	.alloc			= kh40000_iommu_dma_alloc,
+ 	.free			= kh40000_iommu_dma_free,
+ 	.unmap_page		= kh40000_iommu_dma_unmap_page,
+-	.alloc_pages		= kh40000_dma_common_alloc_pages,
++	.alloc_pages_op		= kh40000_dma_common_alloc_pages,
+ 	.free_pages		= kh40000_dma_common_free_pages,
+ 	.alloc_noncontiguous	= kh40000_iommu_dma_alloc_noncontiguous,
+ 	.free_noncontiguous	= kh40000_iommu_dma_free_noncontiguous,
+-- 
+2.20.1
+

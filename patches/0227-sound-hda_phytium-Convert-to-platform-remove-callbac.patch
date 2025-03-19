@@ -1,0 +1,48 @@
+From 7348e9d730d386dbdc0b4faf3461c8f50657e59f Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 18:20:20 +0800
+Subject: [PATCH 227/360]  sound: hda_phytium: Convert to platform remove
+ callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+sound/pci/hda/hda_phytium.c:1079:19: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+ 1079 |         .remove = hda_ft_remove,
+      |                   ^~~~~~~~~~~~~
+sound/pci/hda/hda_phytium.c:1079:19: note: (near initialization for ‘ft_platform_hda.<anonymous>.remove’)
+---
+ sound/pci/hda/hda_phytium.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/sound/pci/hda/hda_phytium.c b/sound/pci/hda/hda_phytium.c
+index 41c2b68a5192..2e4d9228e55d 100644
+--- a/sound/pci/hda/hda_phytium.c
++++ b/sound/pci/hda/hda_phytium.c
+@@ -1021,7 +1021,7 @@ static int azx_probe_continue(struct azx *chip)
+ 	return err;
+ }
+ 
+-static int hda_ft_remove(struct platform_device *pdev)
++static void hda_ft_remove(struct platform_device *pdev)
+ {
+ 	struct snd_card *card = dev_get_drvdata(&pdev->dev);
+ 	struct azx *chip;
+@@ -1035,9 +1035,8 @@ static int hda_ft_remove(struct platform_device *pdev)
+ 		clear_bit(chip->dev_index, probed_devs);
+ 
+ 		snd_card_free(card);
+-		return 0;
++		return;
+ 	}
+-	return 0;
+ }
+ 
+ static void hda_ft_shutdown(struct platform_device *pdev)
+-- 
+2.20.1
+

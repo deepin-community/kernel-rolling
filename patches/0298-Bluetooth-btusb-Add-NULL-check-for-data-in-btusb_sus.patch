@@ -1,0 +1,43 @@
+From cf66d973687568de2638a3d3e97fc5ef61d7c546 Mon Sep 17 00:00:00 2001
+From: En-Wei Wu <en-wei.wu@canonical.com>
+Date: Thu, 2 Jan 2025 10:44:53 +0800
+Subject: [PATCH 298/360] Bluetooth: btusb: Add NULL check for data in
+ btusb_suspend
+
+When performing warm boot tests with an MT7920 device, we encounter
+NULL pointer dereferences with failure rate 5/30. The crash occurs
+during device suspend when btusb attempts to access data->hdev where
+data is NULL. This may happen due to a race condition between PM suspend
+and device disconnect. The root cause needs further investigation.
+
+BUG: kernel NULL pointer dereference, address: 0000000000000000
+Workqueue: pm pm_runtime_work
+RIP: 0010:btusb_suspend+0x1d/0x1d0 [btusb]
+
+Add a NULL check for data and return -ENODEV in this case to prevent
+the NULL pointer dereference. This indicates that the device is no
+longer available, which is appropriate when the driver's private data
+is missing.
+
+Signed-off-by: En-Wei Wu <en-wei.wu@canonical.com>
+---
+ drivers/bluetooth/btusb.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
+index 3a0b9dc98707..f8cd5affbb9a 100644
+--- a/drivers/bluetooth/btusb.c
++++ b/drivers/bluetooth/btusb.c
+@@ -4102,6 +4102,9 @@ static int btusb_suspend(struct usb_interface *intf, pm_message_t message)
+ 
+ 	BT_DBG("intf %p", intf);
+ 
++	if (!data)
++		return -ENODEV;
++
+ 	/* Don't auto-suspend if there are connections; external suspend calls
+ 	 * shall never fail.
+ 	 */
+-- 
+2.20.1
+

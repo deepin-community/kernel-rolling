@@ -1,0 +1,97 @@
+From 55de7bfa5817f626d07aea75939350e206bf97dc Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Tue, 16 Jul 2024 18:09:32 +0800
+Subject: [PATCH 178/360] iommu/dma: Fix not fully traversing iova reservations
+ issue
+
+zhaoxin inclusion
+category: other
+CVE: NA
+
+-----------------
+
+For multiple devices in the same iommu group, sorted later devices (based
+on Bus:Dev.Func) have the RMRR.
+
+Sorted earlier device (without RMRR) initialized the iova domain causing
+the sorted later device goto done_unlock.
+
+Then, the sorted later device (with RMRR) cannot execute the
+iova_reserve_iommu_regions to reserve the RMRR in the group's iova domain,
+and other devices (in the same group) alloc iova in RMRR are permitted.
+
+DMA iova addresses conflict with RMRR in this case.
+
+There is a need to make sure all devices of the same group execute reserve
+iova.
+
+Substitute iova_reserve_iommu_regions with iova_reserve_pci_regions
+(reserved PCI window)and iova_reserve_iommu_regions(reserved resv-region,
+like RMRR and msi range). And then, goto iova_reserve_iommu_regions could
+avoid the problem when if (iovad->start_pfn) is true.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ drivers/iommu/dma-iommu.c | 25 ++++++++++++++++++-------
+ 1 file changed, 18 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/iommu/dma-iommu.c b/drivers/iommu/dma-iommu.c
+index 27d53376e382..f98b4c3cf769 100644
+--- a/drivers/iommu/dma-iommu.c
++++ b/drivers/iommu/dma-iommu.c
+@@ -579,6 +579,18 @@ int iova_reserve_domain_addr(struct iommu_domain *domain, dma_addr_t start, dma_
+ }
+ EXPORT_SYMBOL_GPL(iova_reserve_domain_addr);
+ 
++static int iova_reserve_pci_regions(struct device *dev, struct iommu_domain *domain)
++{
++	struct iommu_dma_cookie *cookie = domain->iova_cookie;
++	struct iova_domain *iovad = &cookie->iovad;
++	int ret = 0;
++
++	if (dev_is_pci(dev))
++		ret = iova_reserve_pci_windows(to_pci_dev(dev), iovad);
++
++	return ret;
++}
++
+ static int iova_reserve_iommu_regions(struct device *dev,
+ 		struct iommu_domain *domain)
+ {
+@@ -588,12 +600,6 @@ static int iova_reserve_iommu_regions(struct device *dev,
+ 	LIST_HEAD(resv_regions);
+ 	int ret = 0;
+ 
+-	if (dev_is_pci(dev)) {
+-		ret = iova_reserve_pci_windows(to_pci_dev(dev), iovad);
+-		if (ret)
+-			return ret;
+-	}
+-
+ 	iommu_get_resv_regions(dev, &resv_regions);
+ 	list_for_each_entry(region, &resv_regions, list) {
+ 		unsigned long lo, hi;
+@@ -727,7 +733,7 @@ static int iommu_dma_init_domain(struct iommu_domain *domain, struct device *dev
+ 		}
+ 
+ 		ret = 0;
+-		goto done_unlock;
++		goto iova_reserve_iommu;
+ 	}
+ 
+ 	init_iova_domain(iovad, 1UL << order, base_pfn);
+@@ -742,6 +748,11 @@ static int iommu_dma_init_domain(struct iommu_domain *domain, struct device *dev
+ 	    (!device_iommu_capable(dev, IOMMU_CAP_DEFERRED_FLUSH) || iommu_dma_init_fq(domain)))
+ 		domain->type = IOMMU_DOMAIN_DMA;
+ 
++	ret = iova_reserve_pci_regions(dev, domain);
++	if (ret)
++		goto done_unlock;
++
++iova_reserve_iommu:
+ 	ret = iova_reserve_iommu_regions(dev, domain);
+ 
+ done_unlock:
+-- 
+2.20.1
+

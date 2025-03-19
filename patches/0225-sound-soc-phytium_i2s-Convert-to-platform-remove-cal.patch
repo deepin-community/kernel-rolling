@@ -1,0 +1,40 @@
+From 9e759b5f33c88d84660754c841cd9b8e6192ae7e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 18:08:56 +0800
+Subject: [PATCH 225/360] sound: soc: phytium_i2s: Convert to platform remove
+ callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+sound/soc/phytium/phytium_i2s.c:1421:19: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+ 1421 |         .remove = phytium_i2s_remove,
+      |                   ^~~~~~~~~~~~~~~~~~
+sound/soc/phytium/phytium_i2s.c:1421:19: note: (near initialization for ‘phytium_i2s_driver.<anonymous>.remove’)
+---
+ sound/soc/phytium/phytium_i2s.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/sound/soc/phytium/phytium_i2s.c b/sound/soc/phytium/phytium_i2s.c
+index de0fa68cbd82..b09a2dd75cc2 100644
+--- a/sound/soc/phytium/phytium_i2s.c
++++ b/sound/soc/phytium/phytium_i2s.c
+@@ -1395,10 +1395,9 @@ static int phytium_i2s_probe(struct platform_device *pdev)
+ 	return ret;
+ }
+ 
+-static int phytium_i2s_remove(struct platform_device *pdev)
++static void phytium_i2s_remove(struct platform_device *pdev)
+ {
+ 	pm_runtime_disable(&pdev->dev);
+-	return 0;
+ }
+ 
+ static const struct of_device_id phytium_i2s_of_match[] = {
+-- 
+2.20.1
+

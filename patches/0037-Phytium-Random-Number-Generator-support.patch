@@ -1,0 +1,252 @@
+From 1f9c3396a94c70d06c582a85fd0320daf3b37bfb Mon Sep 17 00:00:00 2001
+From: xu yan <xuyan1481@phytium.com>
+Date: Wed, 15 May 2024 15:21:08 +0800
+Subject: [PATCH 037/360] Phytium Random Number Generator support
+
+This driver provides kernel-side support for the Random Number
+Generator hardware found on Phytium SoCs.
+
+Signed-off-by: xu yan <xuyan1481@phytium.com>
+Signed-off-by: Zhang Yiqun <zhangyiqun@phytium.com.cn>
+Signed-off-by: Chen Baozi <chenbaozi@phytium.com.cn>
+Signed-off-by: Wang Yinfeng <wangyinfeng@phytium.com.cn>
+---
+ .../devicetree/bindings/rng/phytium,rng.yaml  |  30 ++++
+ drivers/char/hw_random/Kconfig                |  12 ++
+ drivers/char/hw_random/Makefile               |   1 +
+ drivers/char/hw_random/phytium-rng.c          | 154 ++++++++++++++++++
+ 4 files changed, 197 insertions(+)
+ create mode 100644 Documentation/devicetree/bindings/rng/phytium,rng.yaml
+ create mode 100644 drivers/char/hw_random/phytium-rng.c
+
+diff --git a/Documentation/devicetree/bindings/rng/phytium,rng.yaml b/Documentation/devicetree/bindings/rng/phytium,rng.yaml
+new file mode 100644
+index 000000000000..e32fc39ea86c
+--- /dev/null
++++ b/Documentation/devicetree/bindings/rng/phytium,rng.yaml
+@@ -0,0 +1,30 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/rng/phytium,rng.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Phytium Random Number Generator
++
++maintainers:
++  - Chen Baozi <chenbaozi@phytium.com.cn>
++
++properties:
++  compatible:
++    const: phytium,rng
++
++  reg:
++    maxItems: 1
++
++required:
++  - compatible
++  - reg
++
++additionalProperties: false
++
++examples:
++  - |
++    rng@0x31a06000 {
++        compatible = "phytium,rng";
++        reg = <0x0 0x31a06000 0x0 0x1000>;
++    };
+diff --git a/drivers/char/hw_random/Kconfig b/drivers/char/hw_random/Kconfig
+index b51d9e243f35..ea586d0dff2e 100644
+--- a/drivers/char/hw_random/Kconfig
++++ b/drivers/char/hw_random/Kconfig
+@@ -587,6 +587,18 @@ config HW_RANDOM_ROCKCHIP
+ 
+ 	  If unsure, say Y.
+ 
++config HW_RANDOM_PHYTIUM
++	tristate "Phytium Random Number Generator support"
++	depends on ARCH_PHYTIUM || COMPILE_TEST
++	help
++	  This driver provides kernel-side support for the Random Number
++	  Generator hardware found on Phytium SoCs.
++
++	  To compile this driver as a module, choose M here: the
++	  module will be called phytium-rng.
++
++	  If unsure, say Y.
++
+ endif # HW_RANDOM
+ 
+ config UML_RANDOM
+diff --git a/drivers/char/hw_random/Makefile b/drivers/char/hw_random/Makefile
+index 01f012eab440..ce0e7f214ea0 100644
+--- a/drivers/char/hw_random/Makefile
++++ b/drivers/char/hw_random/Makefile
+@@ -50,3 +50,4 @@ obj-$(CONFIG_HW_RANDOM_CN10K) += cn10k-rng.o
+ obj-$(CONFIG_HW_RANDOM_POLARFIRE_SOC) += mpfs-rng.o
+ obj-$(CONFIG_HW_RANDOM_ROCKCHIP) += rockchip-rng.o
+ obj-$(CONFIG_HW_RANDOM_JH7110) += jh7110-trng.o
++obj-$(CONFIG_HW_RANDOM_PHYTIUM) += phytium-rng.o
+diff --git a/drivers/char/hw_random/phytium-rng.c b/drivers/char/hw_random/phytium-rng.c
+new file mode 100644
+index 000000000000..ef4c137c17cc
+--- /dev/null
++++ b/drivers/char/hw_random/phytium-rng.c
+@@ -0,0 +1,154 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Phytium SoC RNG Driver
++ *
++ * Copyright (C) 2021-2023, Phytium Technology Co., Ltd.
++ */
++
++#include <linux/bits.h>
++#include <linux/err.h>
++#include <linux/hw_random.h>
++#include <linux/io.h>
++#include <linux/iopoll.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/platform_device.h>
++#include <linux/random.h>
++#include <linux/string.h>
++
++#define	TRNG_CR			0x00
++#define  TRNG_CR_RNGEN		BIT(0)
++#define  TRNG_CR_ROSEN_MASK	GENMASK(7, 4)
++#define  TRNG_CR_DIEN		BIT(16)
++#define  TRNG_CR_ERIEN		BIT(17)
++#define  TRNG_CR_IRQEN		BIT(24)
++#define TRNG_MSEL		0x04
++#define  TRNG_MSEL_MSEL		BIT(0)
++#define TRNG_SR			0x08
++#define  TRNG_SR_HTF		BIT(0)
++#define  TRNG_SR_DRDY		BIT(1)
++#define  TRNG_SR_ERERR		BIT(3)
++#define TRNG_DR			0x0C
++#define TRNG_RESEED		0x40
++#define  TRNG_RESEED_RSED	BIT(0)
++
++#define DELAY	10
++#define TIMEOUT	100
++
++static int msel;
++module_param(msel, int, 0444);
++MODULE_PARM_DESC(msel, "Phytium RNG mode selection: 0 - TRNG. 1 - PRNG.");
++
++struct phytium_rng {
++	struct hwrng rng;
++	void __iomem *base;
++};
++
++static int phytium_rng_init(struct hwrng *rng)
++{
++	struct phytium_rng *priv = container_of(rng, struct phytium_rng, rng);
++	u32 reg;
++
++	/* Mode Selection */
++	reg = msel ? TRNG_MSEL_MSEL : 0;
++	writel(reg, priv->base + TRNG_MSEL);
++
++	/* If PRGN mode is on, do reseed operations */
++	if (msel)
++		writel(TRNG_RESEED_RSED, priv->base + TRNG_RESEED);
++
++	/* Clear status */
++	writel(0x7, priv->base + TRNG_SR);
++
++	/* Enable TRNG */
++	reg = readl(priv->base + TRNG_CR) | TRNG_CR_ROSEN_MASK | TRNG_CR_RNGEN;
++	writel(reg, priv->base + TRNG_CR);
++
++	return 0;
++}
++
++static void phytium_rng_cleanup(struct hwrng *rng)
++{
++	struct phytium_rng *priv = container_of(rng, struct phytium_rng, rng);
++
++	writel(0x7, priv->base + TRNG_SR);
++}
++
++static int phytium_rng_read(struct hwrng *rng, void *buf, size_t max, bool wait)
++{
++	struct phytium_rng *priv = container_of(rng, struct phytium_rng, rng);
++	u32 reg;
++	int ret = 0;
++
++	/* TRNG can generate at most 8*32bit random number per time */
++	max = max > 8 ? 8 : max;
++
++	reg = readl(priv->base + TRNG_SR);
++	if (!(reg & TRNG_SR_DRDY) && wait) {
++		ret = readl_poll_timeout(priv->base + TRNG_SR, reg,
++					 reg & TRNG_SR_DRDY, DELAY, TIMEOUT);
++		if (ret) {
++			dev_err((struct device *)priv->rng.priv,
++				"%s: timeout %x!\n", __func__, reg);
++			return -EIO;
++		}
++	}
++
++	while (max > 4) {
++		*(u32 *)buf = readl(priv->base + TRNG_DR);
++
++		ret += sizeof(u32);
++		buf += sizeof(u32);
++		max -= sizeof(u32);
++	}
++
++	/* Clear DRDY by writing 1 */
++	writel(reg | TRNG_SR_DRDY, priv->base + TRNG_SR);
++
++	return ret;
++}
++
++static int scto_rng_probe(struct platform_device *pdev)
++{
++	struct phytium_rng *priv;
++	struct resource *mem;
++
++	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
++	if (!priv)
++		return -ENOMEM;
++
++	platform_set_drvdata(pdev, priv);
++
++	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
++	priv->base = devm_ioremap_resource(&pdev->dev, mem);
++	if (IS_ERR(priv->base))
++		return PTR_ERR(priv->base);
++
++	priv->rng.name = pdev->name;
++	priv->rng.init = phytium_rng_init;
++	priv->rng.cleanup = phytium_rng_cleanup;
++	priv->rng.read = phytium_rng_read;
++	priv->rng.priv = (unsigned long)&pdev->dev;
++
++	return devm_hwrng_register(&pdev->dev, &priv->rng);
++}
++
++static const struct of_device_id phytium_rng_dt_ids[] = {
++	{ .compatible = "phytium,rng" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, phytium_rng_dt_ids);
++
++static struct platform_driver phytium_rng_driver = {
++	.probe = scto_rng_probe,
++	.driver = {
++		.name = "phytium-rng",
++		.of_match_table = of_match_ptr(phytium_rng_dt_ids),
++	}
++};
++module_platform_driver(phytium_rng_driver);
++
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("Phytium random number generator driver");
++MODULE_AUTHOR("Chen Baozi <chenbaozi@phytium.com.cn>");
+-- 
+2.20.1
+

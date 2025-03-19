@@ -1,0 +1,62 @@
+From 36fbed06bb5a76bb20d23200b45b3f20504ec294 Mon Sep 17 00:00:00 2001
+From: Li Wencheng <liwencheng@phytium.com.cn>
+Date: Thu, 21 Mar 2024 14:44:00 +0800
+Subject: [PATCH 081/360] dt-bindings: phytmac: Add bindings for Phytium MAC
+ 1.0 and 2.0
+
+This patch document the DT bindings for the Phytium MAC 1.0 and 2.0
+controller.
+
+Signed-off-by: Li Wencheng <liwencheng@phytium.com.cn>
+Signed-off-by: Wang Yinfeng <wangyinfeng@phytium.com.cn>
+Signed-off-by: Wang Zhimin <wangzhimin1179@phytium.com.cn>
+---
+ .../devicetree/bindings/net/phytmac.yaml      | 36 +++++++++++++++++++
+ 1 file changed, 36 insertions(+)
+ create mode 100644 Documentation/devicetree/bindings/net/phytmac.yaml
+
+diff --git a/Documentation/devicetree/bindings/net/phytmac.yaml b/Documentation/devicetree/bindings/net/phytmac.yaml
+new file mode 100644
+index 000000000000..33947bac5225
+--- /dev/null
++++ b/Documentation/devicetree/bindings/net/phytmac.yaml
+@@ -0,0 +1,36 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++* Phytium xgmac Ethernet controller
++
++Required properties:
++- compatible: Should be "phytium,gmac-[version]"
++  Use "phytium,gmac-1.0" for gmac version 1.0 on Phytium SoCs
++  Use "phytium,gmac-2.0" for gmac version 2.0 on Phytium SoCs
++
++- reg: Address and length of the register set for the device
++- interrupts: Should contain phytmac interrupt
++- queue-number: The number of queues for the device
++- phy-mode: See ethernet.txt file in the same directory
++- fixed-link：See ethernet.txt file in the same directory
++- dma-coherent: Boolean property, must only be present if memory
++	accesses performed by the device are cache coherent.
++
++The MAC address will be determined using the optional properties
++defined in ethernet.txt.
++
++Examples:
++
++	eth0@36ce0000 {
++			compatible = "phytium,gmac-1.0";
++			reg = <0x00 0x36ce0000 0x00 0x2000>;
++			interrupts = <0x00 0x20 0x04 0x00 0x21 0x04 0x00 0x22 0x04 0x00 0x23 0x04>;
++			queue-number = <0x04>;
++			magic-packet;
++			dma-coherent;
++			phy-mode = "usxgmii";
++			status = "okay";
++
++			fixed-link {
++					speed = <0x2710>;
++					full-duplex;
++			};
++	};
+-- 
+2.20.1
+

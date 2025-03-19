@@ -1,0 +1,31 @@
+From 369d2a5268bcbc8831b65e9f21e52dc3bc941e1a Mon Sep 17 00:00:00 2001
+From: Wentao Guan <guanwentao@uniontech.com>
+Date: Tue, 7 Jan 2025 22:43:43 +0800
+Subject: [PATCH 306/360] config: deepin_loongarch_desktop_defconfig: Disable
+ CONFIG_DRM_LEGACY
+
+The config aims to support very old agp gpu drivers.
+It show not used in loongarch, disable it for compat loongarch gpu driver,
+as other arch configs do, disable it in loongarch now.
+If we sure need it, we can bring it back.
+
+Signed-off-by: Wentao Guan <guanwentao@uniontech.com>
+---
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index af71e4735ae0..992dcc78d4cf 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -3616,7 +3616,6 @@ CONFIG_DRM_GUD=m
+ CONFIG_DRM_SSD130X=m
+ CONFIG_DRM_SSD130X_I2C=m
+ CONFIG_DRM_SSD130X_SPI=m
+-CONFIG_DRM_LEGACY=y
+ CONFIG_FB=y
+ CONFIG_FB_CIRRUS=m
+ CONFIG_FB_PM2=m
+-- 
+2.20.1
+

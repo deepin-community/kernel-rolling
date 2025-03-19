@@ -1,0 +1,27 @@
+From d665ab1f69d7aabc61dbf8d662b5295ad6690fbf Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Mon, 18 Nov 2024 16:55:26 +0800
+Subject: [PATCH 270/360] x86: configs: enable DRM_XE
+
+This is needed for newer Intel platforms (e.g., Lunar Lake).
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ arch/x86/configs/deepin_x86_desktop_defconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index 0a027c3bc271..2dbf27da8ec0 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -3114,6 +3114,7 @@ CONFIG_HSA_AMD=y
+ CONFIG_DRM_NOUVEAU=m
+ CONFIG_DRM_I915=m
+ CONFIG_DRM_I915_GVT_KVMGT=m
++CONFIG_DRM_XE=m
+ CONFIG_DRM_VGEM=m
+ CONFIG_DRM_VKMS=m
+ CONFIG_DRM_VMWGFX=m
+-- 
+2.20.1
+

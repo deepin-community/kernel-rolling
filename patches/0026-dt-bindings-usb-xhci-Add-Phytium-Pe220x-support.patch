@@ -1,0 +1,32 @@
+From c8eddf5ed69c0797ba42ee2c52592a96ef1856e0 Mon Sep 17 00:00:00 2001
+From: Chen Baozi <chenbaozi@phytium.com.cn>
+Date: Fri, 14 Jul 2023 08:34:17 +0800
+Subject: [PATCH 026/360] dt-bindings: usb-xhci: Add Phytium Pe220x support
+
+This patch documents the DT bindings for Phytium Pe220x XHCI controller.
+
+Signed-off-by: Wang Zhimin <wangzhimin1179@phytium.com.cn>
+Signed-off-by: Chen Baozi <chenbaozi@phytium.com.cn>
+---
+ Documentation/devicetree/bindings/usb/generic-xhci.yaml | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/usb/generic-xhci.yaml b/Documentation/devicetree/bindings/usb/generic-xhci.yaml
+index 6ceafa4af292..ec44ab3de7e8 100644
+--- a/Documentation/devicetree/bindings/usb/generic-xhci.yaml
++++ b/Documentation/devicetree/bindings/usb/generic-xhci.yaml
+@@ -31,6 +31,11 @@ properties:
+         enum:
+           - brcm,xhci-brcm-v2
+           - brcm,bcm7445-xhci
++      - description: Phytium Pe220x SoC with xHCI
++        items:
++          - enum:
++              - phytium,pe220x-xhci
++          - const: generic-xhci
+       - description: Generic xHCI device
+         const: xhci-platform
+         deprecated: true
+-- 
+2.20.1
+

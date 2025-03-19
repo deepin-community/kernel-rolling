@@ -1,0 +1,86 @@
+From 0a645fe6d638412099cdd1871d73efb5fa6898a8 Mon Sep 17 00:00:00 2001
+From: wenlunpeng <wenlunpeng@uniontech.com>
+Date: Thu, 9 May 2024 11:19:11 +0800
+Subject: [PATCH 189/360] printk: show build commitid in the front of dmesg
+
+This can help us find source code version when troubleshooting.
+
+Signed-off-by: wenlunpeng <wenlunpeng@uniontech.com>
+Signed-off-by: WangYuli <wangyuli@uniontech.com>
+---
+ include/linux/printk.h   | 1 +
+ init/main.c              | 2 +-
+ init/version-timestamp.c | 4 ++++
+ init/version.c           | 1 +
+ scripts/mkcompile_h      | 3 +++
+ 5 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/printk.h b/include/linux/printk.h
+index eca9bb2ee637..4874bbc1a354 100644
+--- a/include/linux/printk.h
++++ b/include/linux/printk.h
+@@ -13,6 +13,7 @@ struct console;
+ 
+ extern const char linux_banner[];
+ extern const char linux_proc_banner[];
++extern const char linux_commitid_banner[];
+ 
+ extern int oops_in_progress;	/* If set, an oops, panic(), BUG() or die() is in progress */
+ 
+diff --git a/init/main.c b/init/main.c
+index c4778edae797..c85b45c5d915 100644
+--- a/init/main.c
++++ b/init/main.c
+@@ -921,7 +921,7 @@ void start_kernel(void)
+ 	 */
+ 	boot_cpu_init();
+ 	page_address_init();
+-	pr_notice("%s", linux_banner);
++	pr_notice("%s", linux_commitid_banner);
+ 	setup_arch(&command_line);
+ 	/* Static keys and static calls are needed by LSMs */
+ 	jump_label_init();
+diff --git a/init/version-timestamp.c b/init/version-timestamp.c
+index 043cbf80a766..bb6ecbc7ee72 100644
+--- a/init/version-timestamp.c
++++ b/init/version-timestamp.c
+@@ -28,3 +28,7 @@ struct uts_namespace init_uts_ns = {
+ const char linux_banner[] =
+ 	"Linux version " UTS_RELEASE " (" LINUX_COMPILE_BY "@"
+ 	LINUX_COMPILE_HOST ") (" LINUX_COMPILER ") " UTS_VERSION "\n";
++
++const char linux_commitid_banner[] =
++	"Linux version " UTS_RELEASE " (" LINUX_COMPILE_BY "@"
++	LINUX_COMPILE_HOST ") (" LINUX_COMPILER ") (" GIT_COMMITID ") " UTS_VERSION "\n";
+diff --git a/init/version.c b/init/version.c
+index 94c96f6fbfe6..6224229506af 100644
+--- a/init/version.c
++++ b/init/version.c
+@@ -48,6 +48,7 @@ BUILD_LTO_INFO;
+ 
+ struct uts_namespace init_uts_ns __weak;
+ const char linux_banner[] __weak;
++const char linux_commitid_banner[] __weak;
+ 
+ #include "version-timestamp.c"
+ 
+diff --git a/scripts/mkcompile_h b/scripts/mkcompile_h
+index 2596f78e52ef..ddf90f272530 100755
+--- a/scripts/mkcompile_h
++++ b/scripts/mkcompile_h
+@@ -19,9 +19,12 @@ fi
+ LD_VERSION=$(LC_ALL=C $LD -v | head -n1 |
+ 		sed -e 's/(compatible with [^)]*)//' -e 's/[[:space:]]*$//')
+ 
++GIT_COMMITID=$(git log -1 --pretty=format:%h 2>/dev/null)
++
+ cat <<EOF
+ #define UTS_MACHINE		"${UTS_MACHINE}"
+ #define LINUX_COMPILE_BY	"${LINUX_COMPILE_BY}"
+ #define LINUX_COMPILE_HOST	"${LINUX_COMPILE_HOST}"
+ #define LINUX_COMPILER		"${CC_VERSION}, ${LD_VERSION}"
++#define GIT_COMMITID		"${GIT_COMMITID}"
+ EOF
+-- 
+2.20.1
+

@@ -1,0 +1,36 @@
+From 2b6a6c8a0e1c064cb02c9886056680d5cb7adb67 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 19:00:34 +0800
+Subject: [PATCH 237/360] firmware: arm_scmi: mailbox: fix unused var error
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Log:
+drivers/firmware/arm_scmi/transports/mailbox.c: In function ‘mailbox_chan_setup’:
+drivers/firmware/arm_scmi/transports/mailbox.c:189:25: error: unused variable ‘res’ [-Werror=unused-variable]
+  189 |         struct resource res;
+      |                         ^~~
+drivers/firmware/arm_scmi/transports/mailbox.c:188:25: error: unused variable ‘size’ [-Werror=unused-variable]
+  188 |         resource_size_t size;
+      |                         ^~~~
+---
+ drivers/firmware/arm_scmi/transports/mailbox.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/drivers/firmware/arm_scmi/transports/mailbox.c b/drivers/firmware/arm_scmi/transports/mailbox.c
+index e117a43dfe18..1289df15a04e 100644
+--- a/drivers/firmware/arm_scmi/transports/mailbox.c
++++ b/drivers/firmware/arm_scmi/transports/mailbox.c
+@@ -185,8 +185,6 @@ static int mailbox_chan_setup(struct scmi_chan_info *cinfo, struct device *dev,
+ 	struct scmi_mailbox *smbox;
+ 	int ret, a2p_rx_chan, p2a_chan, p2a_rx_chan;
+ 	struct mbox_client *cl;
+-	resource_size_t size;
+-	struct resource res;
+ 	struct of_phandle_args args;
+ 
+ 	ret = mailbox_chan_validate(cdev, &a2p_rx_chan, &p2a_chan, &p2a_rx_chan);
+-- 
+2.20.1
+

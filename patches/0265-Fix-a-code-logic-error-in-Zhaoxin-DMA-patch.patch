@@ -1,0 +1,32 @@
+From ee2d19b740c123731256bf74769d59aefb1afc54 Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Thu, 29 Aug 2024 17:27:29 +0800
+Subject: [PATCH 265/360] Fix a code logic error in Zhaoxin DMA patch
+
+Replace "ZHAOXIN_P2CW_NODE_CHECK | zhaoxin_patch_code" with
+"ZHAOXIN_P2CW_NODE_CHECK & zhaoxin_patch_code" in function
+zhaoxin_patch_code_setup()
+
+Fixes: d3eb024789cc ("Add kh40000_direct_dma_ops for KH-40000 platform")
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ arch/x86/kernel/zhaoxin_kh40000.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/x86/kernel/zhaoxin_kh40000.c b/arch/x86/kernel/zhaoxin_kh40000.c
+index 71c9a9cfa5f6..67d7a044f63e 100644
+--- a/arch/x86/kernel/zhaoxin_kh40000.c
++++ b/arch/x86/kernel/zhaoxin_kh40000.c
+@@ -42,7 +42,7 @@ static int __init zhaoxin_patch_code_setup(char *str)
+ 		return err;
+ 	}
+ 
+-	if (ZHAOXIN_P2CW_NODE_CHECK | zhaoxin_patch_code)
++	if (ZHAOXIN_P2CW_NODE_CHECK & zhaoxin_patch_code)
+ 		pr_info("zhaoxin dma patch node check is enabled\n");
+ 
+ 	return 0;
+-- 
+2.20.1
+

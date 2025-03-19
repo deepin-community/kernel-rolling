@@ -1,0 +1,36 @@
+From e678ef59ae53c5127d13cdcc2ea52acf1044a689 Mon Sep 17 00:00:00 2001
+From: Yanteng Si <siyanteng@loongson.cn>
+Date: Mon, 20 May 2024 10:20:21 +0800
+Subject: [PATCH 111/360] PCI: Check if entry->offset already exist for mem
+ resource
+
+Fix patch "LoongArch: Add PCI controller support"
+
+Signed-off-by: Tianli Xiong <xiongtianli@loongson.cn>
+Signed-off-by: Yanteng Si <siyanteng@loongson.cn>
+---
+ arch/loongarch/pci/acpi.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/arch/loongarch/pci/acpi.c b/arch/loongarch/pci/acpi.c
+index 1da4dc46df43..f405409a3491 100644
+--- a/arch/loongarch/pci/acpi.c
++++ b/arch/loongarch/pci/acpi.c
+@@ -68,9 +68,11 @@ static int acpi_prepare_root_resources(struct acpi_pci_root_info *ci)
+ 	if (status > 0) {
+ 		resource_list_for_each_entry_safe(entry, tmp, &ci->resources) {
+ 			if (entry->res->flags & IORESOURCE_MEM) {
+-				entry->offset = ci->root->mcfg_addr & GENMASK_ULL(63, 40);
+-				entry->res->start |= entry->offset;
+-				entry->res->end   |= entry->offset;
++				if (!entry->offset) {
++					entry->offset = ci->root->mcfg_addr & GENMASK_ULL(63, 40);
++					entry->res->start |= entry->offset;
++					entry->res->end   |= entry->offset;
++				}
+ 			}
+ 		}
+ 		return status;
+-- 
+2.20.1
+

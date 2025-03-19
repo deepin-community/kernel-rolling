@@ -1,0 +1,42 @@
+From 4ac9f85f601cd5b55e04a29f55d7ed4eb86d3367 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <guanwentao@uniontech.com>
+Date: Thu, 7 Nov 2024 03:47:35 +0000
+Subject: [PATCH 249/360] deepin_x86_desktop_defconfig: Set
+ NETFILTER_XT_MATCH_CGROUP as module
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+only x86 defconfig need this fix
+
+Log:
+<debug> iptables.go:264： [mangle] chain Main dont exist rule -j App -p tcp -m cgroup --path App.slice
+<debug> iptables.go:36: [mangle] begin to run begin to run command: /bin/sh -c iptables -t mangle -I Main 2 -
+App -p tcp -m cgroup --path App.slice
+<warning> iptables.go:39: [mangle] run command failed, out: iptables v1.8.2 (nf_tables): Couldn't load match
+cgroup':No such file or directory
+Try `iptables -h' or 'iptables --help' for more information.
+err:exit status 2
+<warning> iptables.go:236：[mangle] chain Main insert failed%!(EXTRA *exec.ExitError=exit status 2)
+<warning> iptables.go:102: [mangle] chain Main attach child App failed, err: exit status
+
+Signed-off-by: Wentao Guan <guanwentao@uniontech.com>
+---
+ arch/x86/configs/deepin_x86_desktop_defconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index 234bf7942eb5..111f45bfabb4 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -356,6 +356,7 @@ CONFIG_NETFILTER_XT_TARGET_TCPMSS=m
+ CONFIG_NETFILTER_XT_TARGET_TCPOPTSTRIP=m
+ CONFIG_NETFILTER_XT_MATCH_ADDRTYPE=m
+ CONFIG_NETFILTER_XT_MATCH_BPF=m
++CONFIG_NETFILTER_XT_MATCH_CGROUP=m
+ CONFIG_NETFILTER_XT_MATCH_CLUSTER=m
+ CONFIG_NETFILTER_XT_MATCH_COMMENT=m
+ CONFIG_NETFILTER_XT_MATCH_CONNBYTES=m
+-- 
+2.20.1
+

@@ -1,0 +1,34 @@
+From ac080db28e6e375ac9b21fd1ed1d0dc779af5e70 Mon Sep 17 00:00:00 2001
+From: yuanxia <yuanxia2073@phytium.com.cn>
+Date: Tue, 21 May 2024 16:43:08 +0800
+Subject: [PATCH 064/360] arm64: can: phytium: Update clock frequency for px210
+ CAN
+
+Because the finally clock frequency of px210 has been decreased to 480M,
+update the struct member clock_freq of phytium_can_pci_data to match the
+updated design.
+
+Signed-off-by: yuanxia <yuanxia2073@phytium.com.cn>
+Signed-off-by: Li Zhengguang <lizhengguang1317@phytium.com.cn>
+Signed-off-by: Chen Baozi <chenbaozi@phytium.com.cn>
+Signed-off-by: Wang Yinfeng <wangyinfeng@phytium.com.cn>
+---
+ drivers/net/can/phytium/phytium_can_pci.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/can/phytium/phytium_can_pci.c b/drivers/net/can/phytium/phytium_can_pci.c
+index 73e88980f172..ac84b3b15c44 100644
+--- a/drivers/net/can/phytium/phytium_can_pci.c
++++ b/drivers/net/can/phytium/phytium_can_pci.c
+@@ -41,7 +41,7 @@ static const struct phytium_can_devtype phytium_can_pci = {
+ 
+ static const struct phytium_can_pci_config phytium_can_pci_data = {
+ 	.devtype = &phytium_can_pci,
+-	.clock_freq = 600000000,
++	.clock_freq = 480000000,
+ 	.tx_fifo_depth = 64,
+ };
+ 
+-- 
+2.20.1
+

@@ -1,0 +1,35 @@
+From 8a8a330cda72f86faa1613b554463b98e7e05c93 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <guanwentao@uniontech.com>
+Date: Fri, 26 Jul 2024 00:01:11 +0800
+Subject: [PATCH 193/360] arch: loongarch: configs: make crc32_loongarch as
+ builtin
+
+Log:
+    crc32_loongarch help to enable crc32 asm in ISA support,
+instaed of generic logic, help to fast like jbd2 used in ext4,
+loading after graphical.target is too late ,
+if we change it in system need to change initramfs.conf,
+if we do all correct things in system part,the help is less,
+we cannot remove it and insmod it in system because it used by
+many things ,build it as modules not bring enough benefit,
+some dist unknown about it,make it easy.
+---
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index 857af4e997c2..24341e149dca 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -5916,7 +5916,7 @@ CONFIG_CRYPTO_USER_API_SKCIPHER=y
+ CONFIG_CRYPTO_USER_API_RNG=y
+ CONFIG_CRYPTO_USER_API_AEAD=y
+ CONFIG_CRYPTO_STATS=y
+-CONFIG_CRYPTO_CRC32_LOONGARCH=m
++CONFIG_CRYPTO_CRC32_LOONGARCH=y
+ CONFIG_CRYPTO_DEV_ATMEL_ECC=m
+ CONFIG_CRYPTO_DEV_ATMEL_SHA204A=m
+ CONFIG_CRYPTO_DEV_NITROX_CNN55XX=m
+-- 
+2.20.1
+

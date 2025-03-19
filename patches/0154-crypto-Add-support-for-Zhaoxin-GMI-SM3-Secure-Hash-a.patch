@@ -1,0 +1,233 @@
+From 6d6746ce59b10f6a51d55265b1f23b263abc0eb7 Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Thu, 4 Jul 2024 11:24:14 +0800
+Subject: [PATCH 154/360] crypto: Add support for Zhaoxin GMI SM3 Secure Hash
+ algorithm
+
+zhaoxin inclusion
+category: feature
+CVE: NA
+
+-----------------
+
+This SM3 algorithm driver is developed to support the SM3 instruction,
+making user develop their applications with both high performance and high
+security.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ arch/x86/crypto/Kconfig           |  13 +++
+ arch/x86/crypto/Makefile          |   2 +
+ arch/x86/crypto/sm3-zhaoxin-gmi.c | 163 ++++++++++++++++++++++++++++++
+ 3 files changed, 178 insertions(+)
+ create mode 100644 arch/x86/crypto/sm3-zhaoxin-gmi.c
+
+diff --git a/arch/x86/crypto/Kconfig b/arch/x86/crypto/Kconfig
+index 7b1bebed879d..b71991ed5d5b 100644
+--- a/arch/x86/crypto/Kconfig
++++ b/arch/x86/crypto/Kconfig
+@@ -482,6 +482,19 @@ config CRYPTO_SM3_AVX_X86_64
+ 
+ 	  If unsure, say N.
+ 
++config CRYPTO_SM3_ZHAOXIN_GMI
++	tristate "Hash functions: SM3 (Zhaoxin GMI)"
++	depends on X86 && CRYPTO
++	select CRYPTO_HASH
++	select CRYPTO_SM3
++	help
++	  SM3 cipher algorithms (Zhaoxin GMI Instruction).
++
++	  SM3 secure hash function as defined by OSCCA GM/T 0004-2012 SM3).
++	  It is part of the Chinese Commercial Cryptography suite.
++
++	  If unsure, say N.
++
+ config CRYPTO_GHASH_CLMUL_NI_INTEL
+ 	tristate "Hash functions: GHASH (CLMUL-NI)"
+ 	depends on X86 && 64BIT
+diff --git a/arch/x86/crypto/Makefile b/arch/x86/crypto/Makefile
+index 53b4a277809e..6ea35c141b22 100644
+--- a/arch/x86/crypto/Makefile
++++ b/arch/x86/crypto/Makefile
+@@ -114,6 +114,8 @@ aria-aesni-avx2-x86_64-y := aria-aesni-avx2-asm_64.o aria_aesni_avx2_glue.o
+ obj-$(CONFIG_CRYPTO_ARIA_GFNI_AVX512_X86_64) += aria-gfni-avx512-x86_64.o
+ aria-gfni-avx512-x86_64-y := aria-gfni-avx512-asm_64.o aria_gfni_avx512_glue.o
+ 
++obj-$(CONFIG_CRYPTO_SM3_ZHAOXIN_GMI) += sm3-zhaoxin-gmi.o
++
+ quiet_cmd_perlasm = PERLASM $@
+       cmd_perlasm = $(PERL) $< > $@
+ $(obj)/%.S: $(src)/%.pl FORCE
+diff --git a/arch/x86/crypto/sm3-zhaoxin-gmi.c b/arch/x86/crypto/sm3-zhaoxin-gmi.c
+new file mode 100644
+index 000000000000..b5852e69ec6a
+--- /dev/null
++++ b/arch/x86/crypto/sm3-zhaoxin-gmi.c
+@@ -0,0 +1,163 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * sm3_zhaoxin_gmi.c - wrapper code for Zhaoxin GMI.
++ *
++ * Copyright (C) 2023 Shanghai Zhaoxin Semiconductor LTD.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++#include <crypto/internal/hash.h>
++#include <linux/init.h>
++#include <linux/module.h>
++#include <linux/mm.h>
++#include <linux/types.h>
++#include <crypto/sm3.h>
++#include <crypto/sm3_base.h>
++#include <linux/bitops.h>
++#include <asm/byteorder.h>
++#include <asm/unaligned.h>
++#include <linux/cpufeature.h>
++#include <linux/processor.h>
++
++/*
++ * Load supported features of the CPU to see if the SM3/SM4 is available.
++ */
++static int gmi_available(void)
++{
++	struct cpuinfo_x86 *c = &cpu_data(0);
++	u32 eax, edx;
++
++	if (((c->x86 == 6) && (c->x86_model >= 0x0f)) ||
++	    ((c->x86 == 6) && (c->x86_model == 0x09)) ||
++	    (c->x86 > 6)) {
++		if (!boot_cpu_has(X86_FEATURE_CCS) || !boot_cpu_has(X86_FEATURE_CCS_EN)) {
++			eax = 0xC0000001;
++			__asm__ __volatile__ ("cpuid":"=d"(edx):"a"(eax) : );
++
++			if ((edx & 0x0030) != 0x0030)
++				return -ENODEV;
++
++			pr_debug("GMI SM3 detected by CPUID\n");
++			return 0;
++		}
++		pr_debug("GMI SM3 is available\n");
++		return 0;
++	}
++	return -ENODEV;
++}
++
++static void sm3_generic_block_fn(struct sm3_state *sst, const u8 *inp, int blockcnt)
++{
++	unsigned long in, out, cnt, blksz, ctrl;
++
++	if (!blockcnt)
++		return;
++
++	in  = (unsigned long)inp;
++	out = (unsigned long)(sst->state);
++	cnt = (unsigned long)blockcnt;
++	blksz = 0x20;
++	ctrl = -1;
++
++	__asm__ __volatile__(
++		".byte 0xf3,0x0f,0xa6,0xe8\n"
++		: "+S"(in)
++		: "S"(in), "D"(out), "c"(cnt), "b"(blksz), "a"(ctrl)
++		: "memory"
++	);
++}
++
++static inline int zx_sm3_init(struct shash_desc *desc)
++{
++	struct sm3_state *sctx;
++
++	if (!desc)
++		return -EINVAL;
++
++	sctx = shash_desc_ctx(desc);
++
++	sctx->state[0] = 0x6f168073UL;
++	sctx->state[1] = 0xb9b21449UL;
++	sctx->state[2] = 0xd7422417UL;
++	sctx->state[3] = 0x00068adaUL;
++	sctx->state[4] = 0xbc306fa9UL;
++	sctx->state[5] = 0xaa383116UL;
++	sctx->state[6] = 0x4dee8de3UL;
++	sctx->state[7] = 0x4e0efbb0UL;
++
++	sctx->count = 0;
++
++	return 0;
++}
++
++static inline int zx_sm3_base_finish(struct shash_desc *desc, u8 *out)
++{
++	struct sm3_state *sctx = shash_desc_ctx(desc);
++	__be32 *digest = (__be32 *)out;
++
++	memcpy(digest, sctx->state, SM3_DIGEST_SIZE);
++
++	*sctx = (struct sm3_state){};
++	return 0;
++}
++
++static int zx_sm3_update(struct shash_desc *desc, const u8 *data, unsigned int len)
++{
++	return sm3_base_do_update(desc, data, len, sm3_generic_block_fn);
++}
++
++static int zx_sm3_final(struct shash_desc *desc, u8 *out)
++{
++	sm3_base_do_finalize(desc, sm3_generic_block_fn);
++
++	return zx_sm3_base_finish(desc, out);
++}
++
++static int zx_sm3_finup(struct shash_desc *desc, const u8 *data, unsigned int len, u8 *hash)
++{
++	sm3_base_do_update(desc, data, len, sm3_generic_block_fn);
++
++	return zx_sm3_final(desc, hash);
++}
++
++static struct shash_alg zx_sm3_alg = {
++	.digestsize = SM3_DIGEST_SIZE,
++	.init = zx_sm3_init,
++	.update = zx_sm3_update,
++	.final = zx_sm3_final,
++	.finup = zx_sm3_finup,
++	.descsize = sizeof(struct sm3_state),
++	.base = {
++		.cra_name = "sm3",
++		.cra_driver_name = "sm3-zhaoxin-gmi",
++		.cra_priority = 300,
++		.cra_blocksize = SM3_BLOCK_SIZE,
++		.cra_module = THIS_MODULE,
++	}
++};
++
++static int __init zx_sm3_generic_mod_init(void)
++{
++	if (!!gmi_available())
++		return -ENODEV;
++
++	pr_info("GMI is available on this platform.");
++	return crypto_register_shash(&zx_sm3_alg);
++}
++
++static void __exit zx_sm3_generic_mod_fini(void)
++{
++	crypto_unregister_shash(&zx_sm3_alg);
++}
++
++module_init(zx_sm3_generic_mod_init);
++module_exit(zx_sm3_generic_mod_fini);
++
++MODULE_LICENSE("GPL v2");
++MODULE_DESCRIPTION("SM3 Secure Hash Algorithm");
++
++MODULE_ALIAS_CRYPTO("sm3-zhaoxin");
++MODULE_ALIAS_CRYPTO("sm3-zhaoxin-gmi");
+-- 
+2.20.1
+

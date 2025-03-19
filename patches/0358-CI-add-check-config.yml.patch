@@ -1,0 +1,54 @@
+From c647dc51d928b6afea671611e145fc17a95ec7b9 Mon Sep 17 00:00:00 2001
+From: Wentao Guan <guanwentao@uniontech.com>
+Date: Thu, 27 Feb 2025 00:26:59 +0800
+Subject: [PATCH 358/360] CI: add check-config.yml
+
+Signed-off-by: Wentao Guan <guanwentao@uniontech.com>
+---
+ .github/workflows/check-config.yml | 34 ++++++++++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
+ create mode 100644 .github/workflows/check-config.yml
+
+diff --git a/.github/workflows/check-config.yml b/.github/workflows/check-config.yml
+new file mode 100644
+index 000000000000..d90e421dc344
+--- /dev/null
++++ b/.github/workflows/check-config.yml
+@@ -0,0 +1,34 @@
++name: Check defconfig Consistency
++
++on:
++  push:
++  pull_request:
++
++jobs:
++  check-defconfig:
++    runs-on: ubuntu-latest
++
++    steps:
++    - name: Checkout repository
++      uses: actions/checkout@v4
++
++    - name: Install build dependencies
++      run: |
++        sudo apt-get update
++        sudo apt-get install -y bc build-essential zstd flex bison libssl-dev make libelf-dev git debhelper pahole libncurses-dev
++
++    - name: Backup original defconfig
++      run: |
++        cp arch/x86/configs/deepin_x86_desktop_defconfig defconfig.orig
++
++    - name: Generate new defconfig
++      run: |
++        make ARCH=x86 deepin_x86_desktop_defconfig
++        make ARCH=x86 savedefconfig
++
++    - name: Compare defconfig files
++      run: |
++        if ! diff -u defconfig defconfig.orig; then
++          echo "::error:: deepin_x86_desktop_defconfig 文件不一致，请执行 'make savedefconfig' 并提交更新"
++          exit 1
++        fi
+-- 
+2.20.1
+

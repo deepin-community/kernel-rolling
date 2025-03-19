@@ -1,0 +1,31 @@
+From 331719eb0f22be20f3ad826bc0ed832767d520d4 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Wed, 13 Nov 2024 11:17:11 +0800
+Subject: [PATCH 221/360] x86: crypto: sm4_zhaoxin_gmi: adapt to
+ simd_skcipher_create_compat() changes
+
+Follow commit 3c44d31cb34c ("crypto: simd - Do not call crypto_alloc_tfm
+during registration") to revise parameters for function
+simd_skcipher_create_compat().
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ arch/x86/crypto/sm4_zhaoxin_gmi.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/x86/crypto/sm4_zhaoxin_gmi.c b/arch/x86/crypto/sm4_zhaoxin_gmi.c
+index 5a3fddd7bf72..dd5713af7048 100644
+--- a/arch/x86/crypto/sm4_zhaoxin_gmi.c
++++ b/arch/x86/crypto/sm4_zhaoxin_gmi.c
+@@ -776,7 +776,7 @@ static int __init gmi_sm4_init(void)
+ 		algname = sm4_algs[i].base.cra_name + 2;
+ 		drvname = sm4_algs[i].base.cra_driver_name + 2;
+ 		basename = sm4_algs[i].base.cra_driver_name;
+-		simd = simd_skcipher_create_compat(algname, drvname, basename);
++		simd = simd_skcipher_create_compat(sm4_algs + i, algname, drvname, basename);
+ 		err = PTR_ERR(simd);
+ 		if (IS_ERR(simd))
+ 			goto unregister_simds;
+-- 
+2.20.1
+

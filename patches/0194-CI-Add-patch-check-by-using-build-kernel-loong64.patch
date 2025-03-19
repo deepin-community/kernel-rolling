@@ -1,0 +1,54 @@
+From fdbb1df48bf22f75893349080188e2a7f40e8a48 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <guanwentao@uniontech.com>
+Date: Fri, 26 Jul 2024 16:34:57 +0800
+Subject: [PATCH 194/360] CI: Add patch check by using build kernel loong64
+
+---
+ .github/workflows/build-kernel-loong64.yml | 35 ++++++++++++++++++++++
+ 1 file changed, 35 insertions(+)
+ create mode 100644 .github/workflows/build-kernel-loong64.yml
+
+diff --git a/.github/workflows/build-kernel-loong64.yml b/.github/workflows/build-kernel-loong64.yml
+new file mode 100644
+index 000000000000..68e3e6eceba7
+--- /dev/null
++++ b/.github/workflows/build-kernel-loong64.yml
+@@ -0,0 +1,35 @@
++name: build kernel loong64
++on:
++  push:
++  pull_request:
++  workflow_dispatch:
++
++env:
++  KBUILD_BUILD_USER: deepin-kernel-sig
++  KBUILD_BUILD_HOST: deepin-kernel-builder
++  email: support@deepin.org
++
++permissions:
++  pull-requests: read
++
++jobs:
++  build-kernel:
++    runs-on: [self-hosted, linux, loong64]
++    steps:
++      - uses: actions/checkout@v3
++      - name: "Install Deps"
++        run: |
++          git config --global user.email $email
++          git config --global user.name $KBUILD_BUILD_USER
++
++      - name: "Compile kernel"
++        run: |
++          # .config
++          make deepin_loongarch_desktop_defconfig
++          make -j$(nproc)
++
++      - name: 'Upload Kernel Artifact'
++        uses: actions/upload-artifact@v4
++        with:
++          name: Kernel-ABI-loong64
++          path: "Module.symvers"
+-- 
+2.20.1
+

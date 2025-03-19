@@ -1,0 +1,28 @@
+From 7edc6e1e751467eb2013f58a864c2fd9713920d2 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Tue, 19 Nov 2024 10:31:03 +0800
+Subject: [PATCH 274/360] x86: configs: enable MT7925E/U
+
+Enable support for MediaTek MT7925 series wireless cards.
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ arch/x86/configs/deepin_x86_desktop_defconfig | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index ce7fc1b001ba..bf1e89b619ea 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -1530,6 +1530,8 @@ CONFIG_MT7921E=m
+ CONFIG_MT7921S=m
+ CONFIG_MT7921U=m
+ CONFIG_MT7996E=m
++CONFIG_MT7925E=m
++CONFIG_MT7925U=m
+ CONFIG_WILC1000_SDIO=m
+ CONFIG_WILC1000_SPI=m
+ CONFIG_WILC1000_HW_OOB_INTR=y
+-- 
+2.20.1
+

@@ -1,0 +1,30 @@
+From 0d730e17ec3edebeff79fa27a2de5a1cd0efc14d Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Tue, 26 Nov 2024 15:16:42 +0800
+Subject: [PATCH 293/360] scripts: install .config in
+ /usr/src/linux-headers-$kver
+
+This is needed by dkms and update-initramfs.
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ scripts/package/builddeb | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/scripts/package/builddeb b/scripts/package/builddeb
+index 298d4821e5f6..81fd7ee136d1 100755
+--- a/scripts/package/builddeb
++++ b/scripts/package/builddeb
+@@ -150,6 +150,9 @@ install_kernel_headers () {
+ 
+ 	CC="${DEB_HOST_GNU_TYPE}-gcc" "${srctree}/scripts/package/install-extmod-build" "${pdir}/usr/src/linux-headers-${version}"
+ 
++	# Install .config archive
++	cp .config ${pdir}/usr/src/linux-headers-${version}/
++
+ 	mkdir -p $pdir/lib/modules/$version/
+ 	ln -s /usr/src/linux-headers-$version $pdir/lib/modules/$version/build
+ }
+-- 
+2.20.1
+

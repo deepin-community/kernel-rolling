@@ -1,0 +1,45 @@
+From 111ff57ebe69907bed8846e08e15115d633c82f1 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 19:09:19 +0800
+Subject: [PATCH 241/360] char: ipmi: bt_bmc_phytium: Convert to platform
+ remove callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/char/ipmi/bt_bmc_phytium.c:526:19: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+  526 |         .remove = bt_bmc_remove,
+      |                   ^~~~~~~~~~~~~
+drivers/char/ipmi/bt_bmc_phytium.c:526:19: note: (near initialization for ‘bt_bmc_driver.<anonymous>.remove’)
+---
+ drivers/char/ipmi/bt_bmc_phytium.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/char/ipmi/bt_bmc_phytium.c b/drivers/char/ipmi/bt_bmc_phytium.c
+index 7777e7a6bb99..8f2afea25535 100644
+--- a/drivers/char/ipmi/bt_bmc_phytium.c
++++ b/drivers/char/ipmi/bt_bmc_phytium.c
+@@ -500,15 +500,13 @@ static int bt_bmc_probe(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
+-static int bt_bmc_remove(struct platform_device *pdev)
++static void bt_bmc_remove(struct platform_device *pdev)
+ {
+ 	struct bt_bmc *bt_bmc = dev_get_drvdata(&pdev->dev);
+ 
+ 	misc_deregister(&bt_bmc->miscdev);
+ 	if (!bt_bmc->irq)
+ 		del_timer_sync(&bt_bmc->poll_timer);
+-
+-	return 0;
+ }
+ 
+ static const struct of_device_id bt_bmc_match[] = {
+-- 
+2.20.1
+

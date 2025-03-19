@@ -1,0 +1,30 @@
+From f4b7094698bb7fa8a4c1d91bf8b3bcd95e4bbc97 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Fri, 28 Jun 2024 15:12:30 +0800
+Subject: [PATCH 092/360] irqchip: replace strtobool() with kstrbool() in
+ irq-gic-phytium-2500.c
+
+Other drivers in the kernel tree has already made this change long before and
+the former has supposedly been removed in a recent release after 6.6.
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ drivers/irqchip/irq-gic-phytium-2500.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/irqchip/irq-gic-phytium-2500.c b/drivers/irqchip/irq-gic-phytium-2500.c
+index 1488e7bae79f..ac1d16810e87 100644
+--- a/drivers/irqchip/irq-gic-phytium-2500.c
++++ b/drivers/irqchip/irq-gic-phytium-2500.c
+@@ -1260,7 +1260,7 @@ static bool gicv3_nolpi;
+ 
+ static int __init gicv3_nolpi_cfg(char *buf)
+ {
+-	return strtobool(buf, &gicv3_nolpi);
++	return kstrtobool(buf, &gicv3_nolpi);
+ }
+ early_param("irqchip.gicv3_nolpi", gicv3_nolpi_cfg);
+ 
+-- 
+2.20.1
+

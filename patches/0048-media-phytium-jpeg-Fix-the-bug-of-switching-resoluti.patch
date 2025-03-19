@@ -1,0 +1,48 @@
+From 5aa924212d36e40233aed7913fcec3b0da513e04 Mon Sep 17 00:00:00 2001
+From: Li Guohui <liguohui2061@phytium.com.cn>
+Date: Thu, 16 May 2024 15:48:40 +0800
+Subject: [PATCH 048/360] media: phytium-jpeg: Fix the bug of switching
+ resolution
+
+The timer30 and timer31 trigger interrupt threads, should
+be an atomic operation. There shouldn't be disturbed by
+other threads during the interval between the two interrupts.
+
+Signed-off-by: Li Guohui <liguohui2061@phytium.com.cn>
+Signed-off-by: Wang Min <wangmin@phytium.com.cn>
+Signed-off-by: Wang Yinfeng <wangyinfeng@phytium.com.cn>
+---
+ drivers/media/platform/phytium/phytium_jpeg_core.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/media/platform/phytium/phytium_jpeg_core.c b/drivers/media/platform/phytium/phytium_jpeg_core.c
+index 63d808260abc..43a87c6e569d 100644
+--- a/drivers/media/platform/phytium/phytium_jpeg_core.c
++++ b/drivers/media/platform/phytium/phytium_jpeg_core.c
+@@ -800,6 +800,7 @@ static void phytium_jpeg_resolution_work(struct work_struct *work)
+ 	if (jpeg_dev->detected_timings.width != jpeg_dev->active_timings.width ||
+ 		jpeg_dev->detected_timings.height != jpeg_dev->active_timings.height ||
+ 		input_status != jpeg_dev->v4l2_input_status) {
++
+ 		static const struct v4l2_event event = {
+ 			.type = V4L2_EVENT_SOURCE_CHANGE,
+ 			.u.src_change.changes = V4L2_EVENT_SRC_CH_RESOLUTION,
+@@ -899,7 +900,6 @@ static void phytium_jpeg_irq_res_change(struct phytium_jpeg_dev *jpeg_dev,
+ 					ulong delay)
+ {
+ 	dev_info(jpeg_dev->dev, "Source resolution is changed, resetting\n");
+-	set_bit(VIDEO_RES_CHANGE, &jpeg_dev->status);
+ 
+ 	phytium_jpeg_off(jpeg_dev);
+ 
+@@ -1116,6 +1116,7 @@ static irqreturn_t phytium_jpeg_timer30_irq(int irq, void *arg)
+ 	/* call SE to poweroff JPEG Engine */
+ 	arm_smccc_smc(0xc300fff4, 0x9, 0x2, 0x80000020, 0, 0, 0, 0, &res);
+ 
++	set_bit(VIDEO_RES_CHANGE, &jpeg_dev->status);
+ 	/* set JPEG Engine's status is poweroff */
+ 	set_bit(VIDEO_POWEROFF, &jpeg_dev->status);
+ 	dev_info(jpeg_dev->dev, "timer30 set jpeg status 0x%lx\n", jpeg_dev->status);
+-- 
+2.20.1
+

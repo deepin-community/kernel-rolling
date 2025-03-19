@@ -1,0 +1,51 @@
+From 0362d33056d5bc529b2df4e7cec6ba80a2236a74 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 18:15:21 +0800
+Subject: [PATCH 226/360] usb: phytium: platform: Convert to platform remove
+ callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/usb/phytium/platform.c:208:19: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+  208 |         .remove = phytium_driver_remove,
+      |                   ^~~~~~~~~~~~~~~~~~~~~
+drivers/usb/phytium/platform.c:208:19: note: (near initialization for ‘phytium_otg_driver.<anonymous>.remove’)
+---
+ drivers/usb/phytium/platform.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/usb/phytium/platform.c b/drivers/usb/phytium/platform.c
+index e89e3b14e9e9..67326392de11 100644
+--- a/drivers/usb/phytium/platform.c
++++ b/drivers/usb/phytium/platform.c
+@@ -128,12 +128,12 @@ static int phytium_driver_probe(struct platform_device *pdev)
+ 	return retval;
+ }
+ 
+-static int phytium_driver_remove(struct platform_device *dev)
++static void phytium_driver_remove(struct platform_device *dev)
+ {
+ 	struct phytium_cusb *config = platform_get_drvdata(dev);
+ 
+ 	if (!config)
+-		return 0;
++		return;
+ 
+ 	phytium_get_dr_mode(config);
+ 
+@@ -146,7 +146,6 @@ static int phytium_driver_remove(struct platform_device *dev)
+ 		phytium_gadget_uninit(config);
+ 
+ 	dev_set_drvdata(&dev->dev, NULL);
+-	return 0;
+ }
+ 
+ static void phytium_driver_shutdown(struct platform_device *dev)
+-- 
+2.20.1
+

@@ -1,0 +1,60 @@
+From 577edc32b2aa51815dcbb46ce5393c87dd267d28 Mon Sep 17 00:00:00 2001
+From: WangYuli <wangyuli@uniontech.com>
+Date: Wed, 11 Sep 2024 10:15:05 +0800
+Subject: [PATCH 245/360] deepin: kbuild: Reapply support for
+ CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3
+
+1. Revert (a6036a41bffb
+   "kbuild: drop support for CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3")
+2. Mark -O3 as experimental, as it might cause unwanted regressions for
+   users.
+3. Allow all architectures to use the experimental -O3 optimization
+   option. Previously, only ARC was allowed to use this option.
+
+Link: https://lore.kernel.org/lkml/20191211104619.114557-1-oleksandr@redhat.com/
+Signed-off-by: Oleksandr Natalenko <oleksandr@redhat.com>
+Link: https://lore.kernel.org/lkml/20220621133526.29662-1-mikoxyzzz@gmail.com/
+Signed-off-by: Miko Larsson <mikoxyzzz@gmail.com>
+Signed-off-by: WangYuli <wangyuli@uniontech.com>
+---
+ Makefile     | 3 +++
+ init/Kconfig | 9 +++++++++
+ 2 files changed, 12 insertions(+)
+
+diff --git a/Makefile b/Makefile
+index c059b0b025fc..7823289a9c9e 100644
+--- a/Makefile
++++ b/Makefile
+@@ -809,6 +809,9 @@ KBUILD_CFLAGS	+= -fno-delete-null-pointer-checks
+ ifdef CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE
+ KBUILD_CFLAGS += -O2
+ KBUILD_RUSTFLAGS += -Copt-level=2
++else ifdef CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3
++KBUILD_CFLAGS += -O3
++KBUILD_RUSTFLAGS += -Copt-level=3
+ else ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
+ KBUILD_CFLAGS += -Os
+ KBUILD_RUSTFLAGS += -Copt-level=s
+diff --git a/init/Kconfig b/init/Kconfig
+index 7256fa127530..4572ebfd4416 100644
+--- a/init/Kconfig
++++ b/init/Kconfig
+@@ -1451,6 +1451,15 @@ config CC_OPTIMIZE_FOR_PERFORMANCE
+ 	  with the "-O2" compiler flag for best performance and most
+ 	  helpful compile-time warnings.
+ 
++config CC_OPTIMIZE_FOR_PERFORMANCE_O3
++       bool "Optimize more for performance (-O3) (EXPERIMENTAL)"
++       help
++         Choosing this option will pass "-O3" to your compiler to optimize
++         the kernel yet more for performance.
++
++	  This option is EXPERIMENTAL; you may encounter compiler bugs and/or
++	  kernel bugs with this option enabled.
++
+ config CC_OPTIMIZE_FOR_SIZE
+ 	bool "Optimize for size (-Os)"
+ 	help
+-- 
+2.20.1
+

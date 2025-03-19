@@ -1,0 +1,5183 @@
+From 7181b54fdc5eaa19b0f53a405d3f2c786e470adb Mon Sep 17 00:00:00 2001
+From: tianwei <tianwei@phytium.com.cn>
+Date: Tue, 21 May 2024 08:47:38 +0000
+Subject: [PATCH 100/360] i2s: phytium: Add Phytium i2s driver support
+
+This patch adds the Phytium i2s driver support.
+
+Signed-off-by: Chen Baozi <chenbaozi@phytium.com.cn>
+Signed-off-by: Wang Yinfeng <wangyinfeng@phytium.com.cn>
+Signed-off-by: Tian Wei <tianwei@phytium.com.cn>
+---
+ drivers/mfd/Kconfig                 |   14 +
+ drivers/mfd/Makefile                |    3 +
+ drivers/mfd/phytium_px210_i2s_lsd.c |  131 +++
+ drivers/mfd/phytium_px210_i2s_mmd.c |  185 ++++
+ sound/soc/Kconfig                   |    1 +
+ sound/soc/Makefile                  |    1 +
+ sound/soc/codecs/Kconfig            |    8 +
+ sound/soc/codecs/Makefile           |    4 +
+ sound/soc/codecs/es8336.c           | 1083 ++++++++++++++++++++
+ sound/soc/codecs/es8336.h           |  153 +++
+ sound/soc/codecs/es8388.c           |  819 +++++++++++++++
+ sound/soc/codecs/es8388.h           |  290 ++++++
+ sound/soc/phytium/Kconfig           |   32 +
+ sound/soc/phytium/Makefile          |   14 +
+ sound/soc/phytium/local.h           |  319 ++++++
+ sound/soc/phytium/phytium_i2s.c     | 1433 +++++++++++++++++++++++++++
+ sound/soc/phytium/pmdk_dp.c         |  231 +++++
+ sound/soc/phytium/pmdk_es8336.c     |   97 ++
+ sound/soc/phytium/pmdk_es8388.c     |  169 ++++
+ 19 files changed, 4987 insertions(+)
+ create mode 100644 drivers/mfd/phytium_px210_i2s_lsd.c
+ create mode 100644 drivers/mfd/phytium_px210_i2s_mmd.c
+ create mode 100644 sound/soc/codecs/es8336.c
+ create mode 100644 sound/soc/codecs/es8336.h
+ create mode 100644 sound/soc/codecs/es8388.c
+ create mode 100644 sound/soc/codecs/es8388.h
+ create mode 100644 sound/soc/phytium/Kconfig
+ create mode 100644 sound/soc/phytium/Makefile
+ create mode 100644 sound/soc/phytium/local.h
+ create mode 100644 sound/soc/phytium/phytium_i2s.c
+ create mode 100644 sound/soc/phytium/pmdk_dp.c
+ create mode 100644 sound/soc/phytium/pmdk_es8336.c
+ create mode 100644 sound/soc/phytium/pmdk_es8388.c
+
+diff --git a/drivers/mfd/Kconfig b/drivers/mfd/Kconfig
+index f9325bcce1b9..9136d0e53ac0 100644
+--- a/drivers/mfd/Kconfig
++++ b/drivers/mfd/Kconfig
+@@ -1131,6 +1131,20 @@ config PCF50633_GPIO
+ 	  Say yes here if you want to include support GPIO for pins on
+ 	  the PCF50633 chip.
+ 
++config MFD_PHYTIUM_I2S_LSD
++	bool "PHYTIUM Px210 I2S LSD MFD driver"
++	depends on (PCI && ARCH_PHYTIUM)
++	select MFD_CORE
++	help
++	  This enables support for the Phytium Px210 LSD I2S controller.
++
++config MFD_PHYTIUM_I2S_MMD
++	bool "PHYTIUM Px210 I2S MMD MFD driver"
++	depends on (PCI && ARCH_PHYTIUM)
++	help
++	  This enables support for the Phytium Px210 MMD I2S controllers
++	  for Display Port.
++
+ config MFD_PM8XXX
+ 	tristate "Qualcomm PM8xxx PMIC chips driver"
+ 	depends on ARM || HEXAGON || COMPILE_TEST
+diff --git a/drivers/mfd/Makefile b/drivers/mfd/Makefile
+index 2a9f91e81af8..fe890051d956 100644
+--- a/drivers/mfd/Makefile
++++ b/drivers/mfd/Makefile
+@@ -289,3 +289,6 @@ obj-$(CONFIG_MFD_ATC260X_I2C)	+= atc260x-i2c.o
+ 
+ obj-$(CONFIG_MFD_RSMU_I2C)	+= rsmu_i2c.o rsmu_core.o
+ obj-$(CONFIG_MFD_RSMU_SPI)	+= rsmu_spi.o rsmu_core.o
++
++obj-$(CONFIG_MFD_PHYTIUM_I2S_LSD)	+= phytium_px210_i2s_lsd.o
++obj-$(CONFIG_MFD_PHYTIUM_I2S_MMD)	+= phytium_px210_i2s_mmd.o
+diff --git a/drivers/mfd/phytium_px210_i2s_lsd.c b/drivers/mfd/phytium_px210_i2s_lsd.c
+new file mode 100644
+index 000000000000..58de96a0cdcf
+--- /dev/null
++++ b/drivers/mfd/phytium_px210_i2s_lsd.c
+@@ -0,0 +1,131 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Phytium I2S LSD MFD driver over PCI bus
++ *
++ * Copyright (C) 2020-2023, Phytium Technology Co., Ltd.
++ */
++
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/pci.h>
++#include <linux/mfd/core.h>
++
++struct phytium_px210_mfd {
++	struct device		*dev;
++};
++
++struct pdata_px210_mfd {
++	struct device		*dev;
++	char			*name;
++	int			clk_base;
++};
++
++static struct resource phytium_px210_i2s_res0[] = {
++	[0] = {
++		.flags = IORESOURCE_MEM,
++	},
++	[1] = {
++		.flags = IORESOURCE_MEM,
++	},
++	[2] = {
++		.flags = IORESOURCE_IRQ,
++	},
++};
++
++static struct mfd_cell phytium_px210_mfd_cells[] = {
++	{
++		.id = 0,
++		.name = "phytium-i2s",
++		.of_compatible = "phytium,i2s",
++		.resources = phytium_px210_i2s_res0,
++		.num_resources = ARRAY_SIZE(phytium_px210_i2s_res0),
++		.ignore_resource_conflicts = true,
++	},
++};
++
++static void phytium_px210_i2s_setup(struct pci_dev *pdev)
++{
++	struct mfd_cell *cell = &phytium_px210_mfd_cells[0];
++	struct resource *res = (struct resource *)cell->resources;
++	struct pdata_px210_mfd *pdata;
++
++	res[0].start = pci_resource_start(pdev, 0);
++	res[0].end = pci_resource_start(pdev, 0) + 0x0fff;
++
++	res[1].start = pci_resource_start(pdev, 0) + 0x1000;
++	res[1].end = pci_resource_start(pdev, 0) + 0x1fff;
++
++	res[2].start = pdev->irq;
++	res[2].end = pdev->irq;
++
++	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
++
++	pdata->dev = &pdev->dev;
++	pdata->name = "phytium-i2s-lsd";
++	pdata->clk_base = 480000000;
++
++	cell->platform_data = pdata;
++	cell->pdata_size = sizeof(*pdata);
++}
++
++static int phytium_px210_mfd_probe(struct pci_dev *pdev,
++				 const struct pci_device_id *id)
++{
++	struct phytium_px210_mfd *phytium_mfd;
++	int ret;
++
++	ret = pcim_enable_device(pdev);
++	if (ret)
++		return ret;
++
++	pci_set_master(pdev);
++
++	phytium_mfd = devm_kzalloc(&pdev->dev, sizeof(*phytium_mfd), GFP_KERNEL);
++	if (!phytium_mfd)
++		return -ENOMEM;
++
++	phytium_mfd->dev = &pdev->dev;
++	dev_set_drvdata(&pdev->dev, phytium_mfd);
++
++	phytium_px210_i2s_setup(pdev);
++
++	ret = mfd_add_devices(&pdev->dev, 0, phytium_px210_mfd_cells,
++			      ARRAY_SIZE(phytium_px210_mfd_cells), NULL, 0,
++			      NULL);
++	if (ret)
++		return 0;
++
++	return 0;
++}
++
++
++static void phytium_px210_mfd_remove(struct pci_dev *pdev)
++{
++	mfd_remove_devices(&pdev->dev);
++}
++
++static const struct pci_device_id phytium_px210_mfd_ids[] = {
++	{
++		.vendor		= 0x1DB7,
++		.device		= 0xDC2B,
++		.subvendor	= PCI_ANY_ID,
++		.subdevice	= PCI_ANY_ID,
++		.class		= 0x3,
++		.class_mask	= 0,
++	},
++	{},
++};
++MODULE_DEVICE_TABLE(pci, phytium_px210_mfd_ids);
++
++static struct pci_driver phytium_i2s_lsd_mfd_driver = {
++	.name		= "phytium_px210_mfd_i2s",
++	.id_table	= phytium_px210_mfd_ids,
++	.probe		= phytium_px210_mfd_probe,
++	.remove		= phytium_px210_mfd_remove,
++};
++
++module_pci_driver(phytium_i2s_lsd_mfd_driver);
++
++MODULE_AUTHOR("Zhang Yiqun <zhangyiqun@phytium.com.cn>");
++MODULE_DESCRIPTION("Phytium Px210 MFD PCI driver for I2S-LSD");
++MODULE_LICENSE("GPL");
+diff --git a/drivers/mfd/phytium_px210_i2s_mmd.c b/drivers/mfd/phytium_px210_i2s_mmd.c
+new file mode 100644
+index 000000000000..684e58879302
+--- /dev/null
++++ b/drivers/mfd/phytium_px210_i2s_mmd.c
+@@ -0,0 +1,185 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Phytium I2S MMD MFD driver over PCI bus
++ *
++ * Copyright (C) 2020-2023, Phytium Technology Co., Ltd.
++ */
++
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/pci.h>
++#include <linux/mfd/core.h>
++
++struct phytium_px210_mfd {
++	struct device		*dev;
++};
++
++struct pdata_px210_mfd {
++	struct device		*dev;
++	char			*name;
++	int			clk_base;
++};
++
++static struct resource phytium_px210_i2s_res0[] = {
++	[0] = {
++		.flags = IORESOURCE_MEM,
++	},
++	[1] = {
++		.flags = IORESOURCE_MEM,
++	},
++	[2] = {
++		.flags = IORESOURCE_IRQ,
++	},
++};
++
++static struct resource phytium_px210_i2s_res1[] = {
++	[0] = {
++		.flags = IORESOURCE_MEM,
++	},
++	[1] = {
++		.flags = IORESOURCE_MEM,
++	},
++	[2] = {
++		.flags = IORESOURCE_IRQ,
++	},
++};
++
++static struct resource phytium_px210_i2s_res2[] = {
++	[0] = {
++		.flags = IORESOURCE_MEM,
++	},
++	[1] = {
++		.flags = IORESOURCE_MEM,
++	},
++	[2] = {
++		.flags = IORESOURCE_IRQ,
++	},
++};
++
++static struct mfd_cell phytium_px210_mfd_cells[] = {
++	{
++		.id = 1,
++		.name = "phytium-i2s",
++		.of_compatible = "phytium,i2s",
++		.resources = phytium_px210_i2s_res0,
++		.num_resources = ARRAY_SIZE(phytium_px210_i2s_res0),
++		.ignore_resource_conflicts = true,
++	},
++	{
++		.id = 2,
++		.name = "phytium-i2s",
++		.of_compatible = "phytium,i2s",
++		.resources = phytium_px210_i2s_res1,
++		.num_resources = ARRAY_SIZE(phytium_px210_i2s_res1),
++		.ignore_resource_conflicts = true,
++	},
++	{
++		.id = 3,
++		.name = "phytium-i2s",
++		.of_compatible = "phytium,i2s",
++		.resources = phytium_px210_i2s_res2,
++		.num_resources = ARRAY_SIZE(phytium_px210_i2s_res2),
++		.ignore_resource_conflicts = true,
++	},
++};
++
++static void phytium_px210_i2s_setup(struct pci_dev *pdev, int i)
++{
++	struct mfd_cell *cell = &phytium_px210_mfd_cells[i];
++	struct resource *res = (struct resource *)cell->resources;
++	struct pdata_px210_mfd *pdata;
++
++	res[0].start = pci_resource_start(pdev, 0) + 0x2000 * i + 0x1000;
++	res[0].end = pci_resource_start(pdev, 0) + 0x2000 * i + 0x1fff;
++
++	res[1].start = pci_resource_start(pdev, 0) + 0x2000 * i;
++	res[1].end = pci_resource_start(pdev, 0) + 0x2000 * i + 0x0fff;
++
++	res[2].start = pdev->irq;
++	res[2].end = pdev->irq;
++
++	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
++
++	pdata->dev = &pdev->dev;
++	pdata->clk_base = 600000000;
++	switch (i) {
++	case 0:
++		pdata->name = "phytium-i2s-dp0";
++		break;
++	case 1:
++		pdata->name = "phytium-i2s-dp1";
++		break;
++	case 2:
++		pdata->name = "phytium-i2s-dp2";
++		break;
++	default:
++		break;
++	}
++
++	cell->platform_data = pdata;
++	cell->pdata_size = sizeof(*pdata);
++}
++
++static int phytium_px210_mfd_probe(struct pci_dev *pdev,
++				 const struct pci_device_id *id)
++{
++	struct phytium_px210_mfd *phytium_mfd;
++	int i;
++	int ret;
++
++	ret = pcim_enable_device(pdev);
++	if (ret)
++		return ret;
++
++	pci_set_master(pdev);
++
++	phytium_mfd = devm_kzalloc(&pdev->dev, sizeof(*phytium_mfd), GFP_KERNEL);
++	if (!phytium_mfd)
++		return -ENOMEM;
++
++	phytium_mfd->dev = &pdev->dev;
++	dev_set_drvdata(&pdev->dev, phytium_mfd);
++
++	for (i = 0; i < 3; i++)
++		phytium_px210_i2s_setup(pdev, i);
++
++	ret = mfd_add_devices(&pdev->dev, 0, phytium_px210_mfd_cells,
++			      ARRAY_SIZE(phytium_px210_mfd_cells), NULL, 0,
++			      NULL);
++	if (ret)
++		return 0;
++
++	return 0;
++}
++
++
++static void phytium_px210_mfd_remove(struct pci_dev *pdev)
++{
++	mfd_remove_devices(&pdev->dev);
++}
++
++static const struct pci_device_id phytium_px210_mfd_ids[] = {
++	{
++		.vendor		= 0x1DB7,
++		.device		= 0xDC23,
++		.subvendor	= PCI_ANY_ID,
++		.subdevice	= PCI_ANY_ID,
++		.class		= 0x3,
++		.class_mask	= 0,
++	},
++	{},
++};
++MODULE_DEVICE_TABLE(pci, phytium_px210_mfd_ids);
++
++static struct pci_driver phytium_i2s_mmd_mfd_driver = {
++	.name		= "phytium_px210_mfd_mmd",
++	.id_table	= phytium_px210_mfd_ids,
++	.probe		= phytium_px210_mfd_probe,
++	.remove		= phytium_px210_mfd_remove,
++};
++
++module_pci_driver(phytium_i2s_mmd_mfd_driver);
++
++MODULE_AUTHOR("Zhang Yiqun <zhangyiqun@phytium.com.cn>");
++MODULE_DESCRIPTION("Phytium Px210 MFD PCI driver for I2S-DP");
++MODULE_LICENSE("GPL");
+diff --git a/sound/soc/Kconfig b/sound/soc/Kconfig
+index e87bd15a8b43..31ca054916fa 100644
+--- a/sound/soc/Kconfig
++++ b/sound/soc/Kconfig
+@@ -104,6 +104,7 @@ source "sound/soc/intel/Kconfig"
+ source "sound/soc/mediatek/Kconfig"
+ source "sound/soc/meson/Kconfig"
+ source "sound/soc/mxs/Kconfig"
++source "sound/soc/phytium/Kconfig"
+ source "sound/soc/pxa/Kconfig"
+ source "sound/soc/qcom/Kconfig"
+ source "sound/soc/rockchip/Kconfig"
+diff --git a/sound/soc/Makefile b/sound/soc/Makefile
+index 775bb38c2ed4..aa638bd4026c 100644
+--- a/sound/soc/Makefile
++++ b/sound/soc/Makefile
+@@ -57,6 +57,7 @@ obj-$(CONFIG_SND_SOC)	+= mediatek/
+ obj-$(CONFIG_SND_SOC)	+= meson/
+ obj-$(CONFIG_SND_SOC)	+= mxs/
+ obj-$(CONFIG_SND_SOC)	+= kirkwood/
++obj-$(CONFIG_SND_SOC)	+= phytium/
+ obj-$(CONFIG_SND_SOC)	+= pxa/
+ obj-$(CONFIG_SND_SOC)	+= qcom/
+ obj-$(CONFIG_SND_SOC)	+= rockchip/
+diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
+index 0d9d1d250f2b..8bfbbb1af1bd 100644
+--- a/sound/soc/codecs/Kconfig
++++ b/sound/soc/codecs/Kconfig
+@@ -1173,6 +1173,14 @@ config SND_SOC_FRAMER
+ 	  To compile this driver as a module, choose M here: the module
+ 	  will be called snd-soc-framer.
+ 
++config SND_SOC_ES8336
++	tristate "Everest Semi ES8336 CODEC"
++	depends on I2C
++	select GPIO_PHYTIUM_PCI
++
++config SND_SOC_ES8388
++	tristate "Everest Semi ES8388 CODEC"
++	depends on I2C
+ 
+ config SND_SOC_GTM601
+ 	tristate 'GTM601 UMTS modem audio codec'
+diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
+index 69cb0b39f220..36874a624fa1 100644
+--- a/sound/soc/codecs/Makefile
++++ b/sound/soc/codecs/Makefile
+@@ -129,6 +129,8 @@ snd-soc-es8326-y := es8326.o
+ snd-soc-es8328-y := es8328.o
+ snd-soc-es8328-i2c-y := es8328-i2c.o
+ snd-soc-es8328-spi-y := es8328-spi.o
++snd-soc-es8336-objs := es8336.o
++snd-soc-es8388-objs := es8388.o
+ snd-soc-framer-y := framer-codec.o
+ snd-soc-gtm601-y := gtm601.o
+ snd-soc-hdac-hdmi-y := hdac_hdmi.o
+@@ -537,6 +539,8 @@ obj-$(CONFIG_SND_SOC_ES8328)	+= snd-soc-es8328.o
+ obj-$(CONFIG_SND_SOC_ES8328_I2C)+= snd-soc-es8328-i2c.o
+ obj-$(CONFIG_SND_SOC_ES8328_SPI)+= snd-soc-es8328-spi.o
+ obj-$(CONFIG_SND_SOC_FRAMER)	+= snd-soc-framer.o
++obj-$(CONFIG_SND_SOC_ES8336)+= snd-soc-es8336.o
++obj-$(CONFIG_SND_SOC_ES8388)	+= snd-soc-es8388.o
+ obj-$(CONFIG_SND_SOC_GTM601)    += snd-soc-gtm601.o
+ obj-$(CONFIG_SND_SOC_HDAC_HDMI) += snd-soc-hdac-hdmi.o
+ obj-$(CONFIG_SND_SOC_HDAC_HDA) += snd-soc-hdac-hda.o
+diff --git a/sound/soc/codecs/es8336.c b/sound/soc/codecs/es8336.c
+new file mode 100644
+index 000000000000..6acb7438f3c6
+--- /dev/null
++++ b/sound/soc/codecs/es8336.c
+@@ -0,0 +1,1083 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * es8336 ALSA SoC audio driver
++ *
++ * Copyright (C) Everest Semiconductor Co.,Ltd
++ * Copyright (C) 2022-2023, Phytium Technology Co., Ltd.
++ */
++
++#include <linux/clk.h>
++#include <linux/module.h>
++#include <linux/moduleparam.h>
++#include <linux/init.h>
++#include <linux/delay.h>
++#include <linux/pm.h>
++#include <linux/i2c.h>
++#include <linux/spi/spi.h>
++#include <linux/platform_device.h>
++#include <linux/slab.h>
++#include <linux/of_gpio.h>
++#include <sound/core.h>
++#include <sound/pcm.h>
++#include <sound/pcm_params.h>
++#include <sound/tlv.h>
++#include <sound/soc.h>
++#include <sound/soc-dapm.h>
++#include <sound/initval.h>
++#include <linux/proc_fs.h>
++#include <linux/gpio.h>
++#include <linux/interrupt.h>
++#include <linux/irq.h>
++#include <linux/regmap.h>
++#include "es8336.h"
++
++#define INVALID_GPIO -1
++#define GPIO_LOW  0
++#define GPIO_HIGH 1
++#define ES8336_MUTE (1 << 5)
++
++static struct snd_soc_component *es8336_component;
++
++static const struct reg_default es8336_reg_defaults[] = {
++	{0x00, 0x03}, {0x01, 0x03}, {0x02, 0x00}, {0x03, 0x20},
++	{0x04, 0x11}, {0x05, 0x00}, {0x06, 0x11}, {0x07, 0x00},
++	{0x08, 0x00}, {0x09, 0x01}, {0x0a, 0x00}, {0x0b, 0x00},
++	{0x0c, 0xf8}, {0x0d, 0x3f}, {0x0e, 0x00}, {0x0f, 0x00},
++	{0x10, 0x01}, {0x11, 0xfc}, {0x12, 0x28}, {0x13, 0x00},
++	{0x14, 0x00}, {0x15, 0x33}, {0x16, 0x00}, {0x17, 0x00},
++	{0x18, 0x88}, {0x19, 0x06}, {0x1a, 0x22}, {0x1b, 0x03},
++	{0x1c, 0x0f}, {0x1d, 0x00}, {0x1e, 0x80}, {0x1f, 0x80},
++	{0x20, 0x00}, {0x21, 0x00}, {0x22, 0xc0}, {0x23, 0x00},
++	{0x24, 0x01}, {0x25, 0x08}, {0x26, 0x10}, {0x27, 0xc0},
++	{0x28, 0x00}, {0x29, 0x1c}, {0x2a, 0x00}, {0x2b, 0xb0},
++	{0x2c, 0x32}, {0x2d, 0x03}, {0x2e, 0x00}, {0x2f, 0x11},
++	{0x30, 0x10}, {0x31, 0x00}, {0x32, 0x00}, {0x33, 0xc0},
++	{0x34, 0xc0}, {0x35, 0x1f}, {0x36, 0xf7}, {0x37, 0xfd},
++	{0x38, 0xff}, {0x39, 0x1f}, {0x3a, 0xf7}, {0x3b, 0xfd},
++	{0x3c, 0xff}, {0x3d, 0x1f}, {0x3e, 0xf7}, {0x3f, 0xfd},
++	{0x40, 0xff}, {0x41, 0x1f}, {0x42, 0xf7}, {0x43, 0xfd},
++	{0x44, 0xff}, {0x45, 0x1f}, {0x46, 0xf7}, {0x47, 0xfd},
++	{0x48, 0xff}, {0x49, 0x1f}, {0x4a, 0xf7}, {0x4b, 0xfd},
++	{0x4c, 0xff}, {0x4d, 0x00}, {0x4e, 0x00}, {0x4f, 0xff},
++	{0x50, 0x00}, {0x51, 0x00}, {0x52, 0x00}, {0x53, 0x00},
++};
++
++/* codec private data */
++struct es8336_priv {
++	struct regmap *regmap;
++	unsigned int dmic_amic;
++	unsigned int sysclk;
++	struct snd_pcm_hw_constraint_list *sysclk_constraints;
++	struct clk *mclk;
++	int debounce_time;
++	int hp_det_invert;
++	struct delayed_work work;
++
++	int spk_ctl_gpio;
++	int hp_det_gpio;
++	bool muted;
++	bool hp_inserted;
++	bool spk_active_level;
++
++	int pwr_count;
++};
++
++/*
++ * es8336_reset
++ * write value 0xff to reg0x00, the chip will be in reset mode
++ * then, writer 0x00 to reg0x00, unreset the chip
++ */
++static int es8336_reset(struct snd_soc_component *component)
++{
++	snd_soc_component_write(component, ES8336_RESET_REG00, 0x3F);
++	usleep_range(5000, 5500);
++	return snd_soc_component_write(component, ES8336_RESET_REG00, 0x03);
++}
++
++static void es8336_enable_spk(struct es8336_priv *es8336, bool enable)
++{
++	bool level;
++
++	if (es8336->spk_ctl_gpio == INVALID_GPIO)
++		return;
++
++	level = enable ? es8336->spk_active_level : !es8336->spk_active_level;
++	gpio_set_value(es8336->spk_ctl_gpio, level);
++}
++
++static const DECLARE_TLV_DB_SCALE(dac_vol_tlv, -9600, 50, 1);
++static const DECLARE_TLV_DB_SCALE(adc_vol_tlv, -9600, 50, 1);
++static const DECLARE_TLV_DB_SCALE(hpmixer_gain_tlv, -1200, 150, 0);
++static const DECLARE_TLV_DB_SCALE(mic_bst_tlv, 0, 1200, 0);
++
++static unsigned int linin_pga_tlv[] = {
++	TLV_DB_RANGE_HEAD(9),
++	0, 0, TLV_DB_SCALE_ITEM(0, 0, 0),
++	1, 1, TLV_DB_SCALE_ITEM(300, 0, 0),
++	2, 2, TLV_DB_SCALE_ITEM(600, 0, 0),
++	3, 3, TLV_DB_SCALE_ITEM(900, 0, 0),
++	4, 4, TLV_DB_SCALE_ITEM(1200, 0, 0),
++	5, 5, TLV_DB_SCALE_ITEM(1500, 0, 0),
++	6, 6, TLV_DB_SCALE_ITEM(1800, 0, 0),
++	7, 7, TLV_DB_SCALE_ITEM(2100, 0, 0),
++	8, 8, TLV_DB_SCALE_ITEM(2400, 0, 0),
++};
++
++static unsigned int hpout_vol_tlv[] = {
++	TLV_DB_RANGE_HEAD(1),
++	0, 3, TLV_DB_SCALE_ITEM(-4800, 1200, 0),
++};
++
++static const char *const alc_func_txt[] = { "Off", "On" };
++
++static const struct soc_enum alc_func =
++	SOC_ENUM_SINGLE(ES8336_ADC_ALC1_REG29, 6, 2, alc_func_txt);
++
++static const char *const ng_type_txt[] = {
++	"Constant PGA Gain", "Mute ADC Output" };
++
++static const struct soc_enum ng_type =
++	SOC_ENUM_SINGLE(ES8336_ADC_ALC6_REG2E, 6, 2, ng_type_txt);
++
++static const char *const adcpol_txt[] = { "Normal", "Invert" };
++
++static const struct soc_enum adcpol =
++	SOC_ENUM_SINGLE(ES8336_ADC_MUTE_REG26, 1, 2, adcpol_txt);
++
++static const char *const dacpol_txt[] = {
++	"Normal", "R Invert", "L Invert", "L + R Invert" };
++
++static const struct soc_enum dacpol =
++	SOC_ENUM_SINGLE(ES8336_DAC_SET1_REG30, 0, 4, dacpol_txt);
++
++static const struct snd_kcontrol_new es8336_snd_controls[] = {
++	/* HP OUT VOLUME */
++	SOC_DOUBLE_TLV("HP Playback Volume", ES8336_CPHP_ICAL_VOL_REG18,
++		       4, 0, 4, 1, hpout_vol_tlv),
++	/* HPMIXER VOLUME Control */
++	SOC_DOUBLE_TLV("HPMixer Gain", ES8336_HPMIX_VOL_REG16,
++		       0, 4, 7, 0, hpmixer_gain_tlv),
++
++	/* DAC Digital controls */
++	SOC_DOUBLE_R_TLV("DAC Playback Volume", ES8336_DAC_VOLL_REG33,
++			 ES8336_DAC_VOLR_REG34, 0, 0xC0, 1, dac_vol_tlv),
++
++	SOC_SINGLE("Enable DAC Soft Ramp", ES8336_DAC_SET1_REG30, 4, 1, 1),
++	SOC_SINGLE("DAC Soft Ramp Rate", ES8336_DAC_SET1_REG30, 2, 4, 0),
++
++	SOC_ENUM("Playback Polarity", dacpol),
++	SOC_SINGLE("DAC Notch Filter", ES8336_DAC_SET2_REG31, 6, 1, 0),
++	SOC_SINGLE("DAC Double Fs Mode", ES8336_DAC_SET2_REG31, 7, 1, 0),
++	SOC_SINGLE("DAC Volume Control-LeR", ES8336_DAC_SET2_REG31, 2, 1, 0),
++	SOC_SINGLE("DAC Stereo Enhancement", ES8336_DAC_SET3_REG32, 0, 7, 0),
++
++	/* +20dB D2SE PGA Control */
++	SOC_SINGLE_TLV("MIC Boost", ES8336_ADC_D2SEPGA_REG24,
++		       0, 1, 0, mic_bst_tlv),
++	/* 0-+24dB Lineinput PGA Control */
++	SOC_SINGLE_TLV("Input PGA", ES8336_ADC_PGAGAIN_REG23,
++		       4, 8, 0, linin_pga_tlv),
++};
++
++/* Analog Input MUX */
++static const char * const es8336_analog_in_txt[] = {
++	"lin1-rin1",
++	"lin2-rin2",
++	"lin1-rin1 with 20db Boost",
++	"lin2-rin2 with 20db Boost"
++};
++
++static const unsigned int es8336_analog_in_values[] = { 0, 1, 2, 3 };
++
++static const struct soc_enum es8336_analog_input_enum =
++	SOC_VALUE_ENUM_SINGLE(ES8336_ADC_PDN_LINSEL_REG22, 4, 3,
++			      ARRAY_SIZE(es8336_analog_in_txt),
++			      es8336_analog_in_txt,
++			      es8336_analog_in_values);
++
++static const struct snd_kcontrol_new es8336_analog_in_mux_controls =
++	SOC_DAPM_ENUM("Route", es8336_analog_input_enum);
++
++/* Dmic MUX */
++static const char * const es8336_dmic_txt[] = {
++	"dmic disable",
++	"dmic data at high level",
++	"dmic data at low level",
++};
++
++static const unsigned int es8336_dmic_values[] = { 0, 2, 3 };
++
++static const struct soc_enum es8336_dmic_src_enum =
++	SOC_VALUE_ENUM_SINGLE(ES8336_ADC_DMIC_REG25, 0, 3,
++			      ARRAY_SIZE(es8336_dmic_txt),
++			      es8336_dmic_txt,
++			      es8336_dmic_values);
++
++static const struct snd_kcontrol_new es8336_dmic_src_controls =
++	SOC_DAPM_ENUM("Route", es8336_dmic_src_enum);
++
++/* hp mixer mux */
++static const char *const es8336_hpmux_texts[] = {
++	"lin1-rin1",
++	"lin2-rin2",
++	"lin-rin with Boost",
++	"lin-rin with Boost and PGA"
++};
++
++static const unsigned int es8336_hpmux_values[] = { 0, 1, 2, 3 };
++
++static const struct soc_enum es8336_left_hpmux_enum =
++	SOC_VALUE_ENUM_SINGLE(ES8336_HPMIX_SEL_REG13, 4, 7,
++			      ARRAY_SIZE(es8336_hpmux_texts),
++			      es8336_hpmux_texts,
++			      es8336_hpmux_values);
++
++static const struct snd_kcontrol_new es8336_left_hpmux_controls =
++	SOC_DAPM_ENUM("Route", es8336_left_hpmux_enum);
++
++static const struct soc_enum es8336_right_hpmux_enum =
++	SOC_VALUE_ENUM_SINGLE(ES8336_HPMIX_SEL_REG13, 0, 7,
++			      ARRAY_SIZE(es8336_hpmux_texts),
++			      es8336_hpmux_texts,
++			      es8336_hpmux_values);
++
++static const struct snd_kcontrol_new es8336_right_hpmux_controls =
++	SOC_DAPM_ENUM("Route", es8336_right_hpmux_enum);
++
++/* headphone Output Mixer */
++static const struct snd_kcontrol_new es8336_out_left_mix[] = {
++	SOC_DAPM_SINGLE("LLIN Switch", ES8336_HPMIX_SWITCH_REG14,
++			6, 1, 0),
++	SOC_DAPM_SINGLE("Left DAC Switch", ES8336_HPMIX_SWITCH_REG14,
++			7, 1, 0),
++};
++
++static const struct snd_kcontrol_new es8336_out_right_mix[] = {
++	SOC_DAPM_SINGLE("RLIN Switch", ES8336_HPMIX_SWITCH_REG14,
++			2, 1, 0),
++	SOC_DAPM_SINGLE("Right DAC Switch", ES8336_HPMIX_SWITCH_REG14,
++			3, 1, 0),
++};
++
++/* DAC data source mux */
++static const char * const es8336_dacsrc_texts[] = {
++	"LDATA TO LDAC, RDATA TO RDAC",
++	"LDATA TO LDAC, LDATA TO RDAC",
++	"RDATA TO LDAC, RDATA TO RDAC",
++	"RDATA TO LDAC, LDATA TO RDAC",
++};
++
++static const unsigned int es8336_dacsrc_values[] = { 0, 1, 2, 3 };
++
++static const struct soc_enum es8336_dacsrc_mux_enum =
++	SOC_VALUE_ENUM_SINGLE(ES8336_DAC_SET1_REG30, 6, 4,
++			      ARRAY_SIZE(es8336_dacsrc_texts),
++			      es8336_dacsrc_texts,
++			      es8336_dacsrc_values);
++static const struct snd_kcontrol_new es8336_dacsrc_mux_controls =
++	SOC_DAPM_ENUM("Route", es8336_dacsrc_mux_enum);
++
++static const struct snd_soc_dapm_widget es8336_dapm_widgets[] = {
++	/* Input Lines */
++	SND_SOC_DAPM_INPUT("DMIC"),
++	SND_SOC_DAPM_INPUT("MIC1"),
++	SND_SOC_DAPM_INPUT("MIC2"),
++
++	SND_SOC_DAPM_MICBIAS("micbias", SND_SOC_NOPM,
++			     0, 0),
++	/* Input MUX */
++	SND_SOC_DAPM_MUX("Differential Mux", SND_SOC_NOPM, 0, 0,
++			 &es8336_analog_in_mux_controls),
++
++	SND_SOC_DAPM_PGA("Line input PGA", ES8336_ADC_PDN_LINSEL_REG22,
++			 7, 1, NULL, 0),
++
++	/* ADCs */
++	SND_SOC_DAPM_ADC("Mono ADC", NULL, ES8336_ADC_PDN_LINSEL_REG22, 6, 1),
++
++	/* Dmic MUX */
++	SND_SOC_DAPM_MUX("Digital Mic Mux", SND_SOC_NOPM, 0, 0,
++			 &es8336_dmic_src_controls),
++
++	/* Digital Interface */
++	SND_SOC_DAPM_AIF_OUT("I2S OUT", "I2S1 Capture",  0,
++			     SND_SOC_NOPM, 0, 0),
++
++	SND_SOC_DAPM_AIF_IN("I2S IN", "I2S1 Playback", 0,
++			    SND_SOC_NOPM, 0, 0),
++
++	/*  DACs DATA SRC MUX */
++	SND_SOC_DAPM_MUX("DAC SRC Mux", SND_SOC_NOPM, 0, 0,
++			 &es8336_dacsrc_mux_controls),
++	/*  DACs  */
++	SND_SOC_DAPM_DAC("Right DAC", NULL, ES8336_DAC_PDN_REG2F, 0, 1),
++	SND_SOC_DAPM_DAC("Left DAC", NULL, ES8336_DAC_PDN_REG2F, 4, 1),
++
++	/* Headphone Output Side */
++	/* hpmux for hp mixer */
++	SND_SOC_DAPM_MUX("Left Hp mux", SND_SOC_NOPM, 0, 0,
++			 &es8336_left_hpmux_controls),
++	SND_SOC_DAPM_MUX("Right Hp mux", SND_SOC_NOPM, 0, 0,
++			 &es8336_right_hpmux_controls),
++	/* Output mixer  */
++	SND_SOC_DAPM_MIXER("Left Hp mixer", ES8336_HPMIX_PDN_REG15,
++			   4, 1, &es8336_out_left_mix[0],
++			   ARRAY_SIZE(es8336_out_left_mix)),
++	SND_SOC_DAPM_MIXER("Right Hp mixer", ES8336_HPMIX_PDN_REG15,
++			   0, 1, &es8336_out_right_mix[0],
++			   ARRAY_SIZE(es8336_out_right_mix)),
++
++	/* Output charge pump */
++	SND_SOC_DAPM_PGA("HPCP L", ES8336_CPHP_OUTEN_REG17,
++			 6, 0, NULL, 0),
++	SND_SOC_DAPM_PGA("HPCP R", ES8336_CPHP_OUTEN_REG17,
++			 2, 0, NULL, 0),
++
++	/* Output Driver */
++	SND_SOC_DAPM_PGA("HPVOL L", ES8336_CPHP_OUTEN_REG17,
++			 5, 0, NULL, 0),
++	SND_SOC_DAPM_PGA("HPVOL R", ES8336_CPHP_OUTEN_REG17,
++			 1, 0, NULL, 0),
++	/* Output Lines */
++	SND_SOC_DAPM_OUTPUT("HPOL"),
++	SND_SOC_DAPM_OUTPUT("HPOR"),
++};
++
++static const struct snd_soc_dapm_route es8336_dapm_routes[] = {
++	/*
++	 * record route map
++	 */
++	{"MIC1", NULL, "micbias"},
++	{"MIC2", NULL, "micbias"},
++	{"DMIC", NULL, "micbias"},
++
++	{"Differential Mux", "lin1-rin1", "MIC1"},
++	{"Differential Mux", "lin2-rin2", "MIC2"},
++	{"Differential Mux", "lin1-rin1 with 20db Boost", "MIC1"},
++	{"Differential Mux", "lin2-rin2 with 20db Boost", "MIC2"},
++	{"Line input PGA", NULL, "Differential Mux"},
++
++	{"Mono ADC", NULL, "Line input PGA"},
++
++	{"Digital Mic Mux", "dmic disable", "Mono ADC"},
++	{"Digital Mic Mux", "dmic data at high level", "DMIC"},
++	{"Digital Mic Mux", "dmic data at low level", "DMIC"},
++
++	{"I2S OUT", NULL, "Digital Mic Mux"},
++	/*
++	 * playback route map
++	 */
++	{"DAC SRC Mux", "LDATA TO LDAC, RDATA TO RDAC", "I2S IN"},
++	{"DAC SRC Mux", "LDATA TO LDAC, LDATA TO RDAC", "I2S IN"},
++	{"DAC SRC Mux", "RDATA TO LDAC, RDATA TO RDAC", "I2S IN"},
++	{"DAC SRC Mux", "RDATA TO LDAC, LDATA TO RDAC", "I2S IN"},
++
++	{"Left DAC", NULL, "DAC SRC Mux"},
++	{"Right DAC", NULL, "DAC SRC Mux"},
++
++	{"Left Hp mux", "lin1-rin1", "MIC1"},
++	{"Left Hp mux", "lin2-rin2", "MIC2"},
++	{"Left Hp mux", "lin-rin with Boost", "Differential Mux"},
++	{"Left Hp mux", "lin-rin with Boost and PGA", "Line input PGA"},
++
++	{"Right Hp mux", "lin1-rin1", "MIC1"},
++	{"Right Hp mux", "lin2-rin2", "MIC2"},
++	{"Right Hp mux", "lin-rin with Boost", "Differential Mux"},
++	{"Right Hp mux", "lin-rin with Boost and PGA", "Line input PGA"},
++
++	{"Left Hp mixer", "LLIN Switch", "Left Hp mux"},
++	{"Left Hp mixer", "Left DAC Switch", "Left DAC"},
++
++	{"Right Hp mixer", "RLIN Switch", "Right Hp mux"},
++	{"Right Hp mixer", "Right DAC Switch", "Right DAC"},
++
++	{"HPCP L", NULL, "Left Hp mixer"},
++	{"HPCP R", NULL, "Right Hp mixer"},
++
++	{"HPVOL L", NULL, "HPCP L"},
++	{"HPVOL R", NULL, "HPCP R"},
++
++	{"HPOL", NULL, "HPVOL L"},
++	{"HPOR", NULL, "HPVOL R"},
++};
++
++
++/* The set of rates we can generate from the above for each SYSCLK */
++
++static unsigned int rates_12288[] = {
++	8000, 12000, 16000, 24000, 24000, 32000, 48000, 96000,
++};
++
++static struct snd_pcm_hw_constraint_list constraints_12288 = {
++	.count	= ARRAY_SIZE(rates_12288),
++	.list	= rates_12288,
++};
++
++static unsigned int rates_112896[] = {
++	8000, 11025, 22050, 44100,
++};
++
++static struct snd_pcm_hw_constraint_list constraints_112896 = {
++	.count	= ARRAY_SIZE(rates_112896),
++	.list	= rates_112896,
++};
++
++static unsigned int rates_12[] = {
++	8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000,
++	48000, 88235, 96000,
++};
++
++static struct snd_pcm_hw_constraint_list constraints_12 = {
++	.count	= ARRAY_SIZE(rates_12),
++	.list	= rates_12,
++};
++
++/*
++ * Note that this should be called from init rather than from hw_params.
++ */
++static int es8336_set_dai_sysclk(struct snd_soc_dai *codec_dai,
++				 int clk_id, unsigned int freq, int dir)
++{
++	struct snd_soc_component *component = codec_dai->component;
++	struct es8336_priv *es8336 = snd_soc_component_get_drvdata(component);
++
++	switch (freq) {
++	case 11289600:
++	case 18432000:
++	case 22579200:
++	case 36864000:
++		es8336->sysclk_constraints = &constraints_112896;
++		es8336->sysclk = freq;
++		return 0;
++	case 12288000:
++	case 19200000:
++	case 16934400:
++	case 24576000:
++	case 33868800:
++		es8336->sysclk_constraints = &constraints_12288;
++		es8336->sysclk = freq;
++		return 0;
++	case 12000000:
++	case 24000000:
++		es8336->sysclk_constraints = &constraints_12;
++		es8336->sysclk = freq;
++		return 0;
++	}
++
++	return 0;
++}
++
++static int es8336_set_dai_fmt(struct snd_soc_dai *codec_dai,
++			      unsigned int fmt)
++{
++	struct snd_soc_component *component = codec_dai->component;
++	u8 iface = 0;
++	u8 adciface = 0;
++	u8 daciface = 0;
++
++	iface    = snd_soc_component_read(component, ES8336_IFACE);
++	adciface = snd_soc_component_read(component, ES8336_ADC_IFACE);
++	daciface = snd_soc_component_read(component, ES8336_DAC_IFACE);
++
++	/* set master/slave audio interface */
++	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
++	case SND_SOC_DAIFMT_CBM_CFM:
++		iface |= 0x80;
++		break;
++	case SND_SOC_DAIFMT_CBS_CFS:
++		iface &= 0x7F;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	/* interface format */
++	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
++	case SND_SOC_DAIFMT_I2S:
++		adciface &= 0xFC;
++		daciface &= 0xFC;
++		break;
++	case SND_SOC_DAIFMT_RIGHT_J:
++		return -EINVAL;
++	case SND_SOC_DAIFMT_LEFT_J:
++		adciface &= 0xFC;
++		daciface &= 0xFC;
++		adciface |= 0x01;
++		daciface |= 0x01;
++		break;
++	case SND_SOC_DAIFMT_DSP_A:
++		adciface &= 0xDC;
++		daciface &= 0xDC;
++		adciface |= 0x03;
++		daciface |= 0x03;
++		break;
++	case SND_SOC_DAIFMT_DSP_B:
++		adciface &= 0xDC;
++		daciface &= 0xDC;
++		adciface |= 0x23;
++		daciface |= 0x23;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	/* clock inversion */
++	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
++	case SND_SOC_DAIFMT_NB_NF:
++		iface    &= 0xDF;
++		adciface &= 0xDF;
++		daciface &= 0xDF;
++		break;
++	case SND_SOC_DAIFMT_IB_IF:
++		iface    |= 0x20;
++		adciface |= 0x20;
++		daciface |= 0x20;
++		break;
++	case SND_SOC_DAIFMT_IB_NF:
++		iface    |= 0x20;
++		adciface &= 0xDF;
++		daciface &= 0xDF;
++		break;
++	case SND_SOC_DAIFMT_NB_IF:
++		iface    &= 0xDF;
++		adciface |= 0x20;
++		daciface |= 0x20;
++		break;
++	default:
++		return -EINVAL;
++	}
++	snd_soc_component_write(component, ES8336_IFACE, iface);
++	snd_soc_component_write(component, ES8336_ADC_IFACE, adciface);
++	snd_soc_component_write(component, ES8336_DAC_IFACE, daciface);
++	return 0;
++}
++
++static int es8336_pcm_startup(struct snd_pcm_substream *substream,
++			      struct snd_soc_dai *dai)
++{
++	struct snd_soc_component *component = dai->component;
++	struct es8336_priv *es8336 = snd_soc_component_get_drvdata(component);
++	bool playback = (substream->stream == SNDRV_PCM_STREAM_PLAYBACK);
++
++	snd_soc_component_write(component, ES8336_RESET_REG00, 0xC0);
++	snd_soc_component_write(component, ES8336_SYS_PDN_REG0D, 0x00);
++	/* es8336: both playback and capture need dac mclk */
++	snd_soc_component_update_bits(component, ES8336_CLKMGR_CLKSW_REG01,
++			    ES8336_CLKMGR_MCLK_DIV_MASK |
++			    ES8336_CLKMGR_DAC_MCLK_MASK,
++			    ES8336_CLKMGR_MCLK_DIV_NML |
++			    ES8336_CLKMGR_DAC_MCLK_EN);
++	es8336->pwr_count++;
++
++	if (playback) {
++		snd_soc_component_write(component, ES8336_SYS_LP1_REG0E, 0x3F);
++		snd_soc_component_write(component, ES8336_SYS_LP2_REG0F, 0x1F);
++		snd_soc_component_write(component, ES8336_HPMIX_SWITCH_REG14, 0x88);
++		snd_soc_component_write(component, ES8336_HPMIX_PDN_REG15, 0x00);
++		snd_soc_component_write(component, ES8336_HPMIX_VOL_REG16, 0xBB);
++		snd_soc_component_write(component, ES8336_CPHP_PDN2_REG1A, 0x10);
++		snd_soc_component_write(component, ES8336_CPHP_LDOCTL_REG1B, 0x30);
++		snd_soc_component_write(component, ES8336_CPHP_PDN1_REG19, 0x02);
++		snd_soc_component_write(component, ES8336_DAC_PDN_REG2F, 0x00);
++		snd_soc_component_write(component, ES8336_CPHP_OUTEN_REG17, 0x66);
++		snd_soc_component_update_bits(component, ES8336_CLKMGR_CLKSW_REG01,
++				    ES8336_CLKMGR_DAC_MCLK_MASK |
++				    ES8336_CLKMGR_DAC_ANALOG_MASK,
++				    ES8336_CLKMGR_DAC_MCLK_EN |
++				    ES8336_CLKMGR_DAC_ANALOG_EN);
++		msleep(50);
++	} else {
++		snd_soc_component_update_bits(component, ES8336_CLKMGR_CLKSW_REG01,
++				    ES8336_CLKMGR_ADC_MCLK_MASK |
++				    ES8336_CLKMGR_ADC_ANALOG_MASK,
++				    ES8336_CLKMGR_ADC_MCLK_EN |
++				    ES8336_CLKMGR_ADC_ANALOG_EN);
++	}
++
++	return 0;
++}
++
++static void es8336_pcm_shutdown(struct snd_pcm_substream *substream,
++				struct snd_soc_dai *dai)
++{
++	struct snd_soc_component *component = dai->component;
++	struct es8336_priv *es8336 = snd_soc_component_get_drvdata(component);
++	bool playback = (substream->stream == SNDRV_PCM_STREAM_PLAYBACK);
++
++	if (playback) {
++		snd_soc_component_write(component, ES8336_CPHP_OUTEN_REG17, 0x00);
++		snd_soc_component_write(component, ES8336_DAC_PDN_REG2F, 0x11);
++		snd_soc_component_write(component, ES8336_CPHP_LDOCTL_REG1B, 0x03);
++		snd_soc_component_write(component, ES8336_CPHP_PDN2_REG1A, 0x22);
++		snd_soc_component_write(component, ES8336_CPHP_PDN1_REG19, 0x06);
++		snd_soc_component_write(component, ES8336_HPMIX_SWITCH_REG14, 0x00);
++		snd_soc_component_write(component, ES8336_HPMIX_PDN_REG15, 0x33);
++		snd_soc_component_write(component, ES8336_HPMIX_VOL_REG16, 0x00);
++		snd_soc_component_write(component, ES8336_SYS_PDN_REG0D, 0x00);
++		snd_soc_component_write(component, ES8336_SYS_LP1_REG0E, 0xFF);
++		snd_soc_component_write(component, ES8336_SYS_LP2_REG0F, 0xFF);
++		snd_soc_component_update_bits(component, ES8336_CLKMGR_CLKSW_REG01,
++				    ES8336_CLKMGR_DAC_ANALOG_MASK,
++				    ES8336_CLKMGR_DAC_ANALOG_DIS);
++	} else {
++		snd_soc_component_update_bits(component, ES8336_CLKMGR_CLKSW_REG01,
++				    ES8336_CLKMGR_ADC_MCLK_MASK |
++				    ES8336_CLKMGR_ADC_ANALOG_MASK,
++				    ES8336_CLKMGR_ADC_MCLK_DIS |
++				    ES8336_CLKMGR_ADC_ANALOG_DIS);
++	}
++
++	if (--es8336->pwr_count == 0) {
++		if (!es8336->hp_inserted)
++			snd_soc_component_write(component, ES8336_SYS_PDN_REG0D, 0x3F);
++		snd_soc_component_write(component, ES8336_CLKMGR_CLKSW_REG01, 0xF3);
++	}
++}
++
++
++static int es8336_pcm_hw_params(struct snd_pcm_substream *substream,
++				struct snd_pcm_hw_params *params,
++				struct snd_soc_dai *dai)
++{
++	struct snd_soc_component *component = dai->component;
++	int val = 0;
++
++	switch (params_format(params)) {
++	case SNDRV_PCM_FORMAT_S16_LE:
++		val = ES8336_DACWL_16;
++		break;
++	case SNDRV_PCM_FORMAT_S20_3LE:
++		val = ES8336_DACWL_20;
++		break;
++	case SNDRV_PCM_FORMAT_S24_LE:
++		val = ES8336_DACWL_24;
++		break;
++	case SNDRV_PCM_FORMAT_S32_LE:
++		val = ES8336_DACWL_32;
++		break;
++	default:
++		val = ES8336_DACWL_16;
++		break;
++	}
++
++	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
++		snd_soc_component_update_bits(component, ES8336_SDP_DACFMT_REG0B,
++				    ES8336_DACWL_MASK, val);
++	else
++		snd_soc_component_update_bits(component, ES8336_SDP_ADCFMT_REG0A,
++				    ES8336_ADCWL_MASK, val);
++
++	return 0;
++}
++
++static int es8336_mute(struct snd_soc_dai *dai, int mute, int direction)
++{
++	struct snd_soc_component *component = dai->component;
++	struct es8336_priv *es8336 = snd_soc_component_get_drvdata(component);
++
++	es8336->muted = mute;
++	if (!es8336->hp_inserted)
++		es8336_enable_spk(es8336, true);
++	else
++		es8336_enable_spk(es8336, false);
++	if (direction)
++		return snd_soc_component_update_bits(dai->component, ES8336_ADC_MUTE_REG26,
++				ES8336_MUTE,
++				mute ? ES8336_MUTE : 0);
++	else
++		return snd_soc_component_update_bits(dai->component, ES8336_DAC_SET1_REG30,
++				ES8336_MUTE,
++				mute ? ES8336_MUTE : 0);
++}
++
++static int es8336_set_bias_level(struct snd_soc_component *component,
++				 enum snd_soc_bias_level level)
++{
++	struct es8336_priv *es8336 = snd_soc_component_get_drvdata(component);
++
++	switch (level) {
++	case SND_SOC_BIAS_ON:
++		break;
++
++	case SND_SOC_BIAS_PREPARE:
++		break;
++
++	case SND_SOC_BIAS_STANDBY:
++		break;
++
++	case SND_SOC_BIAS_OFF:
++		snd_soc_component_write(component, ES8336_CPHP_OUTEN_REG17, 0x00);
++		snd_soc_component_write(component, ES8336_DAC_PDN_REG2F, 0x11);
++		snd_soc_component_write(component, ES8336_CPHP_LDOCTL_REG1B, 0x03);
++		snd_soc_component_write(component, ES8336_CPHP_PDN2_REG1A, 0x22);
++		snd_soc_component_write(component, ES8336_CPHP_PDN1_REG19, 0x06);
++		snd_soc_component_write(component, ES8336_HPMIX_SWITCH_REG14, 0x00);
++		snd_soc_component_write(component, ES8336_HPMIX_PDN_REG15, 0x33);
++		snd_soc_component_write(component, ES8336_HPMIX_VOL_REG16, 0x00);
++		if (!es8336->hp_inserted)
++			snd_soc_component_write(component, ES8336_SYS_PDN_REG0D, 0x3F);
++		snd_soc_component_write(component, ES8336_SYS_LP1_REG0E, 0x3F);
++		snd_soc_component_write(component, ES8336_SYS_LP2_REG0F, 0x1F);
++		snd_soc_component_write(component, ES8336_RESET_REG00, 0x00);
++		break;
++	}
++
++	return 0;
++}
++
++#define es8336_RATES SNDRV_PCM_RATE_8000_96000
++
++#define es8336_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
++	SNDRV_PCM_FMTBIT_S24_LE)
++
++static const struct snd_soc_dai_ops es8336_ops = {
++	.startup = es8336_pcm_startup,
++	.hw_params = es8336_pcm_hw_params,
++	.set_fmt = es8336_set_dai_fmt,
++	.set_sysclk = es8336_set_dai_sysclk,
++	.mute_stream = es8336_mute,
++	.shutdown = es8336_pcm_shutdown,
++	.no_capture_mute = 1,
++};
++
++static struct snd_soc_dai_driver es8336_dai = {
++	.name = "es8336-hifi",
++	.playback = {
++		.stream_name = "Playback",
++		.channels_min = 1,
++		.channels_max = 2,
++		.rates = es8336_RATES,
++		.formats = es8336_FORMATS,
++	},
++	.capture = {
++		.stream_name = "Capture",
++		.channels_min = 1,
++		.channels_max = 2,
++		.rates = es8336_RATES,
++		.formats = es8336_FORMATS,
++	},
++	.ops = &es8336_ops,
++	.symmetric_rate = 1,
++};
++
++static int es8336_init_regs(struct snd_soc_component *component)
++{
++	snd_soc_component_write(component, ES8336_RESET_REG00, 0x3f);
++	usleep_range(5000, 5500);
++	snd_soc_component_write(component, ES8336_RESET_REG00, 0x00);
++	snd_soc_component_write(component, ES8336_SYS_VMIDSEL_REG0C, 0xFF);
++	msleep(30);
++	snd_soc_component_write(component, ES8336_CLKMGR_CLKSEL_REG02, 0x08);
++	snd_soc_component_write(component, ES8336_CLKMGR_ADCOSR_REG03, 0x20);
++	snd_soc_component_write(component, ES8336_CLKMGR_ADCDIV1_REG04, 0x11);
++	snd_soc_component_write(component, ES8336_CLKMGR_ADCDIV2_REG05, 0x00);
++	snd_soc_component_write(component, ES8336_CLKMGR_DACDIV1_REG06, 0x11);
++	snd_soc_component_write(component, ES8336_CLKMGR_DACDIV2_REG07, 0x00);
++	snd_soc_component_write(component, ES8336_CLKMGR_CPDIV_REG08, 0x00);
++	snd_soc_component_write(component, ES8336_SDP_MS_BCKDIV_REG09, 0x04);
++	snd_soc_component_write(component, ES8336_CLKMGR_CLKSW_REG01, 0x7F);
++	snd_soc_component_write(component, ES8336_CAL_TYPE_REG1C, 0x0F);
++	snd_soc_component_write(component, ES8336_CAL_HPLIV_REG1E, 0x90);
++	snd_soc_component_write(component, ES8336_CAL_HPRIV_REG1F, 0x90);
++	snd_soc_component_write(component, ES8336_ADC_VOLUME_REG27, 0x00);
++	snd_soc_component_write(component, ES8336_ADC_PDN_LINSEL_REG22, 0xc0);
++	snd_soc_component_write(component, ES8336_ADC_D2SEPGA_REG24, 0x00);
++	snd_soc_component_write(component, ES8336_ADC_DMIC_REG25, 0x08);
++	snd_soc_component_write(component, ES8336_DAC_SET2_REG31, 0x20);
++	snd_soc_component_write(component, ES8336_DAC_SET3_REG32, 0x00);
++	snd_soc_component_write(component, ES8336_DAC_VOLL_REG33, 0x00);
++	snd_soc_component_write(component, ES8336_DAC_VOLR_REG34, 0x00);
++	snd_soc_component_write(component, ES8336_SDP_ADCFMT_REG0A, 0x00);
++	snd_soc_component_write(component, ES8336_SDP_DACFMT_REG0B, 0x00);
++	snd_soc_component_write(component, ES8336_SYS_VMIDLOW_REG10, 0x11);
++	snd_soc_component_write(component, ES8336_SYS_VSEL_REG11, 0xFC);
++	snd_soc_component_write(component, ES8336_SYS_REF_REG12, 0x28);
++	snd_soc_component_write(component, ES8336_SYS_LP1_REG0E, 0x04);
++	snd_soc_component_write(component, ES8336_SYS_LP2_REG0F, 0x0C);
++	snd_soc_component_write(component, ES8336_DAC_PDN_REG2F, 0x11);
++	snd_soc_component_write(component, ES8336_HPMIX_SEL_REG13, 0x00);
++	snd_soc_component_write(component, ES8336_HPMIX_SWITCH_REG14, 0x88);
++	snd_soc_component_write(component, ES8336_HPMIX_PDN_REG15, 0x00);
++	snd_soc_component_write(component, ES8336_HPMIX_VOL_REG16, 0xBB);
++	snd_soc_component_write(component, ES8336_CPHP_PDN2_REG1A, 0x10);
++	snd_soc_component_write(component, ES8336_CPHP_LDOCTL_REG1B, 0x30);
++	snd_soc_component_write(component, ES8336_CPHP_PDN1_REG19, 0x02);
++	snd_soc_component_write(component, ES8336_CPHP_ICAL_VOL_REG18, 0x00);
++	snd_soc_component_write(component, ES8336_GPIO_SEL_REG4D, 0x02);
++	snd_soc_component_write(component, ES8336_GPIO_DEBUNCE_INT_REG4E, 0x02);
++	snd_soc_component_write(component, ES8336_TESTMODE_REG50, 0xA0);
++	snd_soc_component_write(component, ES8336_TEST1_REG51, 0x00);
++	snd_soc_component_write(component, ES8336_TEST2_REG52, 0x00);
++	snd_soc_component_write(component, ES8336_SYS_PDN_REG0D, 0x00);
++	snd_soc_component_write(component, ES8336_RESET_REG00, 0xC0);
++	msleep(50);
++	snd_soc_component_write(component, ES8336_ADC_PGAGAIN_REG23, 0x60);
++	snd_soc_component_write(component, ES8336_ADC_D2SEPGA_REG24, 0x01);
++	/* adc ds mode, HPF enable */
++	snd_soc_component_write(component, ES8336_ADC_DMIC_REG25, 0x08);
++	snd_soc_component_write(component, ES8336_ADC_ALC1_REG29, 0xcd);
++	snd_soc_component_write(component, ES8336_ADC_ALC2_REG2A, 0x08);
++	snd_soc_component_write(component, ES8336_ADC_ALC3_REG2B, 0xa0);
++	snd_soc_component_write(component, ES8336_ADC_ALC4_REG2C, 0x05);
++	snd_soc_component_write(component, ES8336_ADC_ALC5_REG2D, 0x06);
++	snd_soc_component_write(component, ES8336_ADC_ALC6_REG2E, 0x61);
++	return 0;
++}
++
++static int es8336_suspend(struct snd_soc_component *component)
++{
++	return 0;
++}
++
++static int es8336_resume(struct snd_soc_component *component)
++{
++	struct es8336_priv *es8336 = snd_soc_component_get_drvdata(component);
++	int ret;
++
++	es8336_reset(component); /* UPDATED BY DAVID,15-3-5 */
++	ret = snd_soc_component_read(component, ES8336_CLKMGR_ADCDIV2_REG05);
++	if (!ret) {
++		es8336_init_regs(component);
++		snd_soc_component_write(component, ES8336_GPIO_SEL_REG4D, 0x02);
++		/* max debance time, enable interrupt, low active */
++		snd_soc_component_write(component, ES8336_GPIO_DEBUNCE_INT_REG4E, 0xf3);
++		/* es8336_set_bias_level(component, SND_SOC_BIAS_OFF); */
++		snd_soc_component_write(component, ES8336_CPHP_OUTEN_REG17, 0x00);
++		snd_soc_component_write(component, ES8336_DAC_PDN_REG2F, 0x11);
++		snd_soc_component_write(component, ES8336_CPHP_LDOCTL_REG1B, 0x03);
++		snd_soc_component_write(component, ES8336_CPHP_PDN2_REG1A, 0x22);
++		snd_soc_component_write(component, ES8336_CPHP_PDN1_REG19, 0x06);
++		snd_soc_component_write(component, ES8336_HPMIX_SWITCH_REG14, 0x00);
++		snd_soc_component_write(component, ES8336_HPMIX_PDN_REG15, 0x33);
++		snd_soc_component_write(component, ES8336_HPMIX_VOL_REG16, 0x00);
++		if (!es8336->hp_inserted)
++			snd_soc_component_write(component, ES8336_SYS_PDN_REG0D, 0x3F);
++		snd_soc_component_write(component, ES8336_SYS_LP1_REG0E, 0xFF);
++		snd_soc_component_write(component, ES8336_SYS_LP2_REG0F, 0xFF);
++		snd_soc_component_write(component, ES8336_CLKMGR_CLKSW_REG01, 0xF3);
++		snd_soc_component_write(component, ES8336_ADC_PDN_LINSEL_REG22, 0xc0);
++	}
++	return 0;
++}
++
++static irqreturn_t es8336_irq_handler(int irq, void *data)
++{
++	struct es8336_priv *es8336 = data;
++
++	queue_delayed_work(system_power_efficient_wq, &es8336->work,
++			   msecs_to_jiffies(es8336->debounce_time));
++
++	return IRQ_HANDLED;
++}
++
++static void hp_work(struct work_struct *work)
++{
++	struct es8336_priv *es8336;
++	int enable;
++
++	es8336 = container_of(work, struct es8336_priv, work.work);
++	enable = gpio_get_value(es8336->hp_det_gpio);
++	if (es8336->hp_det_invert)
++		enable = !enable;
++
++	es8336->hp_inserted = !enable;
++	if (!es8336->muted) {
++		if (es8336->hp_inserted)
++			es8336_enable_spk(es8336, false);
++		else
++			es8336_enable_spk(es8336, true);
++	}
++}
++
++static int es8336_probe(struct snd_soc_component *component)
++{
++	struct es8336_priv *es8336 = snd_soc_component_get_drvdata(component);
++	int ret = 0;
++
++	es8336_component = component;
++	ret = snd_soc_component_read(component, ES8336_CLKMGR_ADCDIV2_REG05);
++	if (!ret) {
++		es8336_reset(component); /* UPDATED BY DAVID,15-3-5 */
++		ret = snd_soc_component_read(component, ES8336_CLKMGR_ADCDIV2_REG05);
++		if (!ret) {
++			es8336_init_regs(component);
++			snd_soc_component_write(component, ES8336_GPIO_SEL_REG4D, 0x02);
++			/* max debance time, enable interrupt, low active */
++			snd_soc_component_write(component,
++				      ES8336_GPIO_DEBUNCE_INT_REG4E, 0xf3);
++
++			/* es8336_set_bias_level(codec, SND_SOC_BIAS_OFF); */
++			snd_soc_component_write(component, ES8336_CPHP_OUTEN_REG17, 0x00);
++			snd_soc_component_write(component, ES8336_DAC_PDN_REG2F, 0x11);
++			snd_soc_component_write(component, ES8336_CPHP_LDOCTL_REG1B, 0x03);
++			snd_soc_component_write(component, ES8336_CPHP_PDN2_REG1A, 0x22);
++			snd_soc_component_write(component, ES8336_CPHP_PDN1_REG19, 0x06);
++			snd_soc_component_write(component, ES8336_HPMIX_SWITCH_REG14, 0x00);
++			snd_soc_component_write(component, ES8336_HPMIX_PDN_REG15, 0x33);
++			snd_soc_component_write(component, ES8336_HPMIX_VOL_REG16, 0x00);
++			if (!es8336->hp_inserted)
++				snd_soc_component_write(component, ES8336_SYS_PDN_REG0D,
++					      0x3F);
++			snd_soc_component_write(component, ES8336_SYS_LP1_REG0E, 0xFF);
++			snd_soc_component_write(component, ES8336_SYS_LP2_REG0F, 0xFF);
++			snd_soc_component_write(component, ES8336_CLKMGR_CLKSW_REG01, 0xF3);
++			snd_soc_component_write(component,
++				      ES8336_ADC_PDN_LINSEL_REG22, 0xc0);
++		}
++	}
++
++	return ret;
++}
++
++static void es8336_remove(struct snd_soc_component *component)
++{
++	es8336_set_bias_level(component, SND_SOC_BIAS_OFF);
++}
++
++const struct regmap_config es8336_regmap_config = {
++	.reg_bits	= 8,
++	.val_bits	= 8,
++	.max_register	= ES8336_TEST3_REG53,
++	.cache_type	= REGCACHE_RBTREE,
++	.reg_defaults = es8336_reg_defaults,
++	.num_reg_defaults = ARRAY_SIZE(es8336_reg_defaults),
++};
++
++static const struct snd_soc_component_driver soc_component_dev_es8336 = {
++	.probe =	es8336_probe,
++	.remove =	es8336_remove,
++	.suspend =	es8336_suspend,
++	.resume =	es8336_resume,
++	.set_bias_level = es8336_set_bias_level,
++
++	.controls = es8336_snd_controls,
++	.num_controls = ARRAY_SIZE(es8336_snd_controls),
++	.dapm_widgets = es8336_dapm_widgets,
++	.num_dapm_widgets = ARRAY_SIZE(es8336_dapm_widgets),
++	.dapm_routes = es8336_dapm_routes,
++	.num_dapm_routes = ARRAY_SIZE(es8336_dapm_routes),
++};
++
++static int es8336_i2c_probe(struct i2c_client *i2c)
++{
++	struct es8336_priv *es8336;
++	struct gpio_desc *gpiod;
++	int ret = -1;
++	int hp_irq;
++	int active_level = 0;
++
++	es8336 = devm_kzalloc(&i2c->dev, sizeof(*es8336), GFP_KERNEL);
++	if (!es8336)
++		return -ENOMEM;
++
++	es8336->debounce_time = 200;
++	es8336->hp_det_invert = 0;
++	es8336->pwr_count = 0;
++	es8336->hp_inserted = false;
++	es8336->muted = true;
++
++	es8336->regmap = devm_regmap_init_i2c(i2c, &es8336_regmap_config);
++	if (IS_ERR(es8336->regmap)) {
++		ret = PTR_ERR(es8336->regmap);
++		dev_err(&i2c->dev, "Failed to init regmap: %d\n", ret);
++		return ret;
++	}
++
++	i2c_set_clientdata(i2c, es8336);
++
++	gpiod = devm_gpiod_get_index_optional(&i2c->dev, "sel", 0,
++							GPIOD_OUT_HIGH);
++	device_property_read_u32(&i2c->dev, "spk-active-level", &active_level);
++	if (!gpiod) {
++		dev_info(&i2c->dev, "Can not get spk_ctl_gpio\n");
++		es8336->spk_ctl_gpio = INVALID_GPIO;
++	} else {
++		es8336->spk_ctl_gpio = desc_to_gpio(gpiod);
++		es8336->spk_active_level = active_level;
++		es8336_enable_spk(es8336, false);
++	}
++
++	gpiod = devm_gpiod_get_index_optional(&i2c->dev, "det", 0,
++							GPIOD_IN);
++
++	if (!gpiod) {
++		dev_info(&i2c->dev, "Can not get hp_det_gpio\n");
++		es8336->hp_det_gpio = INVALID_GPIO;
++	} else {
++		es8336->hp_det_gpio = desc_to_gpio(gpiod);
++		INIT_DELAYED_WORK(&es8336->work, hp_work);
++		es8336->hp_det_invert = 0;
++		hp_irq = gpio_to_irq(es8336->hp_det_gpio);
++		ret = devm_request_threaded_irq(&i2c->dev, hp_irq, NULL,
++						es8336_irq_handler,
++						IRQF_TRIGGER_FALLING |
++						IRQF_TRIGGER_RISING |
++						IRQF_ONESHOT,
++						"es8336_interrupt", es8336);
++		if (ret < 0) {
++			dev_err(&i2c->dev, "request_irq failed: %d\n", ret);
++			return ret;
++		}
++
++		schedule_delayed_work(&es8336->work,
++				      msecs_to_jiffies(es8336->debounce_time));
++	}
++
++	ret = devm_snd_soc_register_component(&i2c->dev,
++				     &soc_component_dev_es8336,
++				     &es8336_dai, 1);
++
++	return ret;
++}
++
++static void es8336_i2c_remove(struct i2c_client *client)
++{
++
++}
++
++static void es8336_i2c_shutdown(struct i2c_client *client)
++{
++	struct es8336_priv *es8336 = i2c_get_clientdata(client);
++
++	if (es8336_component != NULL) {
++		es8336_enable_spk(es8336, false);
++		msleep(20);
++		es8336_set_bias_level(es8336_component, SND_SOC_BIAS_OFF);
++	}
++}
++
++static const struct i2c_device_id es8336_i2c_id[] = {
++	{"es8336", 0},
++	{"10ES8336:00", 0},
++	{"10ES8336", 0},
++	{ }
++};
++MODULE_DEVICE_TABLE(i2c, es8336_i2c_id);
++
++static const struct of_device_id es8336_of_match[] = {
++	{ .compatible = "everest,es8336", },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, es8336_of_match);
++
++static const struct acpi_device_id es8336_acpi_match[] = {
++	{ "ESSX8336", 0},
++	{ }
++};
++MODULE_DEVICE_TABLE(acpi, es8336_acpi_match);
++
++static struct i2c_driver es8336_i2c_driver = {
++	.driver = {
++		.name		= "es8336",
++		.of_match_table = es8336_of_match,
++		.acpi_match_table = es8336_acpi_match,
++	},
++	.probe    = es8336_i2c_probe,
++	.remove	= es8336_i2c_remove,
++	.shutdown = es8336_i2c_shutdown,
++	.id_table = es8336_i2c_id,
++};
++
++module_i2c_driver(es8336_i2c_driver);
++MODULE_DESCRIPTION("ASoC es8336 driver");
++MODULE_LICENSE("GPL");
+diff --git a/sound/soc/codecs/es8336.h b/sound/soc/codecs/es8336.h
+new file mode 100644
+index 000000000000..368a0a4accdd
+--- /dev/null
++++ b/sound/soc/codecs/es8336.h
+@@ -0,0 +1,153 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (C) Everest Semiconductor Co.,Ltd
++ * Copyright (C) 2022-2023, Phytium Technology Co., Ltd.
++ */
++
++#ifndef _ES8336_H
++#define _ES8336_H
++
++/* ES8336 register space */
++/*
++ * RESET Control
++ */
++#define ES8336_RESET_REG00             0x00
++/*
++ * Clock Managerment
++ */
++#define ES8336_CLKMGR_CLKSW_REG01      0x01
++#define ES8336_CLKMGR_CLKSEL_REG02     0x02
++#define ES8336_CLKMGR_ADCOSR_REG03     0x03
++#define ES8336_CLKMGR_ADCDIV1_REG04    0x04
++#define ES8336_CLKMGR_ADCDIV2_REG05    0x05
++#define ES8336_CLKMGR_DACDIV1_REG06    0x06
++#define ES8336_CLKMGR_DACDIV2_REG07    0x07
++#define ES8336_CLKMGR_CPDIV_REG08      0x08
++/*
++ * SDP Control
++ */
++#define ES8336_SDP_MS_BCKDIV_REG09     0x09
++#define ES8336_SDP_ADCFMT_REG0A        0x0a
++#define ES8336_SDP_DACFMT_REG0B        0x0b
++/*
++ * System Control
++ */
++#define ES8336_SYS_VMIDSEL_REG0C       0x0c
++#define ES8336_SYS_PDN_REG0D           0x0d
++#define ES8336_SYS_LP1_REG0E           0x0e
++#define ES8336_SYS_LP2_REG0F           0x0f
++#define ES8336_SYS_VMIDLOW_REG10       0x10
++#define ES8336_SYS_VSEL_REG11          0x11
++#define ES8336_SYS_REF_REG12           0x12
++/*
++ * HP Mixer
++ */
++#define ES8336_HPMIX_SEL_REG13         0x13
++#define ES8336_HPMIX_SWITCH_REG14      0x14
++#define ES8336_HPMIX_PDN_REG15         0x15
++#define ES8336_HPMIX_VOL_REG16         0x16
++/*
++ * Charge Pump Headphone driver
++ */
++#define ES8336_CPHP_OUTEN_REG17        0x17
++#define ES8336_CPHP_ICAL_VOL_REG18     0x18
++#define ES8336_CPHP_PDN1_REG19         0x19
++#define ES8336_CPHP_PDN2_REG1A         0x1a
++#define ES8336_CPHP_LDOCTL_REG1B       0x1b
++/*
++ * Calibration
++ */
++#define ES8336_CAL_TYPE_REG1C         0x1c
++#define ES8336_CAL_SET_REG1D          0x1d
++#define ES8336_CAL_HPLIV_REG1E        0x1e
++#define ES8336_CAL_HPRIV_REG1F        0x1f
++#define ES8336_CAL_HPLMV_REG20        0x20
++#define ES8336_CAL_HPRMV_REG21        0x21
++/*
++ * ADC Control
++ */
++#define ES8336_ADC_PDN_LINSEL_REG22   0x22
++#define ES8336_ADC_PGAGAIN_REG23      0x23
++#define ES8336_ADC_D2SEPGA_REG24      0x24
++#define ES8336_ADC_DMIC_REG25         0x25
++#define ES8336_ADC_MUTE_REG26         0x26
++#define ES8336_ADC_VOLUME_REG27       0x27
++#define ES8336_ADC_ALC1_REG29         0x29
++#define ES8336_ADC_ALC2_REG2A         0x2a
++#define ES8336_ADC_ALC3_REG2B         0x2b
++#define ES8336_ADC_ALC4_REG2C         0x2c
++#define ES8336_ADC_ALC5_REG2D         0x2d
++#define ES8336_ADC_ALC6_REG2E         0x2e
++/*
++ * DAC Control
++ */
++#define ES8336_DAC_PDN_REG2F          0x2f
++#define ES8336_DAC_SET1_REG30         0x30
++#define ES8336_DAC_SET2_REG31         0x31
++#define ES8336_DAC_SET3_REG32         0x32
++#define ES8336_DAC_VOLL_REG33         0x33
++#define ES8336_DAC_VOLR_REG34         0x34
++/*
++ * GPIO
++ */
++#define ES8336_GPIO_SEL_REG4D         0x4D
++#define ES8336_GPIO_DEBUNCE_INT_REG4E 0x4E
++#define ES8336_GPIO_FLAG              0x4F
++/*
++ * TEST MODE
++ */
++#define ES8336_TESTMODE_REG50         0x50
++#define ES8336_TEST1_REG51            0x51
++#define ES8336_TEST2_REG52            0x52
++#define ES8336_TEST3_REG53            0x53
++
++#define ES8336_IFACE            ES8336_SDP_MS_BCKDIV_REG09
++#define ES8336_ADC_IFACE        ES8336_SDP_ADCFMT_REG0A
++#define ES8336_DAC_IFACE        ES8336_SDP_DACFMT_REG0B
++
++#define ES8336_REGNUM      84
++
++/* REGISTER 0X01 CLOCK MANAGER */
++#define ES8336_CLKMGR_MCLK_DIV_MASK	(0X1<<7)
++#define ES8336_CLKMGR_MCLK_DIV_NML	(0X0<<7)
++#define ES8336_CLKMGR_MCLK_DIV_1	(0X1<<7)
++#define ES8336_CLKMGR_ADC_MCLK_MASK	(0X1<<3)
++#define ES8336_CLKMGR_ADC_MCLK_EN	(0X1<<3)
++#define ES8336_CLKMGR_ADC_MCLK_DIS	(0X0<<3)
++#define ES8336_CLKMGR_DAC_MCLK_MASK	(0X1<<2)
++#define ES8336_CLKMGR_DAC_MCLK_EN	(0X1<<2)
++#define ES8336_CLKMGR_DAC_MCLK_DIS	(0X0<<2)
++#define ES8336_CLKMGR_ADC_ANALOG_MASK	(0X1<<1)
++#define ES8336_CLKMGR_ADC_ANALOG_EN	(0X1<<1)
++#define ES8336_CLKMGR_ADC_ANALOG_DIS	(0X0<<1)
++#define ES8336_CLKMGR_DAC_ANALOG_MASK	(0X1<<0)
++#define ES8336_CLKMGR_DAC_ANALOG_EN	(0X1<<0)
++#define ES8336_CLKMGR_DAC_ANALOG_DIS	(0X0<<0)
++
++/* REGISTER 0X0A */
++#define ES8336_ADCWL_MASK	(0x7 << 2)
++#define ES8336_ADCWL_32		(0x4 << 2)
++#define ES8336_ADCWL_24		(0x0 << 2)
++#define ES8336_ADCWL_20		(0x1 << 2)
++#define ES8336_ADCWL_18		(0x2 << 2)
++#define ES8336_ADCWL_16		(0x3 << 2)
++#define ES8336_ADCFMT_MASK	(0x3 << 0)
++#define ES8336_ADCFMT_I2S	(0x0 << 0)
++#define ES8336_ADCWL_LEFT	(0x1 << 0)
++#define ES8336_ADCWL_RIGHT	(0x2 << 0)
++#define ES8336_ADCWL_PCM	(0x3 << 0)
++
++/* REGISTER 0X0B */
++#define ES8336_DACWL_MASK	(0x7 << 2)
++#define ES8336_DACWL_32		(0x4 << 2)
++#define ES8336_DACWL_24		(0x0 << 2)
++#define ES8336_DACWL_20		(0x1 << 2)
++#define ES8336_DACWL_18		(0x2 << 2)
++#define ES8336_DACWL_16		(0x3 << 2)
++#define ES8336_DACFMT_MASK	(0x3 << 0)
++#define ES8336_DACFMT_I2S	(0x0 << 0)
++#define ES8336_DACWL_LEFT	(0x1 << 0)
++#define ES8336_DACWL_RIGHT	(0x2 << 0)
++#define ES8336_DACWL_PCM	(0x3 << 0)
++
++#endif
+diff --git a/sound/soc/codecs/es8388.c b/sound/soc/codecs/es8388.c
+new file mode 100644
+index 000000000000..5945ab87b46d
+--- /dev/null
++++ b/sound/soc/codecs/es8388.c
+@@ -0,0 +1,819 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * es8388.c -- ES8388 ALSA SoC Audio driver
++ *
++ * Copyright 2021-2023, Phytium Technology Co., Ltd.
++ */
++
++#include <linux/clk.h>
++#include <linux/delay.h>
++#include <linux/of_device.h>
++#include <linux/module.h>
++#include <linux/pm.h>
++#include <linux/regmap.h>
++#include <linux/slab.h>
++#include <linux/regulator/consumer.h>
++#include <sound/core.h>
++#include <sound/initval.h>
++#include <sound/pcm.h>
++#include <sound/pcm_params.h>
++#include <sound/soc.h>
++#include <sound/tlv.h>
++#include "es8388.h"
++#include <linux/i2c.h>
++#include <linux/regmap.h>
++
++static const unsigned int rates_12288[] = {
++	8000, 12000, 16000, 24000, 32000, 48000, 96000,
++};
++
++static const int ratios_12288[] = {
++	10, 7, 6, 4, 3, 2, 0,
++};
++
++static const struct snd_pcm_hw_constraint_list constraints_12288 = {
++	.count	= ARRAY_SIZE(rates_12288),
++	.list	= rates_12288,
++};
++
++static const unsigned int rates_11289[] = {
++	8018, 11025, 22050, 44100, 88200,
++};
++
++static const int ratios_11289[] = {
++	9, 7, 4, 2, 0,
++};
++
++static const struct snd_pcm_hw_constraint_list constraints_11289 = {
++	.count	= ARRAY_SIZE(rates_11289),
++	.list	= rates_11289,
++};
++
++#define ES8388_RATES (SNDRV_PCM_RATE_192000 | \
++		SNDRV_PCM_RATE_96000 | \
++		SNDRV_PCM_RATE_88200 | \
++		SNDRV_PCM_RATE_8000_48000)
++#define ES8388_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | \
++		SNDRV_PCM_FMTBIT_S18_3LE | \
++		SNDRV_PCM_FMTBIT_S20_3LE | \
++		SNDRV_PCM_FMTBIT_S24_LE | \
++		SNDRV_PCM_FMTBIT_S32_LE)
++
++struct es8388_priv {
++	struct regmap *regmap;
++	struct clk *clk;
++	int playback_fs;
++	bool deemph;
++	int mclkdiv2;
++	const struct snd_pcm_hw_constraint_list *sysclk_constraints;
++	const int *mclk_ratios;
++	bool master;
++};
++
++/*
++ * ES8388 Controls
++ */
++static const char * const adcpol_txt[] = {"Normal", "L Invert", "R Invert",
++					  "L + R Invert"};
++static SOC_ENUM_SINGLE_DECL(adcpol,
++			    ES8388_ADCCONTROL6, 6, adcpol_txt);
++
++static const DECLARE_TLV_DB_SCALE(play_tlv, -3000, 100, 0);
++static const DECLARE_TLV_DB_SCALE(dac_adc_tlv, -9600, 50, 0);
++static const DECLARE_TLV_DB_SCALE(pga_tlv, 0, 300, 0);
++static const DECLARE_TLV_DB_SCALE(bypass_tlv, -1500, 300, 0);
++static const DECLARE_TLV_DB_SCALE(mic_tlv, 0, 300, 0);
++
++static const struct {
++	int rate;
++	unsigned int val;
++} deemph_settings[] = {
++	{ 0,     ES8388_DACCONTROL6_DEEMPH_OFF },
++	{ 32000, ES8388_DACCONTROL6_DEEMPH_32k },
++	{ 44100, ES8388_DACCONTROL6_DEEMPH_44_1k },
++	{ 48000, ES8388_DACCONTROL6_DEEMPH_48k },
++};
++
++static int es8388_set_deemph(struct snd_soc_component *component)
++{
++	struct es8388_priv *es8388 = snd_soc_component_get_drvdata(component);
++	int val, i, best;
++
++	/*
++	 * If we're using deemphasis select the nearest available sample
++	 * rate.
++	 */
++	if (es8388->deemph) {
++		best = 0;
++		for (i = 1; i < ARRAY_SIZE(deemph_settings); i++) {
++			if (abs(deemph_settings[i].rate - es8388->playback_fs) <
++			    abs(deemph_settings[best].rate - es8388->playback_fs))
++				best = i;
++		}
++
++		val = deemph_settings[best].val;
++	} else {
++		val = ES8388_DACCONTROL6_DEEMPH_OFF;
++	}
++
++	dev_dbg(component->dev, "Set deemphasis %d\n", val);
++
++	return snd_soc_component_update_bits(component, ES8388_DACCONTROL6,
++			ES8388_DACCONTROL6_DEEMPH_MASK, val);
++}
++
++static int es8388_get_deemph(struct snd_kcontrol *kcontrol,
++			     struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
++	struct es8388_priv *es8388 = snd_soc_component_get_drvdata(component);
++
++	ucontrol->value.integer.value[0] = es8388->deemph;
++	return 0;
++}
++
++static int es8388_put_deemph(struct snd_kcontrol *kcontrol,
++			     struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
++	struct es8388_priv *es8388 = snd_soc_component_get_drvdata(component);
++	unsigned int deemph = ucontrol->value.integer.value[0];
++	int ret;
++
++	if (deemph > 1)
++		return -EINVAL;
++
++	ret = es8388_set_deemph(component);
++	if (ret < 0)
++		return ret;
++
++	es8388->deemph = deemph;
++
++	return 0;
++}
++
++static const struct snd_kcontrol_new es8388_snd_controls[] = {
++	SOC_DOUBLE_R_TLV("Capture Digital Volume",
++		ES8388_ADCCONTROL8, ES8388_ADCCONTROL9,
++		 0, 0xc0, 1, dac_adc_tlv),
++
++	SOC_SINGLE_BOOL_EXT("DAC Deemphasis Switch", 0,
++		    es8388_get_deemph, es8388_put_deemph),
++
++	SOC_ENUM("Capture Polarity", adcpol),
++
++	SOC_SINGLE_TLV("Left Mixer Left Bypass Volume",
++			ES8388_DACCONTROL17, 3, 7, 1, bypass_tlv),
++	SOC_SINGLE_TLV("Left Mixer Right Bypass Volume",
++			ES8388_DACCONTROL19, 3, 7, 1, bypass_tlv),
++	SOC_SINGLE_TLV("Right Mixer Left Bypass Volume",
++			ES8388_DACCONTROL18, 3, 7, 1, bypass_tlv),
++	SOC_SINGLE_TLV("Right Mixer Right Bypass Volume",
++			ES8388_DACCONTROL20, 3, 7, 1, bypass_tlv),
++
++	SOC_DOUBLE_R_TLV("PCM Volume",
++			ES8388_LDACVOL, ES8388_RDACVOL,
++			0, ES8388_DACVOL_MAX, 1, dac_adc_tlv),
++
++	SOC_DOUBLE_R_TLV("Output 1 Playback Volume",
++			ES8388_LOUT1VOL, ES8388_ROUT1VOL,
++			0, ES8388_OUT1VOL_MAX, 0, play_tlv),
++
++	SOC_DOUBLE_R_TLV("Output 2 Playback Volume",
++			ES8388_LOUT2VOL, ES8388_ROUT2VOL,
++			0, ES8388_OUT2VOL_MAX, 0, play_tlv),
++
++	SOC_DOUBLE_TLV("Mic PGA Volume", ES8388_ADCCONTROL1,
++			4, 0, 8, 0, mic_tlv),
++};
++
++/*
++ * DAPM Controls
++ */
++static const char * const es8388_line_texts[] = {
++	"Line 1", "Line 2", "PGA", "Differential"};
++
++static const struct soc_enum es8388_lline_enum =
++	SOC_ENUM_SINGLE(ES8388_DACCONTROL16, 3,
++			      ARRAY_SIZE(es8388_line_texts),
++			      es8388_line_texts);
++static const struct snd_kcontrol_new es8388_left_line_controls =
++	SOC_DAPM_ENUM("Route", es8388_lline_enum);
++
++static const struct soc_enum es8388_rline_enum =
++	SOC_ENUM_SINGLE(ES8388_DACCONTROL16, 0,
++			      ARRAY_SIZE(es8388_line_texts),
++			      es8388_line_texts);
++static const struct snd_kcontrol_new es8388_right_line_controls =
++	SOC_DAPM_ENUM("Route", es8388_lline_enum);
++
++/* Left Mixer */
++static const struct snd_kcontrol_new es8388_left_mixer_controls[] = {
++	SOC_DAPM_SINGLE("Playback Switch", ES8388_DACCONTROL17, 7, 1, 0),
++	SOC_DAPM_SINGLE("Left Bypass Switch", ES8388_DACCONTROL17, 6, 1, 0),
++	SOC_DAPM_SINGLE("Right Playback Switch", ES8388_DACCONTROL18, 7, 1, 0),
++	SOC_DAPM_SINGLE("Right Bypass Switch", ES8388_DACCONTROL18, 6, 1, 0),
++};
++
++/* Right Mixer */
++static const struct snd_kcontrol_new es8388_right_mixer_controls[] = {
++	SOC_DAPM_SINGLE("Left Playback Switch", ES8388_DACCONTROL19, 7, 1, 0),
++	SOC_DAPM_SINGLE("Left Bypass Switch", ES8388_DACCONTROL19, 6, 1, 0),
++	SOC_DAPM_SINGLE("Playback Switch", ES8388_DACCONTROL20, 7, 1, 0),
++	SOC_DAPM_SINGLE("Right Bypass Switch", ES8388_DACCONTROL20, 6, 1, 0),
++};
++
++static const char * const es8388_pga_sel[] = {
++	"Line 1", "Line 2", "Line 3", "Differential"};
++
++/* Left PGA Mux */
++static const struct soc_enum es8388_lpga_enum =
++	SOC_ENUM_SINGLE(ES8388_ADCCONTROL2, 6,
++			      ARRAY_SIZE(es8388_pga_sel),
++			      es8388_pga_sel);
++static const struct snd_kcontrol_new es8388_left_pga_controls =
++	SOC_DAPM_ENUM("Route", es8388_lpga_enum);
++
++/* Right PGA Mux */
++static const struct soc_enum es8388_rpga_enum =
++	SOC_ENUM_SINGLE(ES8388_ADCCONTROL2, 4,
++			      ARRAY_SIZE(es8388_pga_sel),
++			      es8388_pga_sel);
++static const struct snd_kcontrol_new es8388_right_pga_controls =
++	SOC_DAPM_ENUM("Route", es8388_rpga_enum);
++
++/* Differential Mux */
++static const char * const es8388_diff_sel[] = {"Line 1", "Line 2"};
++static SOC_ENUM_SINGLE_DECL(diffmux,
++			    ES8388_ADCCONTROL3, 7, es8388_diff_sel);
++static const struct snd_kcontrol_new es8388_diffmux_controls =
++	SOC_DAPM_ENUM("Route", diffmux);
++
++/* Mono ADC Mux */
++static const char * const es8388_mono_mux[] = {"Stereo", "Mono (Left)",
++	"Mono (Right)", "Digital Mono"};
++static SOC_ENUM_SINGLE_DECL(monomux,
++			    ES8388_ADCCONTROL3, 3, es8388_mono_mux);
++static const struct snd_kcontrol_new es8388_monomux_controls =
++	SOC_DAPM_ENUM("Route", monomux);
++
++static const struct snd_soc_dapm_widget es8388_dapm_widgets[] = {
++	SND_SOC_DAPM_MUX("Differential Mux", SND_SOC_NOPM, 0, 0,
++		&es8388_diffmux_controls),
++	SND_SOC_DAPM_MUX("Left ADC Mux", SND_SOC_NOPM, 0, 0,
++		&es8388_monomux_controls),
++	SND_SOC_DAPM_MUX("Right ADC Mux", SND_SOC_NOPM, 0, 0,
++		&es8388_monomux_controls),
++
++	SND_SOC_DAPM_MUX("Left PGA Mux", ES8388_ADCPOWER,
++			ES8388_ADCPOWER_AINL_OFF, 1,
++			&es8388_left_pga_controls),
++	SND_SOC_DAPM_MUX("Right PGA Mux", ES8388_ADCPOWER,
++			ES8388_ADCPOWER_AINR_OFF, 1,
++			&es8388_right_pga_controls),
++
++	SND_SOC_DAPM_MUX("Left Line Mux", SND_SOC_NOPM, 0, 0,
++		&es8388_left_line_controls),
++	SND_SOC_DAPM_MUX("Right Line Mux", SND_SOC_NOPM, 0, 0,
++		&es8388_right_line_controls),
++
++	SND_SOC_DAPM_ADC("Right ADC", "Right Capture", ES8388_ADCPOWER,
++			ES8388_ADCPOWER_ADCR_OFF, 1),
++	SND_SOC_DAPM_ADC("Left ADC", "Left Capture", ES8388_ADCPOWER,
++			ES8388_ADCPOWER_ADCL_OFF, 1),
++
++	SND_SOC_DAPM_SUPPLY("DAC STM", ES8388_CHIPPOWER,
++			ES8388_CHIPPOWER_DACSTM_RESET, 1, NULL, 0),
++	SND_SOC_DAPM_SUPPLY("ADC STM", ES8388_CHIPPOWER,
++			ES8388_CHIPPOWER_ADCSTM_RESET, 1, NULL, 0),
++
++	SND_SOC_DAPM_SUPPLY("DAC DIG", ES8388_CHIPPOWER,
++			ES8388_CHIPPOWER_DACDIG_OFF, 1, NULL, 0),
++	SND_SOC_DAPM_SUPPLY("ADC DIG", ES8388_CHIPPOWER,
++			ES8388_CHIPPOWER_ADCDIG_OFF, 1, NULL, 0),
++
++	SND_SOC_DAPM_SUPPLY("DAC DLL", ES8388_CHIPPOWER,
++			ES8388_CHIPPOWER_DACDLL_OFF, 1, NULL, 0),
++	SND_SOC_DAPM_SUPPLY("ADC DLL", ES8388_CHIPPOWER,
++			ES8388_CHIPPOWER_ADCDLL_OFF, 1, NULL, 0),
++
++	SND_SOC_DAPM_SUPPLY("ADC Vref", ES8388_CHIPPOWER,
++			ES8388_CHIPPOWER_ADCVREF_OFF, 1, NULL, 0),
++	SND_SOC_DAPM_SUPPLY("DAC Vref", ES8388_CHIPPOWER,
++			ES8388_CHIPPOWER_DACVREF_OFF, 1, NULL, 0),
++
++	SND_SOC_DAPM_DAC("Right DAC", "Right Playback", ES8388_DACPOWER,
++			ES8388_DACPOWER_RDAC_OFF, 1),
++	SND_SOC_DAPM_DAC("Left DAC", "Left Playback", ES8388_DACPOWER,
++			ES8388_DACPOWER_LDAC_OFF, 1),
++
++	SND_SOC_DAPM_MIXER("Left Mixer", SND_SOC_NOPM, 0, 0,
++		&es8388_left_mixer_controls[0],
++		ARRAY_SIZE(es8388_left_mixer_controls)),
++	SND_SOC_DAPM_MIXER("Right Mixer", SND_SOC_NOPM, 0, 0,
++		&es8388_right_mixer_controls[0],
++		ARRAY_SIZE(es8388_right_mixer_controls)),
++
++	SND_SOC_DAPM_PGA("Right Out 2", ES8388_DACPOWER,
++			ES8388_DACPOWER_ROUT2_ON, 0, NULL, 0),
++	SND_SOC_DAPM_PGA("Left Out 2", ES8388_DACPOWER,
++			ES8388_DACPOWER_LOUT2_ON, 0, NULL, 0),
++	SND_SOC_DAPM_PGA("Right Out 1", ES8388_DACPOWER,
++			ES8388_DACPOWER_ROUT1_ON, 0, NULL, 0),
++	SND_SOC_DAPM_PGA("Left Out 1", ES8388_DACPOWER,
++			ES8388_DACPOWER_LOUT1_ON, 0, NULL, 0),
++
++	SND_SOC_DAPM_OUTPUT("LOUT1"),
++	SND_SOC_DAPM_OUTPUT("ROUT1"),
++	SND_SOC_DAPM_OUTPUT("LOUT2"),
++	SND_SOC_DAPM_OUTPUT("ROUT2"),
++
++	SND_SOC_DAPM_INPUT("LINPUT1"),
++	SND_SOC_DAPM_INPUT("LINPUT2"),
++	SND_SOC_DAPM_INPUT("RINPUT1"),
++	SND_SOC_DAPM_INPUT("RINPUT2"),
++};
++
++static const struct snd_soc_dapm_route es8388_dapm_routes[] = {
++	{ "Left Line Mux", "Line 1", "LINPUT1" },
++	{ "Left Line Mux", "Line 2", "LINPUT2" },
++	{ "Left Line Mux", "PGA", "Left PGA Mux" },
++	{ "Left Line Mux", "Differential", "Differential Mux" },
++
++	{ "Right Line Mux", "Line 1", "RINPUT1" },
++	{ "Right Line Mux", "Line 2", "RINPUT2" },
++	{ "Right Line Mux", "PGA", "Right PGA Mux" },
++	{ "Right Line Mux", "Differential", "Differential Mux" },
++
++	{ "Left PGA Mux", "Line 1", "LINPUT1" },
++	{ "Left PGA Mux", "Line 2", "LINPUT2" },
++	{ "Left PGA Mux", "Differential", "Differential Mux" },
++
++	{ "Right PGA Mux", "Line 1", "RINPUT1" },
++	{ "Right PGA Mux", "Line 2", "RINPUT2" },
++	{ "Right PGA Mux", "Differential", "Differential Mux" },
++
++	{ "Differential Mux", "Line 1", "LINPUT1" },
++	{ "Differential Mux", "Line 1", "RINPUT1" },
++	{ "Differential Mux", "Line 2", "LINPUT2" },
++	{ "Differential Mux", "Line 2", "RINPUT2" },
++
++	{ "Left ADC Mux", "Stereo", "Left PGA Mux" },
++	{ "Left ADC Mux", "Mono (Left)", "Left PGA Mux" },
++	{ "Left ADC Mux", "Digital Mono", "Left PGA Mux" },
++
++	{ "Right ADC Mux", "Stereo", "Right PGA Mux" },
++	{ "Right ADC Mux", "Mono (Right)", "Right PGA Mux" },
++	{ "Right ADC Mux", "Digital Mono", "Right PGA Mux" },
++
++	{ "Left ADC", NULL, "Left ADC Mux" },
++	{ "Right ADC", NULL, "Right ADC Mux" },
++
++	{ "ADC DIG", NULL, "ADC STM" },
++	{ "ADC DIG", NULL, "ADC Vref" },
++	{ "ADC DIG", NULL, "ADC DLL" },
++
++	{ "Left ADC", NULL, "ADC DIG" },
++	{ "Right ADC", NULL, "ADC DIG" },
++
++	{ "Left Line Mux", "Line 1", "LINPUT1" },
++	{ "Left Line Mux", "Line 2", "LINPUT2" },
++	{ "Left Line Mux", "PGA", "Left PGA Mux" },
++	{ "Left Line Mux", "Differential", "Differential Mux" },
++
++	{ "Right Line Mux", "Line 1", "RINPUT1" },
++	{ "Right Line Mux", "Line 2", "RINPUT2" },
++	{ "Right Line Mux", "PGA", "Right PGA Mux" },
++	{ "Right Line Mux", "Differential", "Differential Mux" },
++
++	{ "Left Out 1", NULL, "Left DAC" },
++	{ "Right Out 1", NULL, "Right DAC" },
++	{ "Left Out 2", NULL, "Left DAC" },
++	{ "Right Out 2", NULL, "Right DAC" },
++
++	{ "Left Mixer", "Playback Switch", "Left DAC" },
++	{ "Left Mixer", "Left Bypass Switch", "Left Line Mux" },
++	{ "Left Mixer", "Right Playback Switch", "Right DAC" },
++	{ "Left Mixer", "Right Bypass Switch", "Right Line Mux" },
++
++	{ "Right Mixer", "Left Playback Switch", "Left DAC" },
++	{ "Right Mixer", "Left Bypass Switch", "Left Line Mux" },
++	{ "Right Mixer", "Playback Switch", "Right DAC" },
++	{ "Right Mixer", "Right Bypass Switch", "Right Line Mux" },
++
++	{ "DAC DIG", NULL, "DAC STM" },
++	{ "DAC DIG", NULL, "DAC Vref" },
++	{ "DAC DIG", NULL, "DAC DLL" },
++
++	{ "Left DAC", NULL, "DAC DIG" },
++	{ "Right DAC", NULL, "DAC DIG" },
++
++	{ "Left Out 1", NULL, "Left Mixer" },
++	{ "LOUT1", NULL, "Left Out 1" },
++	{ "Right Out 1", NULL, "Right Mixer" },
++	{ "ROUT1", NULL, "Right Out 1" },
++
++	{ "Left Out 2", NULL, "Left Mixer" },
++	{ "LOUT2", NULL, "Left Out 2" },
++	{ "Right Out 2", NULL, "Right Mixer" },
++	{ "ROUT2", NULL, "Right Out 2" },
++};
++
++static int es8388_mute(struct snd_soc_dai *dai, int mute, int direction)
++{
++	if (direction)
++		return snd_soc_component_update_bits(dai->component, ES8388_ADCCONTROL7,
++				ES8388_ADCCONTROL7_ADC_MUTE,
++				mute ? ES8388_ADCCONTROL7_ADC_MUTE : 0);
++	else
++		return snd_soc_component_update_bits(dai->component, ES8388_DACCONTROL3,
++				ES8388_DACCONTROL3_DACMUTE,
++				mute ? ES8388_DACCONTROL3_DACMUTE : 0);
++}
++
++static int es8388_startup(struct snd_pcm_substream *substream,
++			  struct snd_soc_dai *dai)
++{
++	struct snd_soc_component *component = dai->component;
++	struct es8388_priv *es8388 = snd_soc_component_get_drvdata(component);
++
++	if (es8388->master && es8388->sysclk_constraints)
++		snd_pcm_hw_constraint_list(substream->runtime, 0,
++				SNDRV_PCM_HW_PARAM_RATE,
++				es8388->sysclk_constraints);
++
++	return 0;
++}
++
++static int es8388_hw_params(struct snd_pcm_substream *substream,
++	struct snd_pcm_hw_params *params,
++	struct snd_soc_dai *dai)
++{
++	struct snd_soc_component *component = dai->component;
++	struct es8388_priv *es8388 = snd_soc_component_get_drvdata(component);
++	int i;
++	int reg;
++	int wl;
++	int ratio;
++
++	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
++		reg = ES8388_DACCONTROL2;
++	else
++		reg = ES8388_ADCCONTROL5;
++
++	if (es8388->master) {
++		if (!es8388->sysclk_constraints) {
++			dev_err(component->dev, "No MCLK configured\n");
++			return -EINVAL;
++		}
++
++		for (i = 0; i < es8388->sysclk_constraints->count; i++)
++			if (es8388->sysclk_constraints->list[i] ==
++			    params_rate(params))
++				break;
++
++		if (i == es8388->sysclk_constraints->count) {
++			dev_err(component->dev,
++				"LRCLK %d unsupported with current clock\n",
++				params_rate(params));
++			return -EINVAL;
++		}
++		ratio = es8388->mclk_ratios[i];
++	} else {
++		ratio = 0;
++		es8388->mclkdiv2 = 0;
++	}
++
++	snd_soc_component_update_bits(component, ES8388_MASTERMODE,
++			ES8388_MASTERMODE_MCLKDIV2,
++			es8388->mclkdiv2 ? ES8388_MASTERMODE_MCLKDIV2 : 0);
++
++	switch (params_width(params)) {
++	case 16:
++		wl = 3;
++		break;
++	case 18:
++		wl = 2;
++		break;
++	case 20:
++		wl = 1;
++		break;
++	case 24:
++		wl = 0;
++		break;
++	case 32:
++		wl = 4;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
++		snd_soc_component_update_bits(component, ES8388_DACCONTROL1,
++				ES8388_DACCONTROL1_DACWL_MASK,
++				wl << ES8388_DACCONTROL1_DACWL_SHIFT);
++
++		es8388->playback_fs = params_rate(params);
++		es8388_set_deemph(component);
++	} else
++		snd_soc_component_update_bits(component, ES8388_ADCCONTROL4,
++				ES8388_ADCCONTROL4_ADCWL_MASK,
++				wl << ES8388_ADCCONTROL4_ADCWL_SHIFT);
++
++	return snd_soc_component_update_bits(component, reg, ES8388_RATEMASK, ratio);
++}
++
++static int es8388_set_sysclk(struct snd_soc_dai *codec_dai,
++		int clk_id, unsigned int freq, int dir)
++{
++	struct snd_soc_component *component = codec_dai->component;
++	struct es8388_priv *es8388 = snd_soc_component_get_drvdata(component);
++	int mclkdiv2 = 0;
++
++	switch (freq) {
++	case 0:
++		es8388->sysclk_constraints = NULL;
++		es8388->mclk_ratios = NULL;
++		break;
++	case 22579200:
++		mclkdiv2 = 1;
++		fallthrough;
++	case 11289600:
++		es8388->sysclk_constraints = &constraints_11289;
++		es8388->mclk_ratios = ratios_11289;
++		break;
++	case 24576000:
++		mclkdiv2 = 1;
++		fallthrough;
++	case 12288000:
++		es8388->sysclk_constraints = &constraints_12288;
++		es8388->mclk_ratios = ratios_12288;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	es8388->mclkdiv2 = mclkdiv2;
++	return 0;
++}
++
++static int es8388_set_dai_fmt(struct snd_soc_dai *codec_dai,
++		unsigned int fmt)
++{
++	struct snd_soc_component *component = codec_dai->component;
++	struct es8388_priv *es8388 = snd_soc_component_get_drvdata(component);
++	u8 dac_mode = 0;
++	u8 adc_mode = 0;
++
++	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
++	case SND_SOC_DAIFMT_CBM_CFM:
++		/* Master serial port mode, with BCLK generated automatically */
++		snd_soc_component_update_bits(component, ES8388_MASTERMODE,
++				    ES8388_MASTERMODE_MSC,
++				    ES8388_MASTERMODE_MSC);
++		es8388->master = true;
++		break;
++	case SND_SOC_DAIFMT_CBS_CFS:
++		/* Slave serial port mode */
++		snd_soc_component_update_bits(component, ES8388_MASTERMODE,
++				    ES8388_MASTERMODE_MSC, 0);
++		es8388->master = false;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	/* interface format */
++	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
++	case SND_SOC_DAIFMT_I2S:
++		dac_mode |= ES8388_DACCONTROL1_DACFORMAT_I2S;
++		adc_mode |= ES8388_ADCCONTROL4_ADCFORMAT_I2S;
++		break;
++	case SND_SOC_DAIFMT_RIGHT_J:
++		dac_mode |= ES8388_DACCONTROL1_DACFORMAT_RJUST;
++		adc_mode |= ES8388_ADCCONTROL4_ADCFORMAT_RJUST;
++		break;
++	case SND_SOC_DAIFMT_LEFT_J:
++		dac_mode |= ES8388_DACCONTROL1_DACFORMAT_LJUST;
++		adc_mode |= ES8388_ADCCONTROL4_ADCFORMAT_LJUST;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	/* clock inversion */
++	if ((fmt & SND_SOC_DAIFMT_INV_MASK) != SND_SOC_DAIFMT_NB_NF)
++		return -EINVAL;
++
++	snd_soc_component_update_bits(component, ES8388_DACCONTROL1,
++			ES8388_DACCONTROL1_DACFORMAT_MASK, dac_mode);
++	snd_soc_component_update_bits(component, ES8388_ADCCONTROL4,
++			ES8388_ADCCONTROL4_ADCFORMAT_MASK, adc_mode);
++
++	return 0;
++}
++
++static int es8388_set_bias_level(struct snd_soc_component *component,
++				 enum snd_soc_bias_level level)
++{
++	switch (level) {
++	case SND_SOC_BIAS_ON:
++		break;
++
++	case SND_SOC_BIAS_PREPARE:
++		/* VREF, VMID=2x50k, digital enabled */
++		snd_soc_component_write(component, ES8388_CHIPPOWER, 0);
++		snd_soc_component_update_bits(component, ES8388_CONTROL1,
++				ES8388_CONTROL1_VMIDSEL_MASK |
++				ES8388_CONTROL1_ENREF,
++				ES8388_CONTROL1_VMIDSEL_50k |
++				ES8388_CONTROL1_ENREF);
++		break;
++
++	case SND_SOC_BIAS_STANDBY:
++		if (snd_soc_component_get_bias_level(component) == SND_SOC_BIAS_OFF) {
++			snd_soc_component_update_bits(component, ES8388_CONTROL1,
++					ES8388_CONTROL1_VMIDSEL_MASK |
++					ES8388_CONTROL1_ENREF,
++					ES8388_CONTROL1_VMIDSEL_5k |
++					ES8388_CONTROL1_ENREF);
++
++			/* Charge caps */
++			msleep(100);
++		}
++
++		snd_soc_component_write(component, ES8388_CONTROL2,
++				ES8388_CONTROL2_OVERCURRENT_ON |
++				ES8388_CONTROL2_THERMAL_SHUTDOWN_ON);
++
++		/* VREF, VMID=2*500k, digital stopped */
++		snd_soc_component_update_bits(component, ES8388_CONTROL1,
++				ES8388_CONTROL1_VMIDSEL_MASK |
++				ES8388_CONTROL1_ENREF,
++				ES8388_CONTROL1_VMIDSEL_500k |
++				ES8388_CONTROL1_ENREF);
++		break;
++
++	case SND_SOC_BIAS_OFF:
++		snd_soc_component_update_bits(component, ES8388_CONTROL1,
++				ES8388_CONTROL1_VMIDSEL_MASK |
++				ES8388_CONTROL1_ENREF,
++				0);
++		break;
++	}
++	return 0;
++}
++
++static const struct snd_soc_dai_ops es8388_dai_ops = {
++	.startup	= es8388_startup,
++	.hw_params	= es8388_hw_params,
++	.mute_stream	= es8388_mute,
++	.set_sysclk	= es8388_set_sysclk,
++	.set_fmt	= es8388_set_dai_fmt,
++	.no_capture_mute = 1,
++};
++
++static struct snd_soc_dai_driver es8388_dai = {
++	.name = "es8388-hifi",
++	.playback = {
++		.stream_name = "Playback",
++		.channels_min = 2,
++		.channels_max = 2,
++		.rates = ES8388_RATES,
++		.formats = ES8388_FORMATS,
++	},
++	.capture = {
++		.stream_name = "Capture",
++		.channels_min = 2,
++		.channels_max = 2,
++		.rates = ES8388_RATES,
++		.formats = ES8388_FORMATS,
++	},
++	.ops = &es8388_dai_ops,
++	.symmetric_rate = 1,
++};
++
++static int es8388_suspend(struct snd_soc_component *component)
++{
++	return 0;
++}
++
++static int es8388_resume(struct snd_soc_component *component)
++{
++	struct regmap *regmap = dev_get_regmap(component->dev, NULL);
++	struct es8388_priv *es8388;
++	int ret;
++
++	es8388 = snd_soc_component_get_drvdata(component);
++
++	regcache_mark_dirty(regmap);
++	ret = regcache_sync(regmap);
++	if (ret) {
++		dev_err(component->dev, "unable to sync regcache\n");
++		return ret;
++	}
++
++	return 0;
++}
++
++static int es8388_component_probe(struct snd_soc_component *component)
++{
++	snd_soc_component_write(component, ES8388_ADCPOWER, 0xf0);
++	snd_soc_component_write(component, ES8388_CONTROL1, 0x30);
++	snd_soc_component_write(component, ES8388_DACCONTROL21, 0x80);
++	snd_soc_component_write(component, ES8388_ADCCONTROL10, 0xda);
++
++	return 0;
++}
++
++static void es8388_remove(struct snd_soc_component *component)
++{
++}
++
++const struct regmap_config es8388_regmap_config = {
++	.reg_bits	= 8,
++	.val_bits	= 8,
++	.max_register	= ES8388_REG_MAX,
++	.cache_type	= REGCACHE_RBTREE,
++	.use_single_read = true,
++	.use_single_write = true,
++};
++EXPORT_SYMBOL_GPL(es8388_regmap_config);
++
++static const struct snd_soc_component_driver es8388_component_driver = {
++	.probe			= es8388_component_probe,
++	.remove			= es8388_remove,
++	.suspend		= es8388_suspend,
++	.resume			= es8388_resume,
++	.set_bias_level		= es8388_set_bias_level,
++	.controls		= es8388_snd_controls,
++	.num_controls		= ARRAY_SIZE(es8388_snd_controls),
++	.dapm_widgets		= es8388_dapm_widgets,
++	.num_dapm_widgets	= ARRAY_SIZE(es8388_dapm_widgets),
++	.dapm_routes		= es8388_dapm_routes,
++	.num_dapm_routes	= ARRAY_SIZE(es8388_dapm_routes),
++	.suspend_bias_off	= 1,
++	.idle_bias_on		= 1,
++	.use_pmdown_time	= 1,
++	.endianness		= 1,
++};
++
++int es8388_probe(struct device *dev, struct regmap *regmap)
++{
++	struct es8388_priv *es8388;
++
++	if (IS_ERR(regmap))
++		return PTR_ERR(regmap);
++
++	es8388 = devm_kzalloc(dev, sizeof(*es8388), GFP_KERNEL);
++	if (es8388 == NULL)
++		return -ENOMEM;
++
++	es8388->regmap = regmap;
++
++	dev_set_drvdata(dev, es8388);
++
++	return devm_snd_soc_register_component(dev,
++			&es8388_component_driver, &es8388_dai, 1);
++}
++EXPORT_SYMBOL_GPL(es8388_probe);
++
++static const struct i2c_device_id es8388_id[] = {
++	{ "es8388", 0 },
++	{ }
++};
++MODULE_DEVICE_TABLE(i2c, es8388_id);
++
++static const struct of_device_id es8388_of_match[] = {
++	{ .compatible = "everest,es8388", },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, es8388_of_match);
++
++static struct acpi_device_id es8388_acpi_match[] = {
++	{"ESSX8388", 0 },
++	{},
++};
++MODULE_DEVICE_TABLE(acpi, es8388_acpi_match);
++
++static int es8388_i2c_probe(struct i2c_client *i2c)
++{
++	return es8388_probe(&i2c->dev,
++			devm_regmap_init_i2c(i2c, &es8388_regmap_config));
++}
++
++static struct i2c_driver es8388_i2c_driver = {
++	.driver = {
++		.name		= "es8388",
++		.of_match_table = es8388_of_match,
++		.acpi_match_table = es8388_acpi_match,
++	},
++	.probe    = es8388_i2c_probe,
++	.id_table = es8388_id,
++};
++
++module_i2c_driver(es8388_i2c_driver);
++
++MODULE_DESCRIPTION("ASoC ES8388 driver");
++MODULE_AUTHOR("Yiqun Zhang <zhangyiqun@phytium.com.cn>");
++MODULE_LICENSE("GPL");
+diff --git a/sound/soc/codecs/es8388.h b/sound/soc/codecs/es8388.h
+new file mode 100644
+index 000000000000..5858a71261fb
+--- /dev/null
++++ b/sound/soc/codecs/es8388.h
+@@ -0,0 +1,290 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * es8388.h  --  ES8388 ALSA SoC Audio driver
++ */
++
++#ifndef _ES8388_H
++#define _ES8388_H
++
++#include <linux/regmap.h>
++
++struct device;
++
++extern const struct regmap_config es8388_regmap_config;
++int es8388_probe(struct device *dev, struct regmap *regmap);
++
++#define ES8388_DACLVOL 46
++#define ES8388_DACRVOL 47
++#define ES8388_DACCTL 28
++#define ES8388_RATEMASK (0x1f << 0)
++
++#define ES8388_CONTROL1		0x00
++#define ES8388_CONTROL1_VMIDSEL_OFF (0 << 0)
++#define ES8388_CONTROL1_VMIDSEL_50k (1 << 0)
++#define ES8388_CONTROL1_VMIDSEL_500k (2 << 0)
++#define ES8388_CONTROL1_VMIDSEL_5k (3 << 0)
++#define ES8388_CONTROL1_VMIDSEL_MASK (3 << 0)
++#define ES8388_CONTROL1_ENREF (1 << 2)
++#define ES8388_CONTROL1_SEQEN (1 << 3)
++#define ES8388_CONTROL1_SAMEFS (1 << 4)
++#define ES8388_CONTROL1_DACMCLK_ADC (0 << 5)
++#define ES8388_CONTROL1_DACMCLK_DAC (1 << 5)
++#define ES8388_CONTROL1_LRCM (1 << 6)
++#define ES8388_CONTROL1_SCP_RESET (1 << 7)
++
++#define ES8388_CONTROL2		0x01
++#define ES8388_CONTROL2_VREF_BUF_OFF (1 << 0)
++#define ES8388_CONTROL2_VREF_LOWPOWER (1 << 1)
++#define ES8388_CONTROL2_IBIASGEN_OFF (1 << 2)
++#define ES8388_CONTROL2_ANALOG_OFF (1 << 3)
++#define ES8388_CONTROL2_VREF_BUF_LOWPOWER (1 << 4)
++#define ES8388_CONTROL2_VCM_MOD_LOWPOWER (1 << 5)
++#define ES8388_CONTROL2_OVERCURRENT_ON (1 << 6)
++#define ES8388_CONTROL2_THERMAL_SHUTDOWN_ON (1 << 7)
++
++#define ES8388_CHIPPOWER	0x02
++#define ES8388_CHIPPOWER_DACVREF_OFF 0
++#define ES8388_CHIPPOWER_ADCVREF_OFF 1
++#define ES8388_CHIPPOWER_DACDLL_OFF 2
++#define ES8388_CHIPPOWER_ADCDLL_OFF 3
++#define ES8388_CHIPPOWER_DACSTM_RESET 4
++#define ES8388_CHIPPOWER_ADCSTM_RESET 5
++#define ES8388_CHIPPOWER_DACDIG_OFF 6
++#define ES8388_CHIPPOWER_ADCDIG_OFF 7
++
++#define ES8388_ADCPOWER		0x03
++#define ES8388_ADCPOWER_INT1_LOWPOWER 0
++#define ES8388_ADCPOWER_FLASH_ADC_LOWPOWER 1
++#define ES8388_ADCPOWER_ADC_BIAS_GEN_OFF 2
++#define ES8388_ADCPOWER_MIC_BIAS_OFF 3
++#define ES8388_ADCPOWER_ADCR_OFF 4
++#define ES8388_ADCPOWER_ADCL_OFF 5
++#define ES8388_ADCPOWER_AINR_OFF 6
++#define ES8388_ADCPOWER_AINL_OFF 7
++
++#define ES8388_DACPOWER		0x04
++#define ES8388_DACPOWER_OUT3_ON 0
++#define ES8388_DACPOWER_MONO_ON 1
++#define ES8388_DACPOWER_ROUT2_ON 2
++#define ES8388_DACPOWER_LOUT2_ON 3
++#define ES8388_DACPOWER_ROUT1_ON 4
++#define ES8388_DACPOWER_LOUT1_ON 5
++#define ES8388_DACPOWER_RDAC_OFF 6
++#define ES8388_DACPOWER_LDAC_OFF 7
++
++#define ES8388_CHIPLOPOW1	0x05
++#define ES8388_CHIPLOPOW2	0x06
++#define ES8388_ANAVOLMANAG	0x07
++
++#define ES8388_MASTERMODE	0x08
++#define ES8388_MASTERMODE_BCLKDIV (0 << 0)
++#define ES8388_MASTERMODE_BCLK_INV (1 << 5)
++#define ES8388_MASTERMODE_MCLKDIV2 (1 << 6)
++#define ES8388_MASTERMODE_MSC (1 << 7)
++
++#define ES8388_ADCCONTROL1	0x09
++#define ES8388_ADCCONTROL2	0x0a
++#define ES8388_ADCCONTROL3	0x0b
++
++#define ES8388_ADCCONTROL4	0x0c
++#define ES8388_ADCCONTROL4_ADCFORMAT_MASK (3 << 0)
++#define ES8388_ADCCONTROL4_ADCFORMAT_I2S (0 << 0)
++#define ES8388_ADCCONTROL4_ADCFORMAT_LJUST (1 << 0)
++#define ES8388_ADCCONTROL4_ADCFORMAT_RJUST (2 << 0)
++#define ES8388_ADCCONTROL4_ADCFORMAT_PCM (3 << 0)
++#define ES8388_ADCCONTROL4_ADCWL_SHIFT 2
++#define ES8388_ADCCONTROL4_ADCWL_MASK (7 << 2)
++#define ES8388_ADCCONTROL4_ADCLRP_I2S_POL_NORMAL (0 << 5)
++#define ES8388_ADCCONTROL4_ADCLRP_I2S_POL_INV (1 << 5)
++#define ES8388_ADCCONTROL4_ADCLRP_PCM_MSB_CLK2 (0 << 5)
++#define ES8388_ADCCONTROL4_ADCLRP_PCM_MSB_CLK1 (1 << 5)
++
++#define ES8388_ADCCONTROL5	0x0d
++#define ES8388_ADCCONTROL5_RATEMASK (0x1f << 0)
++
++#define ES8388_ADCCONTROL6	0x0e
++
++#define ES8388_ADCCONTROL7	0x0f
++#define ES8388_ADCCONTROL7_ADC_MUTE (1 << 2)
++#define ES8388_ADCCONTROL7_ADC_LER (1 << 3)
++#define ES8388_ADCCONTROL7_ADC_ZERO_CROSS (1 << 4)
++#define ES8388_ADCCONTROL7_ADC_SOFT_RAMP (1 << 5)
++#define ES8388_ADCCONTROL7_ADC_RAMP_RATE_4 (0 << 6)
++#define ES8388_ADCCONTROL7_ADC_RAMP_RATE_8 (1 << 6)
++#define ES8388_ADCCONTROL7_ADC_RAMP_RATE_16 (2 << 6)
++#define ES8388_ADCCONTROL7_ADC_RAMP_RATE_32 (3 << 6)
++
++#define ES8388_ADCCONTROL8	0x10
++#define ES8388_ADCCONTROL9	0x11
++#define ES8388_ADCCONTROL10	0x12
++#define ES8388_ADCCONTROL11	0x13
++#define ES8388_ADCCONTROL12	0x14
++#define ES8388_ADCCONTROL13	0x15
++#define ES8388_ADCCONTROL14	0x16
++
++#define ES8388_DACCONTROL1	0x17
++#define ES8388_DACCONTROL1_DACFORMAT_MASK (3 << 1)
++#define ES8388_DACCONTROL1_DACFORMAT_I2S (0 << 1)
++#define ES8388_DACCONTROL1_DACFORMAT_LJUST (1 << 1)
++#define ES8388_DACCONTROL1_DACFORMAT_RJUST (2 << 1)
++#define ES8388_DACCONTROL1_DACFORMAT_PCM (3 << 1)
++#define ES8388_DACCONTROL1_DACWL_SHIFT 3
++#define ES8388_DACCONTROL1_DACWL_MASK (7 << 3)
++#define ES8388_DACCONTROL1_DACLRP_I2S_POL_NORMAL (0 << 6)
++#define ES8388_DACCONTROL1_DACLRP_I2S_POL_INV (1 << 6)
++#define ES8388_DACCONTROL1_DACLRP_PCM_MSB_CLK2 (0 << 6)
++#define ES8388_DACCONTROL1_DACLRP_PCM_MSB_CLK1 (1 << 6)
++#define ES8388_DACCONTROL1_LRSWAP (1 << 7)
++
++#define ES8388_DACCONTROL2	0x18
++#define ES8388_DACCONTROL2_RATEMASK (0x1f << 0)
++#define ES8388_DACCONTROL2_DOUBLESPEED (1 << 5)
++
++#define ES8388_DACCONTROL3	0x19
++#define ES8388_DACCONTROL3_AUTOMUTE (1 << 2)
++#define ES8388_DACCONTROL3_DACMUTE (1 << 2)
++#define ES8388_DACCONTROL3_LEFTGAINVOL (1 << 3)
++#define ES8388_DACCONTROL3_DACZEROCROSS (1 << 4)
++#define ES8388_DACCONTROL3_DACSOFTRAMP (1 << 5)
++#define ES8388_DACCONTROL3_DACRAMPRATE (3 << 6)
++
++#define ES8388_LDACVOL 0x1a
++#define ES8388_LDACVOL_MASK (0 << 0)
++#define ES8388_LDACVOL_MAX (0xc0)
++
++#define ES8388_RDACVOL 0x1b
++#define ES8388_RDACVOL_MASK (0 << 0)
++#define ES8388_RDACVOL_MAX (0xc0)
++
++#define ES8388_DACVOL_MAX (0xc0)
++
++#define ES8388_DACCONTROL4	0x1a
++#define ES8388_DACCONTROL5	0x1b
++
++#define ES8388_DACCONTROL6	0x1c
++#define ES8388_DACCONTROL6_CLICKFREE (1 << 3)
++#define ES8388_DACCONTROL6_DAC_INVR (1 << 4)
++#define ES8388_DACCONTROL6_DAC_INVL (1 << 5)
++#define ES8388_DACCONTROL6_DEEMPH_MASK (3 << 6)
++#define ES8388_DACCONTROL6_DEEMPH_OFF (0 << 6)
++#define ES8388_DACCONTROL6_DEEMPH_32k (1 << 6)
++#define ES8388_DACCONTROL6_DEEMPH_44_1k (2 << 6)
++#define ES8388_DACCONTROL6_DEEMPH_48k (3 << 6)
++
++#define ES8388_DACCONTROL7	0x1d
++#define ES8388_DACCONTROL7_VPP_SCALE_3p5	(0 << 0)
++#define ES8388_DACCONTROL7_VPP_SCALE_4p0	(1 << 0)
++#define ES8388_DACCONTROL7_VPP_SCALE_3p0	(2 << 0)
++#define ES8388_DACCONTROL7_VPP_SCALE_2p5	(3 << 0)
++#define ES8388_DACCONTROL7_SHELVING_STRENGTH (1 << 2) /* In eights */
++#define ES8388_DACCONTROL7_MONO		(1 << 5)
++#define ES8388_DACCONTROL7_ZEROR	(1 << 6)
++#define ES8388_DACCONTROL7_ZEROL	(1 << 7)
++
++/* Shelving filter */
++#define ES8388_DACCONTROL8	0x1e
++#define ES8388_DACCONTROL9	0x1f
++#define ES8388_DACCONTROL10	0x20
++#define ES8388_DACCONTROL11	0x21
++#define ES8388_DACCONTROL12	0x22
++#define ES8388_DACCONTROL13	0x23
++#define ES8388_DACCONTROL14	0x24
++#define ES8388_DACCONTROL15	0x25
++
++#define ES8388_DACCONTROL16	0x26
++#define ES8388_DACCONTROL16_RMIXSEL_RIN1 (0 << 0)
++#define ES8388_DACCONTROL16_RMIXSEL_RIN2 (1 << 0)
++#define ES8388_DACCONTROL16_RMIXSEL_RIN3 (2 << 0)
++#define ES8388_DACCONTROL16_RMIXSEL_RADC (3 << 0)
++#define ES8388_DACCONTROL16_LMIXSEL_LIN1 (0 << 3)
++#define ES8388_DACCONTROL16_LMIXSEL_LIN2 (1 << 3)
++#define ES8388_DACCONTROL16_LMIXSEL_LIN3 (2 << 3)
++#define ES8388_DACCONTROL16_LMIXSEL_LADC (3 << 3)
++
++#define ES8388_DACCONTROL17	0x27
++#define ES8388_DACCONTROL17_LI2LOVOL (7 << 3)
++#define ES8388_DACCONTROL17_LI2LO (1 << 6)
++#define ES8388_DACCONTROL17_LD2LO (1 << 7)
++
++#define ES8388_DACCONTROL18	0x28
++#define ES8388_DACCONTROL18_RI2LOVOL (7 << 3)
++#define ES8388_DACCONTROL18_RI2LO (1 << 6)
++#define ES8388_DACCONTROL18_RD2LO (1 << 7)
++
++#define ES8388_DACCONTROL19	0x29
++#define ES8388_DACCONTROL19_LI2ROVOL (7 << 3)
++#define ES8388_DACCONTROL19_LI2RO (1 << 6)
++#define ES8388_DACCONTROL19_LD2RO (1 << 7)
++
++#define ES8388_DACCONTROL20	0x2a
++#define ES8388_DACCONTROL20_RI2ROVOL (7 << 3)
++#define ES8388_DACCONTROL20_RI2RO (1 << 6)
++#define ES8388_DACCONTROL20_RD2RO (1 << 7)
++
++#define ES8388_DACCONTROL21	0x2b
++#define ES8388_DACCONTROL21_LI2MOVOL (7 << 3)
++#define ES8388_DACCONTROL21_LI2MO (1 << 6)
++#define ES8388_DACCONTROL21_LD2MO (1 << 7)
++
++#define ES8388_DACCONTROL22	0x2c
++#define ES8388_DACCONTROL22_RI2MOVOL (7 << 3)
++#define ES8388_DACCONTROL22_RI2MO (1 << 6)
++#define ES8388_DACCONTROL22_RD2MO (1 << 7)
++
++#define ES8388_DACCONTROL23	0x2d
++#define ES8388_DACCONTROL23_MOUTINV		(1 << 1)
++#define ES8388_DACCONTROL23_HPSWPOL		(1 << 2)
++#define ES8388_DACCONTROL23_HPSWEN		(1 << 3)
++#define ES8388_DACCONTROL23_VROI_1p5k		(0 << 4)
++#define ES8388_DACCONTROL23_VROI_40k		(1 << 4)
++#define ES8388_DACCONTROL23_OUT3_VREF		(0 << 5)
++#define ES8388_DACCONTROL23_OUT3_ROUT1		(1 << 5)
++#define ES8388_DACCONTROL23_OUT3_MONOOUT	(2 << 5)
++#define ES8388_DACCONTROL23_OUT3_RIGHT_MIXER	(3 << 5)
++#define ES8388_DACCONTROL23_ROUT2INV		(1 << 7)
++
++/* LOUT1 Amplifier */
++#define ES8388_LOUT1VOL 0x2e
++#define ES8388_LOUT1VOL_MASK (0 << 5)
++#define ES8388_LOUT1VOL_MAX (0x24)
++
++/* ROUT1 Amplifier */
++#define ES8388_ROUT1VOL 0x2f
++#define ES8388_ROUT1VOL_MASK (0 << 5)
++#define ES8388_ROUT1VOL_MAX (0x24)
++
++#define ES8388_OUT1VOL_MAX (0x24)
++
++/* LOUT2 Amplifier */
++#define ES8388_LOUT2VOL 0x30
++#define ES8388_LOUT2VOL_MASK (0 << 5)
++#define ES8388_LOUT2VOL_MAX (0x24)
++
++/* ROUT2 Amplifier */
++#define ES8388_ROUT2VOL 0x31
++#define ES8388_ROUT2VOL_MASK (0 << 5)
++#define ES8388_ROUT2VOL_MAX (0x24)
++
++#define ES8388_OUT2VOL_MAX (0x24)
++
++/* Mono Out Amplifier */
++#define ES8388_MONOOUTVOL 0x32
++#define ES8388_MONOOUTVOL_MASK (0 << 5)
++#define ES8388_MONOOUTVOL_MAX (0x24)
++
++#define ES8388_DACCONTROL29	0x33
++#define ES8388_DACCONTROL30	0x34
++
++#define ES8388_SYSCLK		0
++
++#define ES8388_REG_MAX		0x35
++
++#define ES8388_1536FS		1536
++#define ES8388_1024FS		1024
++#define ES8388_768FS		768
++#define ES8388_512FS		512
++#define ES8388_384FS		384
++#define ES8388_256FS		256
++#define ES8388_128FS		128
++
++#endif
+diff --git a/sound/soc/phytium/Kconfig b/sound/soc/phytium/Kconfig
+new file mode 100644
+index 000000000000..b4fd9ae0b654
+--- /dev/null
++++ b/sound/soc/phytium/Kconfig
+@@ -0,0 +1,32 @@
++# SPDX-License-Identifier: GPL-2.0
++config SND_SOC_PHYTIUM_I2S
++	tristate "Phytium I2S Device Driver"
++	depends on ARCH_PHYTIUM
++	help
++	 Say Y or M if you want to add support for I2S driver for
++	 Phytium I2S device . The device supports 2 channels each
++	 for play and record.
++
++config SND_PMDK_ES8388
++	tristate "Phytium machine support with ES8388"
++	depends on I2C && SND_SOC_PHYTIUM_I2S
++	select SND_SOC_ES8388
++	help
++	 Say Y if you want to add Phytium machine support for
++	 ES8388 codecs.
++
++config SND_PMDK_ES8336
++	tristate "Phytium machine support with ES8336"
++	depends on I2C && SND_SOC_PHYTIUM_I2S
++	select SND_SOC_ES8336
++	help
++	 Say Y if you want to add Phytium machine support for
++	 ES8336 codecs.
++
++config SND_PMDK_DP
++	tristate "Phytium machine support with DP"
++	depends on I2C && SND_SOC_PHYTIUM_I2S
++	select SND_SOC_HDMI_CODEC
++	help
++	 Say Y if you want to add Phytium machine support for
++	 Displayport.
+diff --git a/sound/soc/phytium/Makefile b/sound/soc/phytium/Makefile
+new file mode 100644
+index 000000000000..45cd2ed9d420
+--- /dev/null
++++ b/sound/soc/phytium/Makefile
+@@ -0,0 +1,14 @@
++# SPDX-License-Identifier: GPL-2.0
++# PHYTIUM Platform Support
++
++snd-soc-phytium-i2s-objs :=phytium_i2s.o
++obj-$(CONFIG_SND_SOC_PHYTIUM_I2S) += snd-soc-phytium-i2s.o
++
++snd-soc-pmdk-es8388-objs :=pmdk_es8388.o
++obj-$(CONFIG_SND_PMDK_ES8388) += snd-soc-pmdk-es8388.o
++
++snd-soc-pmdk-es8336-objs :=pmdk_es8336.o
++obj-$(CONFIG_SND_PMDK_ES8336) += snd-soc-pmdk-es8336.o
++
++snd-soc-pmdk-dp-objs :=pmdk_dp.o
++obj-$(CONFIG_SND_PMDK_DP) += snd-soc-pmdk-dp.o
+diff --git a/sound/soc/phytium/local.h b/sound/soc/phytium/local.h
+new file mode 100644
+index 000000000000..47c3c6c8cfbb
+--- /dev/null
++++ b/sound/soc/phytium/local.h
+@@ -0,0 +1,319 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (C) 2020-2023, Phytium Technology Co., Ltd.
++ */
++
++#ifndef __PHYTIUM_I2S_LOCAL_H
++#define __PHYTIUM_I2S_LOCAL_H
++
++#include <linux/clk.h>
++#include <linux/device.h>
++#include <linux/types.h>
++#include <sound/pcm.h>
++
++/* I2S clk setting*/
++#define CLK_CFG0	0xc00
++#define CLK_CFG1	0xc04
++
++/* Common register for all channel */
++#define I2S_IER		0x000
++#define IRER		0x004
++#define ITER		0x008
++#define CER		0x00C
++
++#define RXFFR		0x014
++#define TXFFR		0x018
++
++/* Interrupt status register fields */
++#define ISR_TXFO	BIT(5)
++#define ISR_TXFE	BIT(4)
++#define ISR_RXFO	BIT(1)
++#define ISR_RXDA	BIT(0)
++
++/* I2STxRxRegisters for all channels */
++#define LRBR_LTHR(x)	(0x40 * x + 0x020)
++#define RRBR_RTHR(x)	(0x40 * x + 0x024)
++#define RER(x)		(0x40 * x + 0x028)
++
++#define RCR(x)		(0x40 * x + 0x030)
++
++#define ISR(x)		(0x40 * x + 0x038)
++#define IMR(x)		(0x40 * x + 0x03C)
++#define ROR(x)		(0x40 * x + 0x040)
++#define TOR(x)		(0x40 * x + 0x044)
++#define RFCR(x)		(0x40 * x + 0x048)
++#define TFCR(x)		(0x40 * x + 0x04C)
++#define RFF(x)		(0x40 * x + 0x050)
++#define TFF(x)		(0x40 * x + 0x054)
++
++/* Enable txd and rxd block channel0~3 */
++#define TER(x)		(0x40 * x + 0x02C)
++#define CCR		0x010
++#define TCR(x)		(0x40 * x + 0x034)
++
++/* I2SCOMPRegisters */
++#define I2S_COMP_PARAM_2	0x01F0
++#define I2S_COMP_PARAM_1	0x01F4
++#define I2S_COMP_VERSION	0x01F8
++#define I2S_COMP_TYPE		0x01FC
++
++/* I2S AND DMA */
++#define DMA_GCAP		0x0024
++
++#define DMA_CHAL_CONFG1		0x0028
++
++#define DMA_CHAL_CONFG0		0x0004
++#define DMA_MASK_INT		0x000c
++#define DMA_BDLPU(x)		(0x40 * x + 0x0040)
++#define DMA_BDLPL(x)		(0x40 * x + 0x0044)
++#define DMA_CHALX_DEV_ADDR(x)	(0x40 * x + 0x0048)
++#define DMA_CHALX_CBL(x)	(0x40 * x + 0x0054)
++#define DMA_CHALX_LVI(x)	(0x40 * x + 0x004c)
++
++#define DMA_CHALX_DSIZE(x)	(0x40 * x + 0x0064)
++#define DMA_CHALX_DLENTH(x)	(0x40 * x + 0x0068)
++#define DMA_CHALX_CTL(x)	(0x40 * x + 0x0058)
++
++
++#define DMA_CTL			0x0000
++
++#define DMA_LPIB(x)		(0x40 * x + 0x0050)
++
++#define DMA_STS			0x0008
++
++/* max number of fragments - we may use more if allocating more pages for BDL */
++#define BDL_SIZE		4096
++#define AZX_MAX_BDL_ENTRIES	(BDL_SIZE / 16)
++
++/*
++ * Component parameter register fields - define the I2S block's
++ * configuration.
++ */
++#define	COMP1_TX_WORDSIZE_3(r)	(((r) & GENMASK(27, 25)) >> 25)
++#define	COMP1_TX_WORDSIZE_2(r)	(((r) & GENMASK(24, 22)) >> 22)
++#define	COMP1_TX_WORDSIZE_1(r)	(((r) & GENMASK(21, 19)) >> 19)
++#define	COMP1_TX_WORDSIZE_0(r)	(((r) & GENMASK(18, 16)) >> 16)
++#define	COMP1_TX_CHANNELS(r)	(((r) & GENMASK(10, 9)) >> 9)
++#define	COMP1_RX_CHANNELS(r)	(((r) & GENMASK(8, 7)) >> 7)
++#define	COMP1_RX_ENABLED(r)	(((r) & BIT(6)) >> 6)
++#define	COMP1_TX_ENABLED(r)	(((r) & BIT(5)) >> 5)
++#define	COMP1_MODE_EN(r)	(((r) & BIT(4)) >> 4)
++#define	COMP1_FIFO_DEPTH_GLOBAL(r)	(((r) & GENMASK(3, 2)) >> 2)
++#define	COMP1_APB_DATA_WIDTH(r)	(((r) & GENMASK(1, 0)) >> 0)
++
++#define	COMP2_RX_WORDSIZE_3(r)	(((r) & GENMASK(12, 10)) >> 10)
++#define	COMP2_RX_WORDSIZE_2(r)	(((r) & GENMASK(9, 7)) >> 7)
++#define	COMP2_RX_WORDSIZE_1(r)	(((r) & GENMASK(5, 3)) >> 3)
++#define	COMP2_RX_WORDSIZE_0(r)	(((r) & GENMASK(2, 0)) >> 0)
++
++/* Number of entries in WORDSIZE and DATA_WIDTH parameter registers */
++#define	COMP_MAX_WORDSIZE	(1 << 3)
++#define	COMP_MAX_DATA_WIDTH	(1 << 2)
++
++#define MAX_CHANNEL_NUM		8
++#define MIN_CHANNEL_NUM		2
++
++#define azx_bus(chip)	(&(chip)->bus.core)
++#define bus_to_azx(_bus)	container_of(_bus, struct azx, bus.core)
++
++#define I2S_UNSOL_QUEUE_SIZE	64
++#define I2S_MAX_CODECS		8	/* limit by controller side */
++
++#define azx_stream(dev)		(&(dev)->core)
++
++struct i2s_clk_config_data {
++	int chan_nr;
++	u32 data_width;
++	u32 sample_rate;
++};
++
++struct i2sc_bus {
++	struct device *dev;
++	const struct i2s_bus_ops *ops;
++	const struct i2s_io_ops *io_ops;
++	const struct i2s_ext_bus_ops *ext_ops;
++
++	/* h/w resources */
++	unsigned long addr;
++	void __iomem *remap_addr;
++	int irq;
++
++	/* codec linked list */
++	struct list_head codec_list;
++	unsigned int num_codecs;
++
++	unsigned int unsol_rp, unsol_wp;
++	struct work_struct unsol_work;
++
++	struct snd_dma_buffer bdl0;
++	struct snd_dma_buffer bdl1;
++
++	/* i2s_stream linked list */
++	struct list_head stream_list;
++
++	bool reverse_assign;		/* assign devices in reverse order */
++
++	int bdl_pos_adj;		/* BDL position adjustment */
++
++	/* locks */
++	spinlock_t reg_lock;
++};
++
++struct i2s_bus {
++	struct i2sc_bus core;
++
++	struct snd_card *card;
++
++	struct pci_dev *pci;
++
++	struct mutex prepare_mutex;
++};
++
++
++/*
++ * i2s stream
++ */
++struct i2s_stream {
++	struct i2sc_bus *bus;
++	struct snd_dma_buffer bdl; /* BDL buffer */
++	__le32 *posbuf;		/* position buffer pointer */
++	int direction;		/* playback / capture (SNDRV_PCM_STREAM_*) */
++
++	unsigned int bufsize;	/* size of the play buffer in bytes */
++	unsigned int period_bytes; /* size of the period in bytes */
++	unsigned int frags;	/* number for period in the play buffer */
++	unsigned int fifo_size;	/* FIFO size */
++
++	void __iomem *sd_addr;	/* stream descriptor pointer */
++
++	u32 sd_int_sta_mask;	/* stream int status mask */
++
++	/* pcm support */
++	struct snd_pcm_substream *substream;	/* assigned substream,
++						 * set in PCM open
++						 */
++	unsigned int format_val;	/* format value to be set in the
++					 * controller and the codec
++					 */
++	unsigned char stream_tag;	/* assigned stream */
++	unsigned char index;		/* stream index */
++	int assigned_key;		/* last device# key assigned to */
++
++	bool opened;
++	bool running;
++	bool prepared;
++	bool no_period_wakeup;
++
++	int delay_negative_threshold;
++
++	struct list_head list;
++
++};
++
++struct azx_dev {
++	struct i2s_stream core;
++	unsigned int irq_pending:1;
++};
++
++/* PCM setup */
++static inline struct azx_dev *get_azx_dev(struct snd_pcm_substream *substream)
++{
++	return substream->runtime->private_data;
++}
++
++#define AZX_MAX_CODECS		HDA_MAX_CODECS
++#define AZX_DEFAULT_CODECS	4
++
++#define stream_to_azx_dev(s)	container_of(s, struct azx_dev, core)
++
++struct azx;
++
++struct i2s_controller_ops {
++	int (*substream_alloc_pages)(struct azx *chip,
++				     struct snd_pcm_substream *substream,
++				     size_t size);
++	int (*substream_free_pages)(struct azx *chip,
++				    struct snd_pcm_substream *substream);
++	int (*position_check)(struct azx *chip, struct azx_dev *azx_dev);
++};
++
++struct i2s_io_ops {
++	int (*dma_alloc_pages)(struct i2sc_bus *bus, int type, size_t size,
++			       struct snd_dma_buffer *buf);
++	void (*dma_free_pages)(struct i2sc_bus *bus,
++			       struct snd_dma_buffer *buf);
++};
++
++struct azx {
++	struct i2s_bus bus;
++
++	struct snd_card *card;
++	struct pci_dev *pci;
++	int dev_index;
++
++	int playback_streams;
++	int playback_index_offset;
++	int capture_streams;
++	int capture_index_offset;
++	int num_streams;
++
++	/* Register interaction. */
++	const struct i2s_controller_ops *ops;
++
++	/* locks */
++	struct mutex open_mutex; /* Prevents concurrent open/close operations */
++
++	/* PCM */
++	struct list_head pcm_list; /* azx_pcm list */
++
++	/* flags */
++	int bdl_pos_adj;
++	unsigned int running:1;
++	unsigned int region_requested:1;
++	unsigned int disabled:1;
++};
++
++struct i2s_phytium {
++	struct azx chip;
++	struct snd_pcm_substream *substream;
++	struct device *dev;
++	struct device *pdev;
++	u32 paddr;
++	void __iomem *regs;
++	void __iomem *regs_db;
++	int irq_id;
++
++	/* for pending irqs */
++	struct work_struct irq_pending_work;
++
++	/* sync probing */
++	struct completion probe_wait;
++	struct work_struct probe_work;
++
++	/* extra flags */
++	unsigned int pcie:1;
++	unsigned int irq_pending_warned:1;
++	unsigned int probe_continued:1;
++	unsigned int i2s_dp:1;
++
++	unsigned int i2s_reg_comp1;
++	unsigned int i2s_reg_comp2;
++	struct clk *clk;
++	unsigned int capability;
++	unsigned int quirks;
++	u32 fifo_th;
++	int active;
++	u32 xfer_resolution;
++	u32 ccr;
++	u32 clk_base;
++	u32 cfg;
++	struct i2s_clk_config_data config;
++
++	/*azx_dev*/
++	struct i2s_stream core;
++};
++
++#define azx_alloc_stream_pages(chip) \
++	snd_i2s_bus_alloc_stream_pages(azx_bus(chip))
++
++#endif
+diff --git a/sound/soc/phytium/phytium_i2s.c b/sound/soc/phytium/phytium_i2s.c
+new file mode 100644
+index 000000000000..d3966b705beb
+--- /dev/null
++++ b/sound/soc/phytium/phytium_i2s.c
+@@ -0,0 +1,1433 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Phytium I2S ASoC driver
++ *
++ * Copyright (C) 2020-2023, Phytium Technology Co., Ltd.
++ *
++ * Derived from sound/soc/dwc/dwc-i2s.c
++ *    Copyright (C) 2010 ST Microelectronics
++ */
++
++#include <linux/acpi.h>
++#include <linux/clk.h>
++#include <linux/device.h>
++#include <linux/init.h>
++#include <linux/io.h>
++#include <linux/interrupt.h>
++#include <linux/module.h>
++#include <linux/dma-mapping.h>
++#include <linux/slab.h>
++#include <linux/pm_runtime.h>
++#include <sound/pcm.h>
++#include <sound/pcm_params.h>
++#include <sound/soc.h>
++#include <sound/dmaengine_pcm.h>
++#include <linux/clocksource.h>
++#include <linux/random.h>
++#include <linux/timecounter.h>
++#include <sound/core.h>
++#include <sound/initval.h>
++#include <linux/pci.h>
++#include "local.h"
++
++#define NUM_CAPTURE	1
++#define NUM_PLAYBACK	1
++
++#define PHYTIUM_I2S_PLAY	(1 << 0)
++#define PHYTIUM_I2S_RECORD	(1 << 1)
++#define PHYTIUM_I2S_SLAVE	(1 << 2)
++#define PHYTIUM_I2S_MASTER	(1 << 3)
++
++#define PHYTIUM_I2S_QUIRK_16BIT_IDX_OVERRIDE (1 << 2)
++
++#define TWO_CHANNEL_SUPPORT	2	/* up to 2.0 */
++#define FOUR_CHANNEL_SUPPORT	4	/* up to 3.1 */
++#define SIX_CHANNEL_SUPPORT	6	/* up to 5.1 */
++#define EIGHT_CHANNEL_SUPPORT	8	/* up to 7.1 */
++
++struct pdata_px210_mfd {
++	struct device		*dev;
++	char *name;
++	int clk_base;
++};
++
++static inline void i2s_write_reg(void __iomem *io_base, int reg, u32 val)
++{
++	writel(val, io_base + reg);
++}
++
++static inline u32 i2s_read_reg(void __iomem *io_base, int reg)
++{
++	return readl(io_base + reg);
++}
++
++static inline void i2s_disable_channels(struct i2s_phytium *dev, u32 stream)
++{
++	u32 i = 0;
++
++	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
++		for (i = 0; i < 4; i++)
++			i2s_write_reg(dev->regs, TER(i), 0);
++	} else {
++		for (i = 0; i < 4; i++)
++			i2s_write_reg(dev->regs, RER(i), 0);
++	}
++}
++
++static int substream_free_pages(struct azx *chip,
++				struct snd_pcm_substream *substream)
++{
++	return snd_pcm_lib_free_pages(substream);
++}
++
++static void stream_update(struct i2sc_bus *bus, struct i2s_stream *s)
++{
++	struct azx *chip = bus_to_azx(bus);
++
++	struct azx_dev *azx_dev = stream_to_azx_dev(s);
++
++	/* check whether this IRQ is really acceptable */
++	if (!chip->ops->position_check ||
++	    chip->ops->position_check(chip, azx_dev)) {
++		spin_unlock(&bus->reg_lock);
++		snd_pcm_period_elapsed(azx_stream(azx_dev)->substream);
++		spin_lock(&bus->reg_lock);
++	}
++}
++
++int snd_i2s_bus_handle_stream_irq(struct i2sc_bus *bus, unsigned int status,
++				  void (*ack)(struct i2sc_bus *, struct i2s_stream *))
++{
++	struct i2s_stream *azx_dev;
++	u32 sd_status, qc_sd_status;
++	int handled = 0;
++
++	list_for_each_entry(azx_dev, &bus->stream_list, list) {
++		if (status & azx_dev->sd_int_sta_mask) {
++			sd_status = i2s_read_reg(azx_dev->sd_addr, DMA_STS);
++			i2s_write_reg(azx_dev->sd_addr, DMA_STS, azx_dev->sd_int_sta_mask);
++			qc_sd_status = i2s_read_reg(azx_dev->sd_addr, DMA_STS);
++			handled |= 1 << azx_dev->index;
++			azx_dev->running = 1;
++			if (!azx_dev->substream || !azx_dev->running ||
++			    !(sd_status & 0xffffffff)) {
++				continue;
++			}
++			if (ack)
++				ack(bus, azx_dev);
++		}
++	}
++
++	return handled;
++}
++
++irqreturn_t azx_i2s_interrupt(int irq, void *dev_id)
++{
++	struct azx *chip = dev_id;
++	struct i2sc_bus *bus = azx_bus(chip);
++	u32 status;
++	bool active, handled = false;
++	int repeat = 0; /* count for avoiding endless loop */
++
++	spin_lock(&bus->reg_lock);
++
++	if (chip->disabled)
++		goto unlock;
++
++	do {
++		status = i2s_read_reg(bus->remap_addr, DMA_STS);
++
++		if (status == 0)
++			break;
++
++		handled = true;
++		active = false;
++		if (snd_i2s_bus_handle_stream_irq(bus, status, stream_update))
++			active = true;
++	} while (active && ++repeat < 1);
++
++ unlock:
++	spin_unlock(&bus->reg_lock);
++	return IRQ_RETVAL(handled);
++}
++
++static int azx_acquire_irq(struct azx *chip, int do_disconnect)
++{
++	struct i2sc_bus *bus = azx_bus(chip);
++	struct i2s_phytium *i2s = container_of(chip, struct i2s_phytium, chip);
++	int err;
++
++	err = devm_request_irq(i2s->dev, i2s->irq_id, azx_i2s_interrupt, IRQF_SHARED,
++			       "phytium i2s", chip);
++
++	if (err < 0) {
++		dev_err(i2s->dev, "failed to request irq\n");
++		return err;
++	}
++
++	bus->irq = i2s->irq_id;
++
++	return 0;
++}
++
++static void i2s_start(struct i2s_phytium *dev,
++		      struct snd_pcm_substream *substream)
++{
++	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
++		i2s_write_reg(dev->regs, ITER, 1);
++	else
++		i2s_write_reg(dev->regs, IRER, 1);
++
++	/*enable the clock*/
++	i2s_write_reg(dev->regs, CER, 1);
++
++	/*enable the i2s*/
++	i2s_write_reg(dev->regs, I2S_IER, 1);
++}
++
++static void i2s_stop(struct i2s_phytium *dev, struct snd_pcm_substream *substream)
++{
++	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
++		i2s_write_reg(dev->regs, ITER, 0);
++	else
++		i2s_write_reg(dev->regs, IRER, 0);
++
++	if (!dev->active) {
++		i2s_write_reg(dev->regs, CER, 0);
++		i2s_write_reg(dev->regs, I2S_IER, 0);
++	}
++}
++
++static void phytium_i2s_config(struct i2s_phytium *dev, int stream)
++{
++	i2s_disable_channels(dev, stream);
++
++	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
++		i2s_write_reg(dev->regs, TCR(0), dev->xfer_resolution);
++		i2s_write_reg(dev->regs, TER(0), 1);
++	} else {
++		i2s_write_reg(dev->regs, RCR(0), dev->xfer_resolution);
++		i2s_write_reg(dev->regs, RER(0), 1);
++	}
++}
++
++static int phytium_i2s_hw_params(struct snd_pcm_substream *substream,
++				 struct snd_pcm_hw_params *params,
++				 struct snd_soc_dai *dai)
++{
++	struct i2s_phytium *dev = snd_soc_dai_get_drvdata(dai);
++	struct i2s_clk_config_data *config = &dev->config;
++	u64 fix, point;
++	u32 cfg = 0;
++
++	switch (params_format(params)) {
++	case SNDRV_PCM_FORMAT_S16_LE:
++		config->data_width = 16;
++		dev->ccr = 0x00;
++		dev->xfer_resolution = 0x02;
++		break;
++
++	case SNDRV_PCM_FORMAT_S24_LE:
++		config->data_width = 24;
++		dev->ccr = 0x08;
++		dev->xfer_resolution = 0x04;
++		break;
++
++	case SNDRV_PCM_FORMAT_S32_LE:
++		config->data_width = 32;
++		dev->ccr = 0x10;
++		dev->xfer_resolution = 0x05;
++		break;
++
++	default:
++		dev_err(dev->dev, "phytium-i2s: unsupported PCM fmt");
++		return -EINVAL;
++	}
++
++	config->chan_nr = params_channels(params);
++
++	switch (config->chan_nr) {
++	case EIGHT_CHANNEL_SUPPORT:
++	case SIX_CHANNEL_SUPPORT:
++	case FOUR_CHANNEL_SUPPORT:
++	case TWO_CHANNEL_SUPPORT:
++		break;
++	default:
++		dev_err(dev->dev, "channel not supported\n");
++		return -EINVAL;
++	}
++
++	phytium_i2s_config(dev, substream->stream);
++
++	i2s_write_reg(dev->regs, CCR, dev->ccr);
++
++	config->sample_rate = params_rate(params);
++	if (dev->capability & PHYTIUM_I2S_MASTER) {
++		fix = dev->clk_base / config->sample_rate / config->data_width / 32;
++		point = ((dev->clk_base / config->sample_rate) << 10) / config->data_width / 32;
++		point = (point - (fix << 10)) * 10;
++		cfg = ((u16) fix << 16) | (u16) point;
++		i2s_write_reg(dev->regs, CLK_CFG0, cfg);
++		i2s_write_reg(dev->regs, CLK_CFG1, 0xf);
++	}
++	dev->cfg = cfg;
++	return 0;
++}
++
++static int phytium_i2s_prepare(struct snd_pcm_substream *substream,
++			       struct snd_soc_dai *dai)
++{
++	struct i2s_phytium *dev = snd_soc_dai_get_drvdata(dai);
++
++	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
++		i2s_write_reg(dev->regs, TXFFR, 1);
++	else
++		i2s_write_reg(dev->regs, RXFFR, 1);
++
++	return 0;
++}
++
++static int phytium_i2s_trigger(struct snd_pcm_substream *substream,
++			       int cmd, struct snd_soc_dai *dai)
++{
++	struct i2s_phytium *dev = snd_soc_dai_get_drvdata(dai);
++	int ret = 0;
++
++	switch (cmd) {
++	case SNDRV_PCM_TRIGGER_START:
++	case SNDRV_PCM_TRIGGER_RESUME:
++	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
++		dev->active++;
++		i2s_start(dev, substream);
++		break;
++	case SNDRV_PCM_TRIGGER_STOP:
++	case SNDRV_PCM_TRIGGER_SUSPEND:
++	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
++		dev->active--;
++		i2s_stop(dev, substream);
++		break;
++	default:
++		ret = -EINVAL;
++		break;
++	}
++
++	return ret;
++}
++
++static int phytium_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int fmt)
++{
++	struct i2s_phytium *dev = snd_soc_dai_get_drvdata(cpu_dai);
++	int ret = 0;
++
++	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
++	case SND_SOC_DAIFMT_BC_FC:
++		if (dev->capability & PHYTIUM_I2S_SLAVE)
++			ret = 0;
++		else
++			ret = -EINVAL;
++		break;
++	case SND_SOC_DAIFMT_BP_FP:
++		if (dev->capability & PHYTIUM_I2S_MASTER)
++			ret = 0;
++		else
++			ret = -EINVAL;
++		break;
++	case SND_SOC_DAIFMT_CBM_CFS:
++	case SND_SOC_DAIFMT_CBS_CFM:
++		ret = -EINVAL;
++		break;
++	default:
++		dev_dbg(dev->dev, "phytium/i2s: Invalid master/slave format\n");
++		ret = -EINVAL;
++		break;
++	}
++	return ret;
++}
++
++static const struct snd_soc_dai_ops phytium_i2s_dai_ops = {
++	.hw_params	= phytium_i2s_hw_params,
++	.prepare	= phytium_i2s_prepare,
++	.trigger	= phytium_i2s_trigger,
++	.set_fmt	= phytium_i2s_set_fmt,
++};
++
++#ifdef CONFIG_PM
++static int phytium_i2s_suspend(struct snd_soc_component *component)
++{
++	return 0;
++}
++
++static int phytium_i2s_resume(struct snd_soc_component *component)
++{
++	struct i2s_phytium *dev = snd_soc_component_get_drvdata(component);
++	struct snd_soc_dai *dai;
++
++	for_each_component_dais(component, dai) {
++		if (snd_soc_dai_stream_active(dai, SNDRV_PCM_STREAM_PLAYBACK))
++			phytium_i2s_config(dev, SNDRV_PCM_STREAM_PLAYBACK);
++		if (snd_soc_dai_stream_active(dai, SNDRV_PCM_STREAM_CAPTURE))
++			phytium_i2s_config(dev, SNDRV_PCM_STREAM_CAPTURE);
++	}
++	i2s_write_reg(dev->regs, CLK_CFG0, dev->cfg);
++	i2s_write_reg(dev->regs, CLK_CFG1, 0xf);
++	return 0;
++}
++#else
++#define phytium_i2s_suspend NULL
++#define phytium_i2s_resume  NULL
++#endif
++
++static struct snd_soc_dai_driver phytium_i2s_dai = {
++	.playback = {
++		.stream_name = "i2s-Playback",
++		.channels_min = 2,
++		.channels_max = 2,
++		.rates = SNDRV_PCM_RATE_8000_192000,
++		.formats = SNDRV_PCM_FMTBIT_S8 |
++			   SNDRV_PCM_FMTBIT_S16_LE |
++			   SNDRV_PCM_FMTBIT_S20_LE |
++			   SNDRV_PCM_FMTBIT_S24_LE |
++			   SNDRV_PCM_FMTBIT_S32_LE,
++	},
++	.capture = {
++		.stream_name = "i2s-Capture",
++		.channels_min = 2,
++		.channels_max = 2,
++		.rates = SNDRV_PCM_RATE_8000_192000,
++		.formats = SNDRV_PCM_FMTBIT_S8 |
++			   SNDRV_PCM_FMTBIT_S16_LE |
++			   SNDRV_PCM_FMTBIT_S20_LE |
++			   SNDRV_PCM_FMTBIT_S24_LE |
++			   SNDRV_PCM_FMTBIT_S32_LE,
++	},
++	.ops = &phytium_i2s_dai_ops,
++	.symmetric_rate = 1,
++};
++
++static const struct snd_pcm_hardware phytium_pcm_hardware = {
++	.info = SNDRV_PCM_INFO_INTERLEAVED |
++		SNDRV_PCM_INFO_MMAP |
++		SNDRV_PCM_INFO_MMAP_VALID |
++		SNDRV_PCM_INFO_BLOCK_TRANSFER,
++	.rates = SNDRV_PCM_RATE_8000 |
++		SNDRV_PCM_RATE_32000 |
++		SNDRV_PCM_RATE_44100 |
++		SNDRV_PCM_RATE_48000,
++	.rate_min = 8000,
++	.rate_max = 48000,
++	.formats = (SNDRV_PCM_FMTBIT_S8 |
++		SNDRV_PCM_FMTBIT_S16_LE |
++		SNDRV_PCM_FMTBIT_S20_LE |
++		SNDRV_PCM_FMTBIT_S24_LE |
++		SNDRV_PCM_FMTBIT_S32_LE),
++	.channels_min = 2,
++	.channels_max = 2,
++	.buffer_bytes_max = 4096*16,
++	.period_bytes_min = 1024,
++	.period_bytes_max = 4096*4,
++	.periods_min = 2,
++	.periods_max = 16,
++	.fifo_size = 16,
++};
++
++struct i2s_stream *snd_i2s_stream_assign(struct i2sc_bus *bus,
++					 struct snd_pcm_substream *substream)
++{
++	struct i2s_stream *azx_dev;
++	struct i2s_stream *res = NULL;
++
++	/* make a non-zero unique key for the substream */
++	int key = (substream->pcm->device << 16) | (substream->number << 2) |
++		(substream->stream + 1);
++
++	list_for_each_entry(azx_dev, &bus->stream_list, list) {
++		if (azx_dev->direction != substream->stream)
++			continue;
++
++		azx_dev->opened = 0;
++
++		if (azx_dev->assigned_key == key) {
++			res = azx_dev;
++			break;
++		}
++
++		if (!res || bus->reverse_assign)
++			res = azx_dev;
++	}
++
++	if (res) {
++		spin_lock_irq(&bus->reg_lock);
++		res->opened = 1;
++		res->running = 0;
++		res->assigned_key = key;
++		res->substream = substream;
++		spin_unlock_irq(&bus->reg_lock);
++	}
++
++	return res;
++}
++
++/* assign a stream for the PCM */
++static inline struct azx_dev *
++azx_assign_device(struct azx *chip, struct snd_pcm_substream *substream)
++{
++	struct i2s_stream *s;
++
++	s = snd_i2s_stream_assign(azx_bus(chip), substream);
++	if (!s)
++		return NULL;
++	return stream_to_azx_dev(s);
++}
++
++static int phytium_pcm_open(struct snd_soc_component *component,
++			    struct snd_pcm_substream *substream)
++{
++	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
++	struct i2s_phytium *dev = snd_soc_dai_get_drvdata(snd_soc_rtd_to_cpu(rtd, 0));
++
++	struct azx *chip = &dev->chip;
++	struct azx_dev *azx_dev;
++	struct snd_pcm_runtime *runtime = substream->runtime;
++
++	azx_dev = azx_assign_device(chip, substream);
++	if (azx_dev == NULL)
++		return -EBUSY;
++
++	snd_soc_set_runtime_hwparams(substream, &phytium_pcm_hardware);
++	snd_pcm_hw_constraint_integer(runtime, SNDRV_PCM_HW_PARAM_PERIODS);
++	snd_pcm_hw_constraint_step(runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_BYTES, 128);
++	runtime->private_data = azx_dev;
++
++	return 0;
++}
++
++static int phytium_pcm_close(struct snd_soc_component *component,
++			     struct snd_pcm_substream *substream)
++{
++	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
++	struct i2s_phytium *dev = snd_soc_dai_get_drvdata(snd_soc_rtd_to_cpu(rtd, 0));
++	struct azx *chip = &dev->chip;
++	struct azx_dev *azx_dev = get_azx_dev(substream);
++
++	mutex_lock(&chip->open_mutex);
++	azx_stream(azx_dev)->opened = 0;
++	azx_stream(azx_dev)->running = 0;
++	azx_stream(azx_dev)->substream = NULL;
++
++	mutex_unlock(&chip->open_mutex);
++	return 0;
++}
++
++static int phytium_pcm_new(struct snd_soc_component *component,
++			   struct snd_soc_pcm_runtime *rtd)
++{
++	struct i2s_phytium *dev = snd_soc_dai_get_drvdata(snd_soc_rtd_to_cpu(rtd, 0));
++	size_t size = phytium_pcm_hardware.buffer_bytes_max;
++
++	snd_pcm_set_managed_buffer_all(rtd->pcm,
++				       SNDRV_DMA_TYPE_DEV,
++				       dev->pdev, size, size);
++
++	return 0;
++}
++
++static const struct i2s_io_ops axi_i2s_io_ops;
++static const struct i2s_controller_ops axi_i2s_ops;
++
++static int phytium_pcm_hw_params(struct snd_soc_component *component,
++				 struct snd_pcm_substream *substream,
++				 struct snd_pcm_hw_params *hw_params)
++{
++	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
++	struct i2s_phytium *dev = snd_soc_dai_get_drvdata(snd_soc_rtd_to_cpu(rtd, 0));
++	struct azx *chip = &dev->chip;
++	struct azx_dev *azx_dev = get_azx_dev(substream);
++	int ret;
++
++	azx_dev->core.bufsize = 0;
++	azx_dev->core.period_bytes = 0;
++	azx_dev->core.format_val = 0;
++
++	switch (params_format(hw_params)) {
++	case SNDRV_PCM_FORMAT_S16_LE:
++		azx_dev->core.format_val = 2;
++		break;
++
++	case SNDRV_PCM_FORMAT_S24_LE:
++		azx_dev->core.format_val = 0;
++		break;
++
++	case SNDRV_PCM_FORMAT_S32_LE:
++		azx_dev->core.format_val = 0;
++		break;
++
++	default:
++		dev_err(dev->dev, "phytium-i2s: unsupported PCM fmt");
++		return -EINVAL;
++	}
++
++
++	ret = chip->ops->substream_alloc_pages(chip, substream,
++					       params_buffer_bytes(hw_params));
++
++	return ret;
++}
++/*
++ * set up a BDL entry
++ */
++static int setup_bdle(struct i2sc_bus *bus,
++		      struct snd_dma_buffer *dmab,
++		      struct i2s_stream *azx_dev, __le32 **bdlp,
++		      int ofs, int size, int with_ioc)
++{
++	struct snd_pcm_substream *substream = azx_dev->substream;
++	struct snd_pcm_runtime *runtime = substream->runtime;
++	__le32 *bdl = *bdlp;
++
++	dmab->addr = runtime->dma_addr;
++	while (size > 0) {
++		dma_addr_t addr;
++		int chunk;
++
++		if (azx_dev->frags >= AZX_MAX_BDL_ENTRIES)
++			return -EINVAL;
++
++		addr = snd_sgbuf_get_addr(dmab, ofs);
++
++		/* program the address field of the BDL entry */
++		bdl[0] = cpu_to_le32((u32)addr);
++
++		bdl[1] = cpu_to_le32(upper_32_bits(addr));
++
++		/* program the size field of the BDL entry */
++		chunk = snd_sgbuf_get_chunk_size(dmab, ofs, size);
++
++		bdl[2] = cpu_to_le32(chunk);
++
++		/* program the IOC to enable interrupt
++		 * only when the whole fragment is processed
++		 */
++		size -= chunk;
++		bdl[3] = (size || !with_ioc) ? 0 : cpu_to_le32(0x01);
++
++		bdl += 4;
++		azx_dev->frags++;
++		ofs += chunk;
++	}
++	*bdlp = bdl;
++	return ofs;
++}
++
++int snd_i2s_stream_setup_periods(struct i2s_stream *azx_dev)
++{
++	struct i2sc_bus *bus = azx_dev->bus;
++	struct snd_pcm_substream *substream = azx_dev->substream;
++	struct snd_pcm_runtime *runtime = substream->runtime;
++	__le32 *bdl;
++	int i, ofs, periods, period_bytes;
++	int pos_adj, pos_align;
++
++	period_bytes = azx_dev->period_bytes;
++	periods = azx_dev->bufsize / period_bytes;
++
++	/* program the initial BDL entries */
++	bdl = (__le32 *)azx_dev->bdl.area;
++
++	ofs = 0;
++	azx_dev->frags = 0;
++
++	pos_adj = bus->bdl_pos_adj;
++
++	if (!azx_dev->no_period_wakeup && pos_adj > 0) {
++
++		pos_align = pos_adj;
++		pos_adj = (pos_adj * runtime->rate + 47999) / 48000;
++
++		if (!pos_adj)
++			pos_adj = pos_align;
++		else
++			pos_adj = ((pos_adj + pos_align - 1) / pos_align) *
++				pos_align;
++
++		pos_adj = frames_to_bytes(runtime, pos_adj);
++		if (pos_adj >= period_bytes) {
++			dev_warn(bus->dev, "Too big adjustment %d\n",
++				 pos_adj);
++			pos_adj = 0;
++		} else {
++			ofs = setup_bdle(bus, snd_pcm_get_dma_buf(substream),
++					 azx_dev,
++					 &bdl, ofs, pos_adj, true);
++			if (ofs < 0)
++				goto error;
++		}
++	} else {
++		pos_adj = 0;
++	}
++
++	for (i = 0; i < periods; i++) {
++		if (i == periods - 1 && pos_adj)
++			ofs = setup_bdle(bus, snd_pcm_get_dma_buf(substream),
++					 azx_dev, &bdl, ofs,
++					 period_bytes - pos_adj, 0);
++		else
++			ofs = setup_bdle(bus, snd_pcm_get_dma_buf(substream),
++					 azx_dev, &bdl, ofs,
++					 period_bytes,
++					 !azx_dev->no_period_wakeup);
++		if (ofs < 0)
++			goto error;
++	}
++
++	return 0;
++ error:
++	dev_err(bus->dev, "Too many BDL entries: buffer=%d, period=%d\n",
++		azx_dev->bufsize, period_bytes);
++	return -EINVAL;
++}
++
++int snd_i2s_stream_set_params(struct i2s_stream *azx_dev,
++			      unsigned int format_val)
++{
++	unsigned int bufsize, period_bytes;
++	struct snd_pcm_substream *substream = azx_dev->substream;
++	struct snd_pcm_runtime *runtime;
++	int err;
++
++	if (!substream)
++		return -EINVAL;
++
++	runtime = substream->runtime;
++	bufsize = snd_pcm_lib_buffer_bytes(substream);
++	period_bytes = snd_pcm_lib_period_bytes(substream);
++	if (bufsize != azx_dev->bufsize ||
++	    period_bytes != azx_dev->period_bytes ||
++	    runtime->no_period_wakeup != azx_dev->no_period_wakeup) {
++		azx_dev->bufsize = bufsize;
++		azx_dev->period_bytes = period_bytes;
++		azx_dev->no_period_wakeup = runtime->no_period_wakeup;
++		err = snd_i2s_stream_setup_periods(azx_dev);
++		if (err < 0)
++			return err;
++	}
++
++	return 0;
++}
++
++int snd_i2s_stream_setup(struct i2s_stream *azx_dev, int pcie, u32 paddr)
++{
++	struct snd_pcm_runtime *runtime;
++
++	if (azx_dev->substream)
++		runtime = azx_dev->substream->runtime;
++	else
++		runtime = NULL;
++
++	i2s_write_reg(azx_dev->sd_addr, DMA_CHAL_CONFG0, 0x8081);
++	i2s_write_reg(azx_dev->sd_addr, DMA_MASK_INT, 0x80000003);
++
++	if (azx_dev->direction == SNDRV_PCM_STREAM_PLAYBACK) {
++		i2s_write_reg(azx_dev->sd_addr, DMA_BDLPL(1), (u32)azx_dev->bdl.addr);
++		i2s_write_reg(azx_dev->sd_addr, DMA_BDLPU(1), upper_32_bits(azx_dev->bdl.addr));
++		if (pcie)
++			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(1), 0x1c8);
++		else
++			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(1), paddr + 0x1c8);
++		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CBL(1), azx_dev->bufsize);
++		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_LVI(1), azx_dev->frags - 1);
++		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DSIZE(1), azx_dev->format_val);//0x2
++		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DLENTH(1), 0x0);//0x0
++	} else {
++		i2s_write_reg(azx_dev->sd_addr, DMA_BDLPL(0), (u32)azx_dev->bdl.addr);
++		i2s_write_reg(azx_dev->sd_addr, DMA_BDLPU(0), upper_32_bits(azx_dev->bdl.addr));
++		if (pcie)
++			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(0), 0x1c0);
++		else
++			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(0), paddr + 0x1c0);
++		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CBL(0), azx_dev->bufsize);
++		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_LVI(0), azx_dev->frags - 1);
++		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DSIZE(0), azx_dev->format_val << 2);//0x8
++		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DLENTH(0), 0x0);
++	}
++
++	if (runtime && runtime->period_size > 64)
++		azx_dev->delay_negative_threshold =
++			-frames_to_bytes(runtime, 64);
++	else
++		azx_dev->delay_negative_threshold = 0;
++
++	return 0;
++}
++
++static int phytium_pcm_prepare(struct snd_soc_component *component,
++			       struct snd_pcm_substream *substream)
++{
++	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
++	struct i2s_phytium *dev = snd_soc_dai_get_drvdata(snd_soc_rtd_to_cpu(rtd, 0));
++	struct azx *chip = &dev->chip;
++	struct azx_dev *azx_dev = get_azx_dev(substream);
++	struct i2sc_bus *bus = azx_bus(chip);
++	struct i2s_stream *hstr_p;
++	int err;
++
++	dev->substream = substream;
++	azx_dev->core.substream = substream;
++	azx_dev->core.sd_addr = dev->regs_db;
++	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
++		azx_dev->core.bdl.area = bus->bdl0.area;
++		azx_dev->core.bdl.addr = bus->bdl0.addr;
++	} else {
++		azx_dev->core.bdl.area = bus->bdl1.area;
++		azx_dev->core.bdl.addr = bus->bdl1.addr;
++	}
++
++	if (!substream)
++		return -EINVAL;
++
++	hstr_p = azx_stream(azx_dev);
++	hstr_p->direction = substream->stream;
++
++	err = snd_i2s_stream_set_params(azx_stream(azx_dev), 0);
++	if (err < 0)
++		goto unlock;
++
++	snd_i2s_stream_setup(azx_stream(azx_dev), dev->pcie, dev->paddr);
++
++ unlock:
++	if (!err)
++		azx_stream(azx_dev)->prepared = 1;
++
++	return err;
++}
++
++void snd_i2s_stream_clear(struct i2s_stream *azx_dev)
++{
++	if (azx_dev->direction == SNDRV_PCM_STREAM_PLAYBACK)
++		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(1), 0x0);
++	else
++		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 0x0);
++
++	azx_dev->running = false;
++}
++
++void snd_i2s_stream_stop(struct i2s_stream *azx_dev)
++{
++	snd_i2s_stream_clear(azx_dev);
++}
++
++void snd_i2s_stream_start(struct i2s_stream *azx_dev, bool fresh_start)
++{
++	if (azx_dev->direction == SNDRV_PCM_STREAM_PLAYBACK)
++		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(1), 0x1);
++	else
++		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 0x5);
++
++	azx_dev->running = true;
++}
++
++static int phytium_pcm_trigger(struct snd_soc_component *component,
++			       struct snd_pcm_substream *substream, int cmd)
++{
++	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
++	struct i2s_phytium *dev = snd_soc_dai_get_drvdata(snd_soc_rtd_to_cpu(rtd, 0));
++	struct azx *chip = &dev->chip;
++	struct i2sc_bus *bus = azx_bus(chip);
++	struct azx_dev *azx_dev = get_azx_dev(substream);
++	struct snd_pcm_substream *s;
++	struct i2s_stream *hstr;
++	bool start;
++	int sbits = 0;
++
++	hstr = azx_stream(azx_dev);
++	hstr->direction = substream->stream;
++
++	switch (cmd) {
++	case SNDRV_PCM_TRIGGER_START:
++	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
++	case SNDRV_PCM_TRIGGER_RESUME:
++		start = true;
++		break;
++	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
++	case SNDRV_PCM_TRIGGER_SUSPEND:
++	case SNDRV_PCM_TRIGGER_STOP:
++		start = false;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	snd_pcm_group_for_each_entry(s, substream) {
++		if (s->pcm->card != substream->pcm->card)
++			continue;
++		azx_dev = get_azx_dev(s);
++		sbits |= 1 << azx_dev->core.index;
++		snd_pcm_trigger_done(s, substream);
++	}
++
++	spin_lock(&bus->reg_lock);
++
++	snd_pcm_group_for_each_entry(s, substream) {
++		if (s->pcm->card != substream->pcm->card)
++			continue;
++		azx_dev = get_azx_dev(s);
++		if (start)
++			snd_i2s_stream_start(azx_stream(azx_dev), true);
++		else
++			snd_i2s_stream_stop(azx_stream(azx_dev));
++	}
++
++	i2s_write_reg(dev->regs_db, DMA_CTL, 0x1);
++	spin_unlock(&bus->reg_lock);
++
++	return 0;
++}
++
++void snd_i2s_stream_cleanup(struct i2s_stream *azx_dev)
++{
++	int cnt = 10;
++	u32 mask;
++
++	if (azx_dev->sd_addr) {
++		if (azx_dev->direction == SNDRV_PCM_STREAM_PLAYBACK) {
++			mask = i2s_read_reg(azx_dev->sd_addr, DMA_MASK_INT);
++			mask &= ~BIT(1);
++			i2s_write_reg(azx_dev->sd_addr, DMA_MASK_INT, mask);
++			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(1), 0);
++			while (cnt--) {
++				if (i2s_read_reg(azx_dev->sd_addr, DMA_CHALX_CTL(1)) == 0)
++					break;
++			}
++			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(1), 2);
++			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(1), 0);
++			i2s_write_reg(azx_dev->sd_addr, DMA_BDLPL(1), 0);
++			i2s_write_reg(azx_dev->sd_addr, DMA_BDLPU(1), 0);
++			i2s_write_reg(azx_dev->sd_addr, DMA_STS, azx_dev->sd_int_sta_mask);
++		} else {
++			mask = i2s_read_reg(azx_dev->sd_addr, DMA_MASK_INT);
++			mask &= ~BIT(0);
++			i2s_write_reg(azx_dev->sd_addr, DMA_MASK_INT, mask);
++			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 0);
++			while (cnt--) {
++				if (i2s_read_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0)) == 0)
++					break;
++			}
++			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 2);
++			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 0);
++			i2s_write_reg(azx_dev->sd_addr, DMA_BDLPL(0), 0);
++			i2s_write_reg(azx_dev->sd_addr, DMA_BDLPU(0), 0);
++			i2s_write_reg(azx_dev->sd_addr, DMA_STS, azx_dev->sd_int_sta_mask);
++		}
++	}
++}
++
++static int phytium_pcm_hw_free(struct snd_soc_component *component,
++			       struct snd_pcm_substream *substream)
++{
++	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
++	struct i2s_phytium *dev = snd_soc_dai_get_drvdata(snd_soc_rtd_to_cpu(rtd, 0));
++	struct azx *chip = &dev->chip;
++	struct i2s_stream *hstr_p;
++	struct azx_dev *azx_dev = get_azx_dev(substream);
++	int err;
++
++	hstr_p = azx_stream(azx_dev);
++	hstr_p->direction = substream->stream;
++	snd_i2s_stream_cleanup(azx_stream(azx_dev));
++
++	err = chip->ops->substream_free_pages(chip, substream);
++	azx_stream(azx_dev)->prepared = 0;
++
++	return err;
++}
++
++static snd_pcm_uframes_t phytium_pcm_pointer(struct snd_soc_component *component,
++					     struct snd_pcm_substream *substream)
++{
++	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
++	struct i2s_phytium *dev = snd_soc_dai_get_drvdata(snd_soc_rtd_to_cpu(rtd, 0));
++	u32 pos = 0;
++
++	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
++		pos = i2s_read_reg(dev->regs_db, DMA_LPIB(1));
++	else
++		pos = i2s_read_reg(dev->regs_db, DMA_LPIB(0));
++
++	return bytes_to_frames(substream->runtime, pos);
++}
++
++static const struct snd_soc_component_driver phytium_i2s_component = {
++	.name		= "phytium-i2s",
++	.pcm_construct	= phytium_pcm_new,
++	.open		= phytium_pcm_open,
++	.close		= phytium_pcm_close,
++	.hw_params	= phytium_pcm_hw_params,
++	.hw_free	= phytium_pcm_hw_free,
++	.prepare	= phytium_pcm_prepare,
++	.trigger	= phytium_pcm_trigger,
++	.pointer	= phytium_pcm_pointer,
++	.suspend	= phytium_i2s_suspend,
++	.resume		= phytium_i2s_resume,
++	.legacy_dai_naming = 1,
++};
++
++/* Maximum bit resolution of a channel - not uniformly spaced */
++static const u32 fifo_width[COMP_MAX_WORDSIZE] = {
++	12, 16, 20, 24, 32, 0, 0, 0
++};
++
++/* Width of (DMA) bus */
++static const u32 bus_widths[COMP_MAX_DATA_WIDTH] = {
++	DMA_SLAVE_BUSWIDTH_1_BYTE,
++	DMA_SLAVE_BUSWIDTH_2_BYTES,
++	DMA_SLAVE_BUSWIDTH_4_BYTES,
++	DMA_SLAVE_BUSWIDTH_UNDEFINED
++};
++
++/* PCM format to support channel resolution */
++static const u32 formats[COMP_MAX_WORDSIZE] = {
++	SNDRV_PCM_FMTBIT_S16_LE,
++	SNDRV_PCM_FMTBIT_S16_LE,
++	SNDRV_PCM_FMTBIT_S24_LE,
++	SNDRV_PCM_FMTBIT_S24_LE,
++	SNDRV_PCM_FMTBIT_S32_LE,
++	0,
++	0,
++	0
++};
++
++static int phytium_configure_dai(struct i2s_phytium *dev)
++{
++	u32 comp1 = i2s_read_reg(dev->regs, dev->i2s_reg_comp1);
++	u32 comp2 = i2s_read_reg(dev->regs, dev->i2s_reg_comp2);
++	u32 fifo_depth = 1 << (1 + COMP1_FIFO_DEPTH_GLOBAL(comp1));
++	u32 idx;
++
++	if (COMP1_TX_ENABLED(comp1)) {
++		dev_dbg(dev->dev, " phytium: play supported\n");
++		idx = COMP1_TX_WORDSIZE_0(comp1);
++		if (WARN_ON(idx >= ARRAY_SIZE(formats)))
++			return -EINVAL;
++	}
++
++	if (COMP1_RX_ENABLED(comp1)) {
++		dev_dbg(dev->dev, "phytium: record supported\n");
++		idx = COMP2_RX_WORDSIZE_0(comp2);
++		if (WARN_ON(idx >= ARRAY_SIZE(formats)))
++			return -EINVAL;
++		if (dev->quirks & PHYTIUM_I2S_QUIRK_16BIT_IDX_OVERRIDE)
++			idx = 1;
++	}
++
++	if (COMP1_MODE_EN(comp1)) {
++		dev_dbg(dev->dev, "phytium: i2s master mode supported\n");
++		dev->capability |= PHYTIUM_I2S_MASTER;
++	} else {
++		dev_dbg(dev->dev, "phytium: i2s slave mode supported\n");
++		dev->capability |= PHYTIUM_I2S_SLAVE;
++	}
++
++	dev->fifo_th = fifo_depth / 2;
++	return 0;
++}
++
++static int phytium_configure_dai_by_dt(struct i2s_phytium *dev)
++{
++	u32 comp1 = i2s_read_reg(dev->regs, I2S_COMP_PARAM_1);
++	u32 comp2 = i2s_read_reg(dev->regs, I2S_COMP_PARAM_2);
++	u32 idx = COMP1_APB_DATA_WIDTH(comp1);
++	u32 idx2;
++	int ret;
++
++	if (WARN_ON(idx >= ARRAY_SIZE(bus_widths)))
++		return -EINVAL;
++
++	ret = phytium_configure_dai(dev);
++	if (ret < 0)
++		return ret;
++
++	if (COMP1_TX_ENABLED(comp1)) {
++		idx2 = COMP1_TX_WORDSIZE_0(comp1);
++		dev->capability |= PHYTIUM_I2S_PLAY;
++	}
++	if (COMP1_RX_ENABLED(comp1)) {
++		idx2 = COMP2_RX_WORDSIZE_0(comp2);
++		dev->capability |= PHYTIUM_I2S_RECORD;
++	}
++
++	return 0;
++}
++
++static int phytium_i2s_dma_alloc_pages(struct i2sc_bus *bus, int type, size_t size,
++				   struct snd_dma_buffer *buf)
++{
++	int err;
++
++	err = snd_dma_alloc_pages(type, bus->dev, size, buf);
++	if (err < 0)
++		return err;
++
++	return 0;
++}
++
++int snd_i2s_bus_alloc_stream_pages(struct i2sc_bus *bus)
++{
++	struct i2s_stream *s;
++	int num_streams = 0;
++	int err;
++
++	list_for_each_entry(s, &bus->stream_list, list) {
++		/* allocate memory for the BDL for each stream */
++		err = bus->io_ops->dma_alloc_pages(bus, SNDRV_DMA_TYPE_DEV,
++						   BDL_SIZE, &s->bdl);
++		if (num_streams == 0) {
++			bus->bdl0.addr = s->bdl.addr;
++			bus->bdl0.area = s->bdl.area;
++		} else {
++			bus->bdl1.addr = s->bdl.addr;
++			bus->bdl1.area = s->bdl.area;
++		}
++		num_streams++;
++		if (err < 0)
++			return -ENOMEM;
++	}
++
++	if (WARN_ON(!num_streams))
++		return -EINVAL;
++
++	return 0;
++}
++
++static int stream_direction(struct azx *chip, unsigned char index)
++{
++	if (index >= chip->playback_index_offset &&
++	    index < chip->playback_index_offset + chip->playback_streams)
++		return SNDRV_PCM_STREAM_PLAYBACK;
++	return SNDRV_PCM_STREAM_CAPTURE;
++}
++
++void snd_i2s_stream_init(struct i2sc_bus *bus, struct i2s_stream *azx_dev,
++			 int idx, int direction, int tag)
++{
++	azx_dev->bus = bus;
++	azx_dev->sd_addr = bus->remap_addr;
++
++	if (idx == 0)
++		azx_dev->sd_int_sta_mask = 1 << 8;
++	else
++		azx_dev->sd_int_sta_mask = 1;
++
++	azx_dev->index = idx;
++	azx_dev->direction = direction;
++	azx_dev->stream_tag = tag;
++
++	list_add_tail(&azx_dev->list, &bus->stream_list);
++}
++
++int azx_i2s_init_streams(struct azx *chip)
++{
++	int i;
++
++	for (i = 0; i < chip->num_streams; i++) {
++		struct azx_dev *azx_dev = kzalloc(sizeof(*azx_dev), GFP_KERNEL);
++		int dir, tag;
++
++		if (!azx_dev)
++			return -ENOMEM;
++
++		dir = stream_direction(chip, i);
++
++		tag = i + 1;
++
++		snd_i2s_stream_init(azx_bus(chip), azx_stream(azx_dev), i, dir, tag);
++	}
++
++	return 0;
++}
++
++static int azx_first_init(struct azx *chip)
++{
++	struct i2s_phytium *i2s = container_of(chip, struct i2s_phytium, chip);
++	struct platform_device *pdev = to_platform_device(i2s->dev);
++	struct device *i2sdev = i2s->dev;
++	struct i2sc_bus *bus = azx_bus(chip);
++	struct resource *res;
++	int err;
++	unsigned int dma_bits = 64;
++
++	chip->region_requested = 1;
++	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
++	bus->addr = res->start;
++	bus->remap_addr = i2s->regs_db;
++	bus->dev = i2s->pdev;
++
++	if (bus->remap_addr == NULL) {
++		dev_err(i2sdev, "ioremap error\n");
++		return -ENXIO;
++	}
++
++	if (azx_acquire_irq(chip, 0) < 0)
++		return -EBUSY;
++
++	synchronize_irq(bus->irq);
++
++	spin_lock_init(&bus->reg_lock);
++
++	if (!dma_set_mask(i2sdev, DMA_BIT_MASK(dma_bits))) {
++		err = dma_set_coherent_mask(i2sdev, DMA_BIT_MASK(dma_bits));
++	} else {
++		err = dma_set_mask(i2sdev, DMA_BIT_MASK(32));
++		err = dma_set_coherent_mask(i2sdev, DMA_BIT_MASK(32));
++	}
++
++	chip->playback_streams = NUM_PLAYBACK;
++	chip->capture_streams  = NUM_CAPTURE;
++
++	chip->playback_index_offset = 0;
++	chip->capture_index_offset = chip->playback_streams;
++	chip->num_streams = chip->playback_streams + chip->capture_streams;
++
++	err = azx_i2s_init_streams(chip);
++	if (err < 0)
++		return err;
++
++	err = azx_alloc_stream_pages(chip);
++	if (err < 0)
++		return err;
++
++	return 0;
++}
++
++static int azx_probe_continue(struct azx *chip)
++{
++	struct i2s_phytium *i2s = container_of(chip, struct i2s_phytium, chip);
++	int err;
++
++	i2s->probe_continued = 1;
++
++	err = azx_first_init(chip);
++	if (err < 0)
++		goto out_free;
++
++	chip->running = 1;
++
++out_free:
++	return err;
++}
++
++static void azx_probe_work(struct work_struct *work)
++{
++	struct i2s_phytium *i2s = container_of(work, struct i2s_phytium, probe_work);
++
++	azx_probe_continue(&i2s->chip);
++}
++
++int azx_i2s_bus_init(struct azx *chip,
++		     const struct i2s_io_ops *io_ops)
++{
++	struct i2s_bus *bus = &chip->bus;
++
++	bus->core.io_ops = io_ops;
++
++	INIT_LIST_HEAD(&bus->core.stream_list);
++	bus->card = chip->card;
++	mutex_init(&bus->prepare_mutex);
++	bus->pci = chip->pci;
++
++	bus->core.bdl_pos_adj = chip->bdl_pos_adj;
++	return 0;
++}
++
++static int i2s_phytium_create(struct platform_device *pdev,
++			      int dev, struct azx **rchip, struct i2s_phytium *i2s)
++{
++	struct azx *chip;
++	int err;
++
++	*rchip = NULL;
++
++	if (!i2s)
++		return -ENOMEM;
++	chip = &i2s->chip;
++
++	mutex_init(&chip->open_mutex);
++
++	chip->ops = &axi_i2s_ops;
++	chip->dev_index = dev;
++
++	INIT_LIST_HEAD(&chip->pcm_list);
++	init_completion(&i2s->probe_wait);
++
++	chip->bdl_pos_adj = 32;
++	err = azx_i2s_bus_init(chip, &axi_i2s_io_ops);
++	if (err < 0) {
++		kfree(i2s);
++		return err;
++	}
++
++	INIT_WORK(&i2s->probe_work, azx_probe_work);
++	*rchip = chip;
++	return 0;
++}
++
++static int substream_alloc_pages(struct azx *chip,
++				 struct snd_pcm_substream *substream,
++				 size_t size)
++{
++	int ret;
++
++	ret = snd_pcm_lib_malloc_pages(substream, size);
++	if (ret < 0)
++		return ret;
++
++	return 0;
++}
++
++static void phytium_i2s_dma_free_pages(struct i2sc_bus *bus,
++				   struct snd_dma_buffer *buf)
++{
++	snd_dma_free_pages(buf);
++}
++
++static const struct i2s_io_ops axi_i2s_io_ops = {
++	.dma_alloc_pages = phytium_i2s_dma_alloc_pages,
++	.dma_free_pages = phytium_i2s_dma_free_pages,
++};
++
++static const struct i2s_controller_ops axi_i2s_ops = {
++	.substream_alloc_pages = substream_alloc_pages,
++	.substream_free_pages = substream_free_pages,
++};
++
++static int phytium_i2s_probe(struct platform_device *pdev)
++{
++	struct i2s_phytium *i2s;
++	struct azx *chip;
++	struct resource *res;
++	struct pdata_px210_mfd *pdata;
++	struct snd_soc_dai_driver *dai_drv;
++	struct clk *clk;
++	int err, ret;
++	int card_num = 1;
++	bool schedule_probe;
++	struct fwnode_handle *np;
++
++	i2s = devm_kzalloc(&pdev->dev, sizeof(*i2s), GFP_KERNEL);
++	if (!i2s)
++		return -ENOMEM;
++
++	dai_drv = devm_kzalloc(&pdev->dev, sizeof(*dai_drv), GFP_KERNEL);
++	if (!dai_drv)
++		return -ENOMEM;
++	memcpy(dai_drv, &phytium_i2s_dai, sizeof(phytium_i2s_dai));
++
++	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
++	i2s->paddr = res->start;
++	i2s->regs = devm_ioremap_resource(&pdev->dev, res);
++
++	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
++	i2s->regs_db = devm_ioremap_resource(&pdev->dev, res);
++
++	if (IS_ERR(i2s->regs))
++		return PTR_ERR(i2s->regs);
++
++	i2s->irq_id = platform_get_irq(pdev, 0);
++
++	if (i2s->irq_id < 0)
++		return i2s->irq_id;
++
++	i2s->i2s_reg_comp1 = I2S_COMP_PARAM_1;
++	i2s->i2s_reg_comp2 = I2S_COMP_PARAM_2;
++
++	ret = phytium_configure_dai_by_dt(i2s);
++	if (ret < 0)
++		return ret;
++
++	err = i2s_phytium_create(pdev, card_num, &chip, i2s);
++	if (err < 0)
++		return err;
++	i2s = container_of(chip, struct i2s_phytium, chip);
++	schedule_probe = !chip->disabled;
++
++	dev_set_drvdata(&pdev->dev, i2s);
++
++	pdata = dev_get_platdata(&pdev->dev);
++	i2s->dev = &pdev->dev;
++	if (pdata) {
++		dai_drv->name = pdata->name;
++		i2s->pdev = pdata->dev;
++		i2s->clk_base = pdata->clk_base;
++		i2s->pcie = 1;
++	} else if (pdev->dev.of_node) {
++		device_property_read_string(&pdev->dev, "dai-name", &dai_drv->name);
++		i2s->pdev = &pdev->dev;
++		clk = devm_clk_get(&pdev->dev, NULL);
++		i2s->clk_base = clk_get_rate(clk);
++	} else if (has_acpi_companion(&pdev->dev)) {
++		np = dev_fwnode(&(pdev->dev));
++		ret = fwnode_property_read_string(np, "dai-name", &dai_drv->name);
++		if (ret < 0) {
++			dev_err(&pdev->dev, "missing dai-name property from acpi\n");
++			goto failed_get_dai_name;
++		}
++
++		i2s->pdev = &pdev->dev;
++		ret = fwnode_property_read_u32(np, "i2s_clk", &i2s->clk_base);
++		if (ret < 0) {
++			dev_err(&pdev->dev, "missing i2s_clk property from acpi\n");
++			goto failed_get_dai_name;
++		}
++	}
++
++	ret = devm_snd_soc_register_component(&pdev->dev, &phytium_i2s_component,
++					      dai_drv, 1);
++	if (ret != 0)
++		dev_err(&pdev->dev, "not able to register dai\n");
++
++	if (schedule_probe)
++		schedule_work(&i2s->probe_work);
++
++	if (chip->disabled)
++		complete_all(&i2s->probe_wait);
++
++	return 0;
++
++failed_get_dai_name:
++	return ret;
++}
++
++static int phytium_i2s_remove(struct platform_device *pdev)
++{
++	pm_runtime_disable(&pdev->dev);
++	return 0;
++}
++
++static const struct of_device_id phytium_i2s_of_match[] = {
++	{ .compatible = "phytium,i2s", },
++	{},
++};
++MODULE_DEVICE_TABLE(of, phytium_i2s_of_match);
++
++#ifdef CONFIG_ACPI
++static const struct acpi_device_id phytium_i2s_acpi_match[] = {
++	{ "PHYT0016", 0 },
++	{ }
++};
++#else
++#define phytium_i2s_acpi_match NULL
++#endif
++
++static struct platform_driver phytium_i2s_driver = {
++	.probe	= phytium_i2s_probe,
++	.remove	= phytium_i2s_remove,
++	.driver	= {
++		.name = "phytium-i2s",
++		.of_match_table = of_match_ptr(phytium_i2s_of_match),
++		.acpi_match_table = phytium_i2s_acpi_match,
++	},
++};
++
++module_platform_driver(phytium_i2s_driver);
++
++MODULE_DESCRIPTION("Phytium I2S Driver");
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Zhang Yiqun <zhangyiqun@phytium.com.cn>");
+diff --git a/sound/soc/phytium/pmdk_dp.c b/sound/soc/phytium/pmdk_dp.c
+new file mode 100644
+index 000000000000..74488df3d21a
+--- /dev/null
++++ b/sound/soc/phytium/pmdk_dp.c
+@@ -0,0 +1,231 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ *  Copyright (c) 2021-2023, Phytium Technology Co., Ltd.
++ */
++
++#include <linux/module.h>
++#include <sound/soc.h>
++#include <sound/pcm_params.h>
++#include <sound/jack.h>
++
++struct pmdk_dp_private {
++	struct snd_soc_jack jack0;
++	struct snd_soc_jack jack1;
++	struct snd_soc_jack jack2;
++};
++
++/* PMDK widgets */
++static const struct snd_soc_dapm_widget pmdk_dp_dapm_widgets[] = {
++	SND_SOC_DAPM_LINE("DP", NULL),
++};
++
++/* PMDK control */
++static const struct snd_kcontrol_new pmdk_controls[] = {
++	SOC_DAPM_PIN_SWITCH("DP"),
++};
++
++/* PMDK connections */
++static const struct snd_soc_dapm_route pmdk_dp_audio_map[] = {
++	{"DP", NULL, "TX"},
++};
++
++static struct snd_soc_jack_pin dp0_pins[] = {
++	{
++		.pin	= "DP/HDMI 0",
++		.mask	= SND_JACK_LINEOUT,
++	},
++};
++
++static struct snd_soc_jack_pin dp1_pins[] = {
++	{
++		.pin	= "DP/HDMI 1",
++		.mask	= SND_JACK_LINEOUT,
++	},
++};
++
++static struct snd_soc_jack_pin dp2_pins[] = {
++	{
++		.pin	= "DP/HDMI 2",
++		.mask	= SND_JACK_LINEOUT,
++	},
++};
++
++#define SMDK_DAI_FMT (SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | \
++	SND_SOC_DAIFMT_BC_FC)
++
++static int pmdk_dp0_init(struct snd_soc_pcm_runtime *runtime)
++{
++	struct snd_soc_card *card = runtime->card;
++	struct pmdk_dp_private *priv = snd_soc_card_get_drvdata(card);
++	struct snd_soc_component *component = snd_soc_rtd_to_codec(runtime, 0)->component;
++	int ret;
++
++	ret = snd_soc_card_jack_new_pins(card, "DP/HDMI 0",
++					 SND_JACK_LINEOUT, &priv->jack0,
++					 dp0_pins, ARRAY_SIZE(dp0_pins));
++	if (ret) {
++		dev_err(card->dev, "Jack creation failed %d\n", ret);
++		return ret;
++	}
++	snd_soc_component_set_jack(component, &priv->jack0, NULL);
++	return ret;
++}
++
++static int pmdk_dp1_init(struct snd_soc_pcm_runtime *runtime)
++{
++	struct snd_soc_card *card = runtime->card;
++	struct pmdk_dp_private *priv = snd_soc_card_get_drvdata(card);
++	struct snd_soc_component *component = snd_soc_rtd_to_codec(runtime, 0)->component;
++	int ret;
++
++	ret = snd_soc_card_jack_new_pins(card, "DP/HDMI 1",
++					 SND_JACK_LINEOUT, &priv->jack1,
++					 dp1_pins, ARRAY_SIZE(dp1_pins));
++	if (ret) {
++		dev_err(card->dev, "Jack creation failed %d\n", ret);
++		return ret;
++	}
++	snd_soc_component_set_jack(component, &priv->jack1, NULL);
++	return ret;
++}
++
++static int pmdk_dp2_init(struct snd_soc_pcm_runtime *runtime)
++{
++	struct snd_soc_card *card = runtime->card;
++	struct pmdk_dp_private *priv = snd_soc_card_get_drvdata(card);
++	struct snd_soc_component *component = snd_soc_rtd_to_codec(runtime, 0)->component;
++	int ret;
++
++	ret = snd_soc_card_jack_new_pins(card, "DP/HDMI 2",
++					 SND_JACK_LINEOUT, &priv->jack2,
++					 dp2_pins, ARRAY_SIZE(dp2_pins));
++	if (ret) {
++		dev_err(card->dev, "Jack creation failed %d\n", ret);
++		return ret;
++	}
++	snd_soc_component_set_jack(component, &priv->jack2, NULL);
++	return ret;
++}
++
++SND_SOC_DAILINK_DEFS(pmdk_dp0_dai,
++	DAILINK_COMP_ARRAY(COMP_CPU("phytium-i2s-dp0")),
++	DAILINK_COMP_ARRAY(COMP_CODEC("hdmi-audio-codec.1346918656", "i2s-hifi")),
++	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-soc-dummy")));
++
++SND_SOC_DAILINK_DEFS(pmdk_dp1_dai,
++	DAILINK_COMP_ARRAY(COMP_CPU("phytium-i2s-dp1")),
++	DAILINK_COMP_ARRAY(COMP_CODEC("hdmi-audio-codec.1346918657", "i2s-hifi")),
++	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-soc-dummy")));
++
++SND_SOC_DAILINK_DEFS(pmdk_dp2_dai,
++	DAILINK_COMP_ARRAY(COMP_CPU("phytium-i2s-dp2")),
++	DAILINK_COMP_ARRAY(COMP_CODEC("hdmi-audio-codec.1346918658", "i2s-hifi")),
++	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-soc-dummy")));
++
++static struct snd_soc_dai_link pmdk_dai0 = {
++	.name = "Phytium dp0-audio",
++	.stream_name = "Playback",
++	.dai_fmt = SMDK_DAI_FMT,
++	.init = pmdk_dp0_init,
++	SND_SOC_DAILINK_REG(pmdk_dp0_dai),
++};
++
++static struct snd_soc_dai_link pmdk_dai1 = {
++	.name = "Phytium dp1-audio",
++	.stream_name = "Playback",
++	.dai_fmt = SMDK_DAI_FMT,
++	.init = pmdk_dp1_init,
++	SND_SOC_DAILINK_REG(pmdk_dp1_dai),
++};
++
++static struct snd_soc_dai_link pmdk_dai2 = {
++	.name = "Phytium dp2-audio",
++	.stream_name = "Playback",
++	.dai_fmt = SMDK_DAI_FMT,
++	.init = pmdk_dp2_init,
++	SND_SOC_DAILINK_REG(pmdk_dp2_dai),
++};
++
++static struct snd_soc_card pmdk = {
++	.name = "PMDK-I2S",
++	.owner = THIS_MODULE,
++
++	.dapm_widgets = pmdk_dp_dapm_widgets,
++	.num_dapm_widgets = ARRAY_SIZE(pmdk_dp_dapm_widgets),
++	.controls = pmdk_controls,
++	.num_controls = ARRAY_SIZE(pmdk_controls),
++	.dapm_routes = pmdk_dp_audio_map,
++	.num_dapm_routes = ARRAY_SIZE(pmdk_dp_audio_map),
++};
++
++static int pmdk_sound_probe(struct platform_device *pdev)
++{
++	struct snd_soc_card *card = &pmdk;
++	struct pmdk_dp_private *priv;
++	struct snd_soc_dai_link *pmdk_dai;
++	int num_dp = 2;
++
++	card->dev = &pdev->dev;
++	device_property_read_u32(&pdev->dev, "num-dp", &num_dp);
++	pmdk_dai = devm_kzalloc(&pdev->dev, num_dp * sizeof(*pmdk_dai), GFP_KERNEL);
++	if (!pmdk_dai)
++		return -ENOMEM;
++
++	switch (num_dp) {
++	case 1:
++		pmdk_dai[0] = pmdk_dai0;
++		break;
++	case 2:
++		pmdk_dai[0] = pmdk_dai0;
++		pmdk_dai[1] = pmdk_dai1;
++		break;
++	case 3:
++		pmdk_dai[0] = pmdk_dai0;
++		pmdk_dai[1] = pmdk_dai1;
++		pmdk_dai[2] = pmdk_dai2;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	card->dai_link = pmdk_dai;
++	card->num_links = num_dp;
++
++	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
++	if (!priv)
++		return -ENOMEM;
++
++	snd_soc_card_set_drvdata(card, priv);
++
++	return devm_snd_soc_register_card(&pdev->dev, card);
++}
++
++static const struct of_device_id pmdk_sound_of_match[] = {
++	{ .compatible = "phytium,pmdk-dp",},
++	{ }
++};
++MODULE_DEVICE_TABLE(of, pmdk_sound_of_match);
++
++static const struct acpi_device_id pmdk_sound_acpi_match[] = {
++	{ "PHYT8006", 0},
++	{ }
++};
++MODULE_DEVICE_TABLE(acpi, pmdk_sound_acpi_match);
++
++static struct platform_driver pmdk_sound_driver = {
++	.probe = pmdk_sound_probe,
++	.driver = {
++		.name = "pmdk_dp",
++		.acpi_match_table = pmdk_sound_acpi_match,
++		.of_match_table = pmdk_sound_of_match,
++#ifdef CONFIG_PM
++		.pm = &snd_soc_pm_ops,
++#endif
++	},
++};
++
++module_platform_driver(pmdk_sound_driver);
++
++MODULE_AUTHOR("Zhang Yiqun <zhangyiqun@phytium.com.cn>");
++MODULE_DESCRIPTION("ALSA SoC PMDK DP");
++MODULE_LICENSE("GPL");
+diff --git a/sound/soc/phytium/pmdk_es8336.c b/sound/soc/phytium/pmdk_es8336.c
+new file mode 100644
+index 000000000000..0926a73a9ef8
+--- /dev/null
++++ b/sound/soc/phytium/pmdk_es8336.c
+@@ -0,0 +1,97 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ *  Copyright (c) 2021-2023, Phytium Techonology Co., Ltd.
++ */
++
++#include <linux/module.h>
++#include <linux/gpio.h>
++#include <sound/soc.h>
++#include <sound/pcm_params.h>
++
++
++/* PMDK widgets */
++static const struct snd_soc_dapm_widget pmdk_es8336_dapm_widgets[] = {
++	SND_SOC_DAPM_HP("HP", NULL),
++	SND_SOC_DAPM_MIC("Int Mic", NULL),
++	SND_SOC_DAPM_MIC("Mic In", NULL),
++};
++
++/* PMDK control */
++static const struct snd_kcontrol_new pmdk_controls[] = {
++	SOC_DAPM_PIN_SWITCH("HP"),
++	SOC_DAPM_PIN_SWITCH("Int Mic"),
++	SOC_DAPM_PIN_SWITCH("Mic In"),
++};
++
++/* PMDK connections */
++static const struct snd_soc_dapm_route pmdk_es8336_audio_map[] = {
++	{"DMIC", NULL, "Int Mic"},
++	{"MIC1", NULL, "Mic In"},
++	{"MIC2", NULL, "Mic In"},
++
++	{"HP", NULL, "HPOL"},
++	{"HP", NULL, "HPOR"},
++};
++
++#define PMDK_DAI_FMT (SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | \
++	SND_SOC_DAIFMT_CBS_CFS)
++
++SND_SOC_DAILINK_DEFS(pmdk_es8366,
++	DAILINK_COMP_ARRAY(COMP_CPU("phytium-i2s-lsd")),
++	DAILINK_COMP_ARRAY(COMP_CODEC("i2c-ESSX8336:00", "es8336-hifi")),
++	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-soc-dummy")));
++
++static struct snd_soc_dai_link pmdk_dai[] = {
++	{
++		.name = "ES8336 HIFI",
++		.stream_name = "ES8336 HIFI",
++		.dai_fmt = PMDK_DAI_FMT,
++		SND_SOC_DAILINK_REG(pmdk_es8366),
++	},
++};
++
++static struct snd_soc_card pmdk = {
++	.name = "PMDK-I2S",
++	.owner = THIS_MODULE,
++	.dai_link = pmdk_dai,
++	.num_links = ARRAY_SIZE(pmdk_dai),
++
++	.dapm_widgets = pmdk_es8336_dapm_widgets,
++	.num_dapm_widgets = ARRAY_SIZE(pmdk_es8336_dapm_widgets),
++	.controls = pmdk_controls,
++	.num_controls = ARRAY_SIZE(pmdk_controls),
++	.dapm_routes = pmdk_es8336_audio_map,
++	.num_dapm_routes = ARRAY_SIZE(pmdk_es8336_audio_map),
++};
++
++static int pmdk_sound_probe(struct platform_device *pdev)
++{
++	struct snd_soc_card *card = &pmdk;
++	struct device *dev = &pdev->dev;
++
++	card->dev = dev;
++
++	return devm_snd_soc_register_card(&pdev->dev, card);
++}
++
++static const struct acpi_device_id pmdk_sound_acpi_match[] = {
++	{ "PHYT8005", 0},
++	{ }
++};
++MODULE_DEVICE_TABLE(acpi, pmdk_sound_acpi_match);
++
++static struct platform_driver pmdk_sound_driver = {
++	.probe = pmdk_sound_probe,
++	.driver = {
++		.name = "pmdk_es8336",
++		.acpi_match_table = pmdk_sound_acpi_match,
++#ifdef CONFIG_PM
++		.pm = &snd_soc_pm_ops,
++#endif
++	},
++};
++
++module_platform_driver(pmdk_sound_driver);
++MODULE_AUTHOR("Zhang Yiqun <zhangyiqun@phytium.com.cn>");
++MODULE_DESCRIPTION("ALSA SoC PMDK ES8336");
++MODULE_LICENSE("GPL");
+diff --git a/sound/soc/phytium/pmdk_es8388.c b/sound/soc/phytium/pmdk_es8388.c
+new file mode 100644
+index 000000000000..181223ab3424
+--- /dev/null
++++ b/sound/soc/phytium/pmdk_es8388.c
+@@ -0,0 +1,169 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ *  Copyright (c) 2021-2023, Phytium Techonology Co., Ltd.
++ */
++
++#include <linux/module.h>
++#include <linux/gpio.h>
++#include <sound/soc.h>
++#include <sound/pcm_params.h>
++#include <sound/jack.h>
++
++static struct snd_soc_jack hs_jack;
++
++/* Headset jack detection DAPM pins */
++static struct snd_soc_jack_pin hs_jack_pins[] = {
++	{
++		.pin	= "FrontIn",
++		.mask	= SND_JACK_MICROPHONE,
++	},
++	{
++		.pin	= "RearIn",
++		.mask	= SND_JACK_MICROPHONE,
++		.invert = 1
++	},
++	{
++		.pin	= "Front",
++		.mask	= SND_JACK_HEADPHONE,
++	},
++	{
++		.pin    = "Rear",
++		.mask   = SND_JACK_HEADPHONE,
++		.invert = 1
++	},
++};
++
++/* Headset jack detection gpios */
++static struct snd_soc_jack_gpio hs_jack_gpios[] = {
++	{
++		.name		= "det",
++		.report		= SND_JACK_HEADSET,
++		.debounce_time	= 200,
++		.invert		= 1,
++	},
++};
++
++/* PMDK widgets */
++static const struct snd_soc_dapm_widget pmdk_es8388_dapm_widgets[] = {
++	SND_SOC_DAPM_HP("Front", NULL),
++	SND_SOC_DAPM_HP("Rear", NULL),
++
++	SND_SOC_DAPM_MIC("FrontIn", NULL),
++	SND_SOC_DAPM_MIC("RearIn", NULL),
++};
++
++/* PMDK control */
++static const struct snd_kcontrol_new pmdk_controls[] = {
++	SOC_DAPM_PIN_SWITCH("Front"),
++	SOC_DAPM_PIN_SWITCH("Rear"),
++	SOC_DAPM_PIN_SWITCH("FrontIn"),
++	SOC_DAPM_PIN_SWITCH("RearIn"),
++};
++
++/* PMDK connections */
++static const struct snd_soc_dapm_route pmdk_es8388_audio_map[] = {
++	{"LINPUT1", NULL, "FrontIn"},
++	{"RINPUT1", NULL, "FrontIn"},
++
++	{"LINPUT2", NULL, "RearIn"},
++	{"RINPUT2", NULL, "RearIn"},
++
++	{"Front", NULL, "LOUT1"},
++	{"Front", NULL, "ROUT1"},
++
++	{"Rear", NULL, "LOUT2"},
++	{"Rear", NULL, "ROUT2"},
++};
++
++static int pmdk_es8388_init(struct snd_soc_pcm_runtime *rtd)
++{
++	int ret;
++
++	/* Jack detection API stuff */
++	ret = snd_soc_card_jack_new_pins(rtd->card, "Headset Jack",
++					 SND_JACK_HEADSET, &hs_jack,
++					 hs_jack_pins, ARRAY_SIZE(hs_jack_pins));
++	if (ret)
++		goto err;
++
++	ret = snd_soc_jack_add_gpios(&hs_jack, ARRAY_SIZE(hs_jack_gpios),
++				hs_jack_gpios);
++	if (ret)
++		goto err;
++
++	return 0;
++
++err:
++	return ret;
++}
++
++#define PMDK_DAI_FMT (SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | \
++	SND_SOC_DAIFMT_CBS_CFS)
++
++SND_SOC_DAILINK_DEFS(pmdk_es8388,
++	DAILINK_COMP_ARRAY(COMP_CPU("phytium-i2s-lsd")),
++	DAILINK_COMP_ARRAY(COMP_CODEC("i2c-ESSX8388:00", "es8388-hifi")),
++	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-soc-dummy")));
++
++static struct snd_soc_dai_link pmdk_dai[] = {
++	{
++		.name = "ES8388 HIFI",
++		.stream_name = "ES8388 HIFI",
++		.dai_fmt = PMDK_DAI_FMT,
++		.init = pmdk_es8388_init,
++		SND_SOC_DAILINK_REG(pmdk_es8388),
++	},
++};
++
++static struct snd_soc_card pmdk = {
++	.name = "PMDK-I2S",
++	.owner = THIS_MODULE,
++	.dai_link = pmdk_dai,
++	.num_links = ARRAY_SIZE(pmdk_dai),
++
++	.dapm_widgets = pmdk_es8388_dapm_widgets,
++	.num_dapm_widgets = ARRAY_SIZE(pmdk_es8388_dapm_widgets),
++	.controls = pmdk_controls,
++	.num_controls = ARRAY_SIZE(pmdk_controls),
++	.dapm_routes = pmdk_es8388_audio_map,
++	.num_dapm_routes = ARRAY_SIZE(pmdk_es8388_audio_map),
++};
++
++static int pmdk_sound_probe(struct platform_device *pdev)
++{
++	struct snd_soc_card *card = &pmdk;
++	struct device *dev = &pdev->dev;
++	int n;
++
++	card->dev = dev;
++	hs_jack_gpios[0].gpiod_dev = dev;
++	n = gpiod_count(dev, "det");
++
++	if (n < 0)
++		pmdk_dai[0].init = NULL;
++
++	return devm_snd_soc_register_card(&pdev->dev, card);
++}
++
++static const struct acpi_device_id pmdk_sound_acpi_match[] = {
++	{ "PHYT8004", 0},
++	{ }
++};
++MODULE_DEVICE_TABLE(acpi, pmdk_sound_acpi_match);
++
++static struct platform_driver pmdk_sound_driver = {
++	.probe = pmdk_sound_probe,
++	.driver = {
++		.name = "pmdk_es8388",
++		.acpi_match_table = pmdk_sound_acpi_match,
++#ifdef CONFIG_PM
++		.pm = &snd_soc_pm_ops,
++#endif
++	},
++};
++
++module_platform_driver(pmdk_sound_driver);
++
++MODULE_AUTHOR("Zhang Yiqun<zhangyiqun@phytium.com.cn>");
++MODULE_DESCRIPTION("ALSA SoC PMDK ES8388");
++MODULE_LICENSE("GPL");
+-- 
+2.20.1
+

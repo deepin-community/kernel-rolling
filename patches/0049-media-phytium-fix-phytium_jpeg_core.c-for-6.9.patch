@@ -1,0 +1,30 @@
+From edbef0ceed2a24e6010fd1fd0fb115d9f0fc270c Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Thu, 27 Jun 2024 16:41:01 +0800
+Subject: [PATCH 049/360] media: phytium: fix phytium_jpeg_core.c for 6.9
+
+Rename min_buffers_needed to min_queued_buffers per an upstream change.
+
+Ref: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=80c2b40a51393add616a1fd186a1cc10bd676a3f
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ drivers/media/platform/phytium/phytium_jpeg_core.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/media/platform/phytium/phytium_jpeg_core.c b/drivers/media/platform/phytium/phytium_jpeg_core.c
+index 43a87c6e569d..70cfe9802017 100644
+--- a/drivers/media/platform/phytium/phytium_jpeg_core.c
++++ b/drivers/media/platform/phytium/phytium_jpeg_core.c
+@@ -1231,7 +1231,7 @@ static int phytium_jpeg_setup_video(struct phytium_jpeg_dev *jpeg_dev)
+ 	dst_vq->drv_priv = jpeg_dev;
+ 	dst_vq->buf_struct_size = sizeof(struct phytium_jpeg_buffer);
+ 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
+-	dst_vq->min_buffers_needed = CAPTURE_BUF_NUMBER;
++	dst_vq->min_queued_buffers = CAPTURE_BUF_NUMBER;
+ 	ret = vb2_queue_init(dst_vq);
+ 	if (ret) {
+ 		dev_err(jpeg_dev->dev, "Failed to init vb2 queue\n");
+-- 
+2.20.1
+

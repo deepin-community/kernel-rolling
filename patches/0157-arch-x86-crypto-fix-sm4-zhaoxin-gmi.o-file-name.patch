@@ -1,0 +1,29 @@
+From 29baed261b611e8d4771bbd09bc587fafb40c96b Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Tue, 9 Jul 2024 13:57:02 +0800
+Subject: [PATCH 157/360] arch: x86: crypto: fix sm4-zhaoxin-gmi.o file name
+
+The driver source produces an sm4_zhaoxin_gmi.o but the Makefile expects an
+sm4-zhaoxin-gmi.o. Fix the Makefile to make the driver build.
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ arch/x86/crypto/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/x86/crypto/Makefile b/arch/x86/crypto/Makefile
+index f3cd558f3553..67c870fad072 100644
+--- a/arch/x86/crypto/Makefile
++++ b/arch/x86/crypto/Makefile
+@@ -115,7 +115,7 @@ obj-$(CONFIG_CRYPTO_ARIA_GFNI_AVX512_X86_64) += aria-gfni-avx512-x86_64.o
+ aria-gfni-avx512-x86_64-y := aria-gfni-avx512-asm_64.o aria_gfni_avx512_glue.o
+ 
+ obj-$(CONFIG_CRYPTO_SM3_ZHAOXIN_GMI) += sm3-zhaoxin-gmi.o
+-obj-$(CONFIG_CRYPTO_SM4_ZHAOXIN_GMI) += sm4-zhaoxin-gmi.o
++obj-$(CONFIG_CRYPTO_SM4_ZHAOXIN_GMI) += sm4_zhaoxin_gmi.o
+ 
+ quiet_cmd_perlasm = PERLASM $@
+       cmd_perlasm = $(PERL) $< > $@
+-- 
+2.20.1
+

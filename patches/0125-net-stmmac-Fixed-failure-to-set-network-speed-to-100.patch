@@ -1,0 +1,51 @@
+From 730f091ad310c88f4b57967f61885c53f18abbd7 Mon Sep 17 00:00:00 2001
+From: Yanteng Si <siyanteng@loongson.cn>
+Date: Wed, 29 May 2024 18:20:28 +0800
+Subject: [PATCH 125/360] net: stmmac: Fixed failure to set network speed to
+ 1000.
+
+Loongson GNET devices with dev revision 0x00 do not
+support manually setting the speed to 1000, When the
+bug is triggered, let's return -EOPNOTSUPP, which
+will be flag in later gnet support patches.
+
+Signed-off-by: Feiyang Chen <chenfeiyang@loongson.cn>
+Signed-off-by: Yinggang Gu <guyinggang@loongson.cn>
+Signed-off-by: Yanteng Si <siyanteng@loongson.cn>
+---
+ drivers/net/ethernet/stmicro/stmmac/stmmac_ethtool.c | 6 ++++++
+ include/linux/stmmac.h                               | 1 +
+ 2 files changed, 7 insertions(+)
+
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_ethtool.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_ethtool.c
+index 2a37592a6281..49e3aefc2942 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_ethtool.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_ethtool.c
+@@ -423,6 +423,12 @@ stmmac_ethtool_set_link_ksettings(struct net_device *dev,
+ 		return 0;
+ 	}
+ 
++	if (priv->plat->flags & STMMAC_FLAG_DISABLE_FORCE_1000) {
++		if (cmd->base.speed == SPEED_1000 &&
++		    cmd->base.autoneg != AUTONEG_ENABLE)
++			return -EOPNOTSUPP;
++	}
++
+ 	return phylink_ethtool_ksettings_set(priv->phylink, cmd);
+ }
+ 
+diff --git a/include/linux/stmmac.h b/include/linux/stmmac.h
+index d79ff252cfdc..c50236b7ed8b 100644
+--- a/include/linux/stmmac.h
++++ b/include/linux/stmmac.h
+@@ -181,6 +181,7 @@ struct dwmac4_addrs {
+ #define STMMAC_FLAG_RX_CLK_RUNS_IN_LPI		BIT(10)
+ #define STMMAC_FLAG_EN_TX_LPI_CLOCKGATING	BIT(11)
+ #define STMMAC_FLAG_HWTSTAMP_CORRECT_LATENCY	BIT(12)
++#define STMMAC_FLAG_DISABLE_FORCE_1000		BIT(13)
+ 
+ struct plat_stmmacenet_data {
+ 	int bus_id;
+-- 
+2.20.1
+

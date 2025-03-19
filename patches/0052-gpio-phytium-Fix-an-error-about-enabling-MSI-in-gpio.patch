@@ -1,0 +1,33 @@
+From 17ae2d6e51ad8477226aad7c322284de0c6eae57 Mon Sep 17 00:00:00 2001
+From: Li Guohui <liguohui2061@phytium.com.cn>
+Date: Thu, 16 May 2024 16:30:23 +0800
+Subject: [PATCH 052/360] gpio: phytium: Fix an error about enabling MSI in
+ gpio-pci driver
+
+This patch fixed an error on px210 board that the interrupt cannot
+be issued after enabling the MSI interrupt in the gpio-pci driver.
+
+Signed-off-by: Li Guohui <liguohui2061@phytium.com.cn>
+Signed-off-by: Lan Hengyu <lanhengyu1395@phytium.com.cn>
+Signed-off-by: Chen Baozi <chenbaozi@phytium.com.cn>
+Signed-off-by: Wang Yinfeng <wangyinfeng@phytium.com.cn>
+---
+ drivers/gpio/gpio-phytium-pci.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/gpio/gpio-phytium-pci.c b/drivers/gpio/gpio-phytium-pci.c
+index 21c87f5d7880..6755995ae703 100644
+--- a/drivers/gpio/gpio-phytium-pci.c
++++ b/drivers/gpio/gpio-phytium-pci.c
+@@ -59,6 +59,8 @@ static int phytium_gpio_pci_probe(struct pci_dev *pdev, const struct pci_device_
+ 	if (err < 0)
+ 		goto out;
+ 
++	pci_set_master(pdev);
++
+ 	gpio->irq[0] = pdev->irq;
+ 	if (gpio->irq < 0)
+ 		dev_warn(dev, "no irq is found.\n");
+-- 
+2.20.1
+

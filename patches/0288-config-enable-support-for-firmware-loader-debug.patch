@@ -1,0 +1,50 @@
+From 141367d5fabb8cae4aa1636fd3eddd3722df95cf Mon Sep 17 00:00:00 2001
+From: Wentao Guan <guanwentao@uniontech.com>
+Date: Mon, 18 Nov 2024 15:28:47 +0800
+Subject: [PATCH 288/360] config: enable support for firmware loader debug
+
+---
+ arch/arm64/configs/deepin_arm64_desktop_defconfig         | 1 -
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 1 -
+ arch/x86/configs/deepin_x86_desktop_defconfig             | 1 -
+ 3 files changed, 3 deletions(-)
+
+diff --git a/arch/arm64/configs/deepin_arm64_desktop_defconfig b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+index 81b4c7d2c760..e6874297e0f0 100644
+--- a/arch/arm64/configs/deepin_arm64_desktop_defconfig
++++ b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+@@ -803,7 +803,6 @@ CONFIG_DEVTMPFS=y
+ CONFIG_DEVTMPFS_MOUNT=y
+ # CONFIG_STANDALONE is not set
+ # CONFIG_PREVENT_FIRMWARE_BUILD is not set
+-# CONFIG_FW_LOADER_DEBUG is not set
+ CONFIG_FW_LOADER_USER_HELPER=y
+ CONFIG_FW_LOADER_USER_HELPER_FALLBACK=y
+ CONFIG_FW_LOADER_COMPRESS=y
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index 51413b0a466e..40fcba7753b6 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -770,7 +770,6 @@ CONFIG_DEVTMPFS=y
+ CONFIG_DEVTMPFS_MOUNT=y
+ # CONFIG_STANDALONE is not set
+ # CONFIG_PREVENT_FIRMWARE_BUILD is not set
+-# CONFIG_FW_LOADER_DEBUG is not set
+ CONFIG_FW_LOADER_COMPRESS=y
+ CONFIG_FW_LOADER_COMPRESS_ZSTD=y
+ CONFIG_MOXTET=m
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index 633e359d3119..b721e36d364b 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -756,7 +756,6 @@ CONFIG_UEVENT_HELPER=y
+ CONFIG_DEVTMPFS=y
+ CONFIG_DEVTMPFS_MOUNT=y
+ # CONFIG_STANDALONE is not set
+-# CONFIG_FW_LOADER_DEBUG is not set
+ CONFIG_FW_LOADER_COMPRESS=y
+ CONFIG_FW_LOADER_COMPRESS_ZSTD=y
+ CONFIG_DEBUG_DEVRES=y
+-- 
+2.20.1
+

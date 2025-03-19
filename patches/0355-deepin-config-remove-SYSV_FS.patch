@@ -1,0 +1,39 @@
+From dd3bbc12d3451675037b274ee97e092143cf638d Mon Sep 17 00:00:00 2001
+From: Wentao Guan <guanwentao@uniontech.com>
+Date: Sun, 23 Feb 2025 12:13:15 +0800
+Subject: [PATCH 355/360] deepin: config: remove SYSV_FS
+
+Link:https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git/commit/?h=vfs-6.15.sysv&id=448fa70158f9b348e71869cfe4a31988e07b20b2
+Signed-off-by: Wentao Guan <guanwentao@uniontech.com>
+---
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 1 -
+ arch/x86/configs/deepin_x86_desktop_defconfig             | 1 -
+ 2 files changed, 2 deletions(-)
+
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index 23d8aae50287..e34938e38946 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -5719,7 +5719,6 @@ CONFIG_PSTORE=y
+ CONFIG_PSTORE_CONSOLE=y
+ CONFIG_PSTORE_PMSG=y
+ CONFIG_PSTORE_RAM=m
+-CONFIG_SYSV_FS=m
+ CONFIG_UFS_FS=m
+ CONFIG_UFS_FS_WRITE=y
+ CONFIG_EROFS_FS=m
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index 1b0173e4c14f..9b5f90737217 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -5363,7 +5363,6 @@ CONFIG_QNX4FS_FS=m
+ CONFIG_QNX6FS_FS=m
+ CONFIG_ROMFS_FS=m
+ CONFIG_PSTORE_RAM=m
+-CONFIG_SYSV_FS=m
+ CONFIG_UFS_FS=m
+ CONFIG_EROFS_FS=m
+ CONFIG_EROFS_FS_ZIP_LZMA=y
+-- 
+2.20.1
+

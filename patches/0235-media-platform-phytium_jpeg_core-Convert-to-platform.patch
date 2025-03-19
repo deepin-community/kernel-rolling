@@ -1,0 +1,46 @@
+From 70114411d1e8f47a03181dc0c6a6e82a3e144bb4 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 18:51:24 +0800
+Subject: [PATCH 235/360] media: platform: phytium_jpeg_core: Convert to
+ platform remove callback returning void
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0edb555: platform: Make platform_driver::remove() return void
+cause build error, so convert .remove from int to void
+
+Log:
+drivers/media/platform/phytium/phytium_jpeg_core.c:1368:20: error: initialization of ‘void (*)(struct platform_device *)’ from incompatible pointer type ‘int (*)(struct platform_device *)’ [-Werror=incompatible-pointer-types]
+ 1368 |         .remove =  phytium_jpeg_remove,
+      |                    ^~~~~~~~~~~~~~~~~~~
+drivers/media/platform/phytium/phytium_jpeg_core.c:1368:20: note: (near initialization for ‘phytium_jpeg_driver.<anonymous>.remove’)
+---
+ drivers/media/platform/phytium/phytium_jpeg_core.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/media/platform/phytium/phytium_jpeg_core.c b/drivers/media/platform/phytium/phytium_jpeg_core.c
+index 70cfe9802017..a5a84a45744e 100644
+--- a/drivers/media/platform/phytium/phytium_jpeg_core.c
++++ b/drivers/media/platform/phytium/phytium_jpeg_core.c
+@@ -1344,7 +1344,7 @@ static int phytium_jpeg_probe(struct platform_device *pdev)
+ }
+ 
+ #define to_phytium_jpeg(x) container_of((x), struct phytium_jpeg_dev, v4l2_dev)
+-static int phytium_jpeg_remove(struct platform_device *pdev)
++static void phytium_jpeg_remove(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+ 	struct v4l2_device *v4l2_dev = dev_get_drvdata(dev);
+@@ -1359,8 +1359,6 @@ static int phytium_jpeg_remove(struct platform_device *pdev)
+ 	v4l2_device_unregister(v4l2_dev);
+ 
+ 	of_reserved_mem_device_release(dev);
+-
+-	return 0;
+ }
+ 
+ static struct platform_driver phytium_jpeg_driver = {
+-- 
+2.20.1
+

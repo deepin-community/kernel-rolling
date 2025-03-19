@@ -1,0 +1,27 @@
+From 01855a97713f751963b863ed2ee453b89a26dba7 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Mon, 1 Jul 2024 14:16:24 +0800
+Subject: [PATCH 098/360] char: fix phytnetled on 6.9
+
+Add missing <linux/platform_device.h> include.
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ drivers/char/phytnetled/phytnet_led.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/char/phytnetled/phytnet_led.c b/drivers/char/phytnetled/phytnet_led.c
+index de02f05eebba..3009cf038b66 100644
+--- a/drivers/char/phytnetled/phytnet_led.c
++++ b/drivers/char/phytnetled/phytnet_led.c
+@@ -7,6 +7,7 @@
+ #include <linux/netdevice.h>
+ #include <linux/of_platform.h>
+ #include <linux/of_net.h>
++#include <linux/platform_device.h>
+ #include <linux/gpio/consumer.h>
+ #include <linux/slab.h>
+ #include "phytnet_led.h"
+-- 
+2.20.1
+

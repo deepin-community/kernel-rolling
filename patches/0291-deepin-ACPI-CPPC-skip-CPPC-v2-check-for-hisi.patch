@@ -1,0 +1,44 @@
+From 572938e4b3bb5fb260c22a771e4d3463fd223884 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <guanwentao@uniontech.com>
+Date: Sat, 7 Sep 2024 03:27:22 +0800
+Subject: [PATCH 291/360] deepin: ACPI: CPPC: skip CPPC v2 check for hisi
+
+If we have a buggy bios,and we have no bios update for it,
+we cannot acked CPPCv2.
+so the CPPC cpufreq driver will not probed in some case.
+example: Kunpeng 920  8 core Desktop Board
+
+Test result: cpu freq can from 200Mhz to 2.6Ghz.
+
+Log:
+cppc_acpi:acpi_cppc_processor_probe: ACPI CPPC: CPPC v2 _OSC not acked
+cppc_acpi:acpi_cppc_processor_probe: ACPI CPPC: CPPC v2 _OSC not acked
+cppc_acpi:acpi_cppc_processor_probe: ACPI CPPC: CPPC v2 _OSC not acked
+cppc_acpi:acpi_cppc_processor_probe: ACPI CPPC: CPPC v2 _OSC not acked
+cppc_acpi:acpi_cppc_processor_probe: ACPI CPPC: CPPC v2 _OSC not acked
+cppc_acpi:acpi_cppc_processor_probe: ACPI CPPC: CPPC v2 _OSC not acked
+cppc_acpi:acpi_cppc_processor_probe: ACPI CPPC: CPPC v2 _OSC not acked
+cppc_acpi:acpi_cppc_processor_probe: ACPI CPPC: CPPC v2 _OSC not acked
+---
+ drivers/acpi/cppc_acpi.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/acpi/cppc_acpi.c b/drivers/acpi/cppc_acpi.c
+index e78e3754d99e..cc79e44b9b9f 100644
+--- a/drivers/acpi/cppc_acpi.c
++++ b/drivers/acpi/cppc_acpi.c
+@@ -690,7 +690,11 @@ int acpi_cppc_processor_probe(struct acpi_processor *pr)
+ 	acpi_status status;
+ 	int ret = -ENODATA;
+ 
++#ifdef CONFIG_ARM64
++	if (read_cpuid_implementor() != ARM_CPU_IMP_HISI && !osc_sb_cppc2_support_acked) {
++#else
+ 	if (!osc_sb_cppc2_support_acked) {
++#endif
+ 		pr_debug("CPPC v2 _OSC not acked\n");
+ 		if (!cpc_supported_by_cpu()) {
+ 			pr_debug("CPPC is not supported by the CPU\n");
+-- 
+2.20.1
+

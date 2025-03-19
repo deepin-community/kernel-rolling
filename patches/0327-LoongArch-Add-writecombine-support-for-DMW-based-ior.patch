@@ -1,0 +1,39 @@
+From 11a6a3cdebf7641e05ccc8e4f4e4b093ac534398 Mon Sep 17 00:00:00 2001
+From: Binbin Zhou <zhoubinbin@loongson.cn>
+Date: Fri, 14 Feb 2025 17:27:35 +0800
+Subject: [PATCH 327/360] LoongArch: Add writecombine support for DMW-based
+ ioremap()
+
+commit 8e02c3b782ec64343f3cccc8dc5a8be2b379e80b upstream.
+
+Currently, only TLB-based ioremap() support writecombine, so add the
+counterpart for DMW-based ioremap() with help of DMW2. The base address
+(WRITECOMBINE_BASE) is configured as 0xa000000000000000.
+
+DMW3 is unused by kernel now, however firmware may leave garbage in them
+and interfere kernel's address mapping. So clear it as necessary.
+
+BTW, centralize the DMW configuration to macro SETUP_DMWINS.
+
+Signed-off-by: Jiaxun Yang <jiaxun.yang@flygoat.com>
+Signed-off-by: Huacai Chen <chenhuacai@loongson.cn>
+Signed-off-by: Binbin Zhou <zhoubinbin@loongson.cn>
+---
+ arch/loongarch/kernel/head.S | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/arch/loongarch/kernel/head.S b/arch/loongarch/kernel/head.S
+index 506a99a5bbc7..fdb831dc64df 100644
+--- a/arch/loongarch/kernel/head.S
++++ b/arch/loongarch/kernel/head.S
+@@ -120,7 +120,6 @@ SYM_CODE_END(kernel_entry)
+  * function after setting up the stack and tp registers.
+  */
+ SYM_CODE_START(smpboot_entry)
+-
+ 	SETUP_DMWINS	t0
+ 	JUMP_VIRT_ADDR	t0, t1
+ 
+-- 
+2.20.1
+

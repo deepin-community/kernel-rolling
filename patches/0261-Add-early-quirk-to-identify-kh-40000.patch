@@ -1,0 +1,86 @@
+From e8962f6b6d3fea4cea70ef17d47961f0fcb6c28e Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Mon, 8 Apr 2024 14:23:31 +0800
+Subject: [PATCH 261/360] Add early quirk to identify kh-40000
+
+Identify kh-40000 platforms by specific PCI device's version number.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ arch/x86/kernel/early-quirks.c | 19 +++++++++++++++++++
+ include/linux/dma-map-ops.h    | 10 ++++++++++
+ 2 files changed, 29 insertions(+)
+
+diff --git a/arch/x86/kernel/early-quirks.c b/arch/x86/kernel/early-quirks.c
+index 29d1f9104e94..1163e41e2575 100644
+--- a/arch/x86/kernel/early-quirks.c
++++ b/arch/x86/kernel/early-quirks.c
+@@ -19,6 +19,7 @@
+ #include <linux/platform_data/x86/apple.h>
+ #include <drm/intel/i915_drm.h>
+ #include <drm/intel/i915_pciids.h>
++#include <linux/dma-map-ops.h>
+ #include <asm/pci-direct.h>
+ #include <asm/dma.h>
+ #include <asm/io_apic.h>
+@@ -28,6 +29,7 @@
+ #include <asm/gart.h>
+ #include <asm/irq_remapping.h>
+ #include <asm/early_ioremap.h>
++#include <asm/dma-mapping.h>
+ 
+ static void __init fix_hypertransport_config(int num, int slot, int func)
+ {
+@@ -684,6 +686,19 @@ static void __init apple_airport_reset(int bus, int slot, int func)
+ 	early_iounmap(mmio, BCM4331_MMIO_SIZE);
+ }
+ 
++bool is_zhaoxin_kh40000;
++
++static void quirk_zhaoxin_dma_patch(int num, int slot, int func)
++{
++	u8 revision;
++
++	revision = read_pci_config_byte(num, slot, func, PCI_REVISION_ID);
++	if (revision == 0x10) {
++		is_zhaoxin_kh40000 = true;
++		pr_info("zhaoxin direct dma patch enabled\n");
++	}
++}
++
+ #define QFLAG_APPLY_ONCE 	0x1
+ #define QFLAG_APPLIED		0x2
+ #define QFLAG_DONE		(QFLAG_APPLY_ONCE|QFLAG_APPLIED)
+@@ -727,6 +742,10 @@ static struct chipset early_qrk[] __initdata = {
+ 		PCI_CLASS_BRIDGE_HOST, PCI_ANY_ID, 0, force_disable_hpet},
+ 	{ PCI_VENDOR_ID_BROADCOM, 0x4331,
+ 	  PCI_CLASS_NETWORK_OTHER, PCI_ANY_ID, 0, apple_airport_reset},
++	{ PCI_VENDOR_ID_ZHAOXIN, 0x1001, PCI_CLASS_BRIDGE_HOST,
++	  PCI_BASE_CLASS_BRIDGE, QFLAG_APPLY_ONCE, quirk_zhaoxin_dma_patch },
++	{ PCI_VENDOR_ID_ZHAOXIN, 0x345B, PCI_CLASS_BRIDGE_HOST,
++	  PCI_BASE_CLASS_BRIDGE, QFLAG_APPLY_ONCE, quirk_zhaoxin_dma_patch },
+ 	{}
+ };
+ 
+diff --git a/include/linux/dma-map-ops.h b/include/linux/dma-map-ops.h
+index b7773201414c..551d83b96658 100644
+--- a/include/linux/dma-map-ops.h
++++ b/include/linux/dma-map-ops.h
+@@ -488,4 +488,14 @@ pci_p2pdma_map_segment(struct pci_p2pdma_map_state *state, struct device *dev,
+ }
+ #endif /* CONFIG_PCI_P2PDMA */
+ 
++#if defined CONFIG_PCI && defined CONFIG_X86
++
++extern bool is_zhaoxin_kh40000;
++
++#else
++
++bool __weak is_zhaoxin_kh40000;
++
++#endif
++
+ #endif /* _LINUX_DMA_MAP_OPS_H */
+-- 
+2.20.1
+

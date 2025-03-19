@@ -1,0 +1,65 @@
+From 34eed1939237f409d5c3422ef704aa848088d480 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Thu, 27 Jun 2024 23:29:33 +0800
+Subject: [PATCH 075/360] CI: Add patch check by using build kernel x86-64 and
+ arm64
+
+Modify a GitHub action workflow to check pull requests and push by build kernel
+---
+ .github/workflows/build-kernel.yml | 44 ++++++++++++++++++++++++++++++
+ 1 file changed, 44 insertions(+)
+ create mode 100644 .github/workflows/build-kernel.yml
+
+diff --git a/.github/workflows/build-kernel.yml b/.github/workflows/build-kernel.yml
+new file mode 100644
+index 000000000000..491d3aca1222
+--- /dev/null
++++ b/.github/workflows/build-kernel.yml
+@@ -0,0 +1,44 @@
++name: build kernel
++on:
++  push:
++  pull_request:
++  workflow_dispatch:
++
++env:
++  KBUILD_BUILD_USER: deepin-kernel-sig
++  KBUILD_BUILD_HOST: deepin-kernel-builder
++  email: support@deepin.org
++
++permissions:
++  pull-requests: read
++
++jobs:
++  build-x86-kernel:
++    runs-on: [self-hosted, linux, x64]
++    steps:
++      - uses: actions/checkout@v3
++      - name: "Install Deps"
++        run: |
++          git config --global user.email $email
++          git config --global user.name $KBUILD_BUILD_USER
++
++      - name: "Compile kernel"
++        run: |
++          # .config
++          make deepin_x86_desktop_defconfig
++          make -j$(nproc)
++
++  build-arm64-kernel:
++    runs-on: [self-hosted, linux, ARM64]
++    steps:
++      - uses: actions/checkout@v3
++      - name: "Install Deps"
++        run: |
++          git config --global user.email $email
++          git config --global user.name $KBUILD_BUILD_USER
++
++      - name: "Compile kernel"
++        run: |
++          # .config
++          make deepin_arm64_desktop_defconfig
++          make -j$(nproc)
+-- 
+2.20.1
+

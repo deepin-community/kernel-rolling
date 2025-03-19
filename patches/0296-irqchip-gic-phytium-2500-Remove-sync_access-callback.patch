@@ -1,0 +1,137 @@
+From 043b87118a1d96b11ec453a57a8520adb16223bf Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Wed, 13 Nov 2024 17:44:38 +0800
+Subject: [PATCH 296/360] irqchip/gic-phytium-2500: Remove sync_access callback
+ and make distributor priorities variables
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Fix compile error during the two upstream commits:
+commit:
+a6156e70316: irqchip/gic-v3: Make distributor priorities variables
+e95c64a7fb71: irqchip/gic-common: Remove sync_access callback
+
+Log:
+drivers/irqchip/irq-gic-phytium-2500.c: In function ‘gic_dist_init’:
+drivers/irqchip/irq-gic-phytium-2500.c:948:40: error: ‘GICD_INT_DEF_PRI_X4’ undeclared (first use in this function); did you mean ‘GICD_INT_DEF_PRI’?
+  948 |                         writel_relaxed(GICD_INT_DEF_PRI_X4, base + GICD_IPRIORITYRnE + i);
+      |                                        ^~~~~~~~~~~~~~~~~~~
+      |                                        GICD_INT_DEF_PRI
+drivers/irqchip/irq-gic-phytium-2500.c:948:40: note: each undeclared identifier is reported only once for each function it appears in
+In file included from ./include/uapi/linux/posix_types.h:5,
+                 from ./include/uapi/linux/types.h:14,
+                 from ./include/linux/types.h:6,
+                 from ./include/linux/kasan-checks.h:5,
+                 from ./include/asm-generic/rwonce.h:26,
+                 from ./arch/arm64/include/asm/rwonce.h:71,
+                 from ./include/linux/compiler.h:317,
+                 from ./include/linux/build_bug.h:5,
+                 from ./include/linux/bits.h:22,
+                 from ./include/linux/ioport.h:13,
+                 from ./include/linux/acpi.h:12,
+                 from drivers/irqchip/irq-gic-phytium-2500.c:8:
+./include/linux/stddef.h:8:14: error: passing argument 3 of ‘gic_dist_config’ makes integer from pointer without a cast [-Werror=int-conversion]
+    8 | #define NULL ((void *)0)
+      |              ^~~~~~~~~~~
+      |              |
+      |              void *
+drivers/irqchip/irq-gic-phytium-2500.c:951:52: note: in expansion of macro ‘NULL’
+  951 |                 gic_dist_config(base, GIC_LINE_NR, NULL);
+      |                                                    ^~~~
+In file included from drivers/irqchip/irq-gic-phytium-2500.c:31:
+drivers/irqchip/irq-gic-common.h:25:59: note: expected ‘u8’ {aka ‘unsigned char’} but argument is of type ‘void *’
+   25 | void gic_dist_config(void __iomem *base, int gic_irqs, u8 priority);
+      |                                                        ~~~^~~~~~~~
+drivers/irqchip/irq-gic-phytium-2500.c: In function ‘gic_cpu_init’:
+drivers/irqchip/irq-gic-phytium-2500.c:1298:9: error: too few arguments to function ‘gic_cpu_config’
+ 1298 |         gic_cpu_config(rbase, gic_data.ppi_nr + 16);
+      |         ^~~~~~~~~~~~~~
+drivers/irqchip/irq-gic-common.h:26:6: note: declared here
+   26 | void gic_cpu_config(void __iomem *base, int nr, u8 priority);
+      |      ^~~~~~~~~~~~~~
+./include/linux/stddef.h:8:14: error: passing argument 3 of ‘gic_cpu_config’ makes integer from pointer without a cast [-Werror=int-conversion]
+    8 | #define NULL ((void *)0)
+      |              ^~~~~~~~~~~
+      |              |
+      |              void *
+drivers/irqchip/irq-gic-phytium-2500.c:1310:69: note: in expansion of macro ‘NULL’
+ 1310 |                         gic_cpu_config(rbase, gic_data.ppi_nr + 16, NULL);
+      |                                                                     ^~~~
+drivers/irqchip/irq-gic-common.h:26:52: note: expected ‘u8’ {aka ‘unsigned char’} but argument is of type ‘void *’
+   26 | void gic_cpu_config(void __iomem *base, int nr, u8 priority);
+      |                                                 ~~~^~~~~~~~
+cc1: all warnings being treated as errors
+make[7]: *** [scripts/Makefile.build:229：drivers/irqchip/irq-gic-phytium-2500.o] 错误 1
+make[6]: *** [scripts/Makefile.build:478：drivers/irqchip] 错误 2
+make[5]: *** [scripts/Makefile.build:478：drivers] 错误 2
+---
+ drivers/irqchip/irq-gic-phytium-2500.c | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/irqchip/irq-gic-phytium-2500.c b/drivers/irqchip/irq-gic-phytium-2500.c
+index ac1d16810e87..78fd03ef0681 100644
+--- a/drivers/irqchip/irq-gic-phytium-2500.c
++++ b/drivers/irqchip/irq-gic-phytium-2500.c
+@@ -658,14 +658,15 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
+ 
+ 	if (gic_irq_in_rdist(d)) {
+ 		base = gic_data_rdist_sgi_base();
+-		ret = gic_configure_irq(index, type, base + offset, gic_redist_wait_for_rwp);
++		ret = gic_configure_irq(index, type, base + offset);
++		gic_redist_wait_for_rwp();
+ 		mpidr = (unsigned long)cpu_logical_map(smp_processor_id());
+ 
+ 		if ((mpidr & 0xffff) == 0) {
+ 			rbase = base + 64*SZ_128K;
+ 
+ 			for (i = 0; i < 4; i++) {
+-				ret = gic_configure_irq(index, type, rbase + offset, NULL);
++				ret = gic_configure_irq(index, type, rbase + offset);
+ 				gic_do_wait_for_rwp(rbase - SZ_64K, GICR_CTLR_RWP);
+ 				rbase = rbase + SZ_128K;
+ 			}
+@@ -673,7 +674,7 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
+ 	} else {
+ 		skt = mars3_irq_to_skt(gic_irq(d));
+ 		base = mars3_gic_dists[skt].dist_base;
+-		ret = gic_configure_irq(index, type, base + offset, NULL);
++		ret = gic_configure_irq(index, type, base + offset);
+ 		gic_do_wait_for_rwp(base, GICD_CTLR_RWP);
+ 	}
+ 
+@@ -944,10 +945,10 @@ static void __init gic_dist_init(void)
+ 			writel_relaxed(0, base + GICD_ICFGRnE + i / 4);
+ 
+ 		for (i = 0; i < GIC_ESPI_NR; i += 4)
+-			writel_relaxed(GICD_INT_DEF_PRI_X4, base + GICD_IPRIORITYRnE + i);
++			writel_relaxed(REPEAT_BYTE_U32(GICD_INT_DEF_PRI), base + GICD_IPRIORITYRnE + i);
+ 
+ 		/* Now do the common stuff, and wait for the distributor to drain */
+-		gic_dist_config(base, GIC_LINE_NR, NULL);
++		gic_dist_config(base, GIC_LINE_NR, GICD_INT_DEF_PRI);
+ 		gic_do_wait_for_rwp(base, GICD_CTLR_RWP);      // do sync outside of gic_dist_config
+ 
+ 		val = GICD_CTLR_ARE_NS | GICD_CTLR_ENABLE_G1A | GICD_CTLR_ENABLE_G1;
+@@ -1294,7 +1295,8 @@ static void gic_cpu_init(void)
+ 	for (i = 0; i < gic_data.ppi_nr + 16; i += 32)
+ 		writel_relaxed(~0, rbase + GICR_IGROUPR0 + i / 8);
+ 
+-	gic_cpu_config(rbase, gic_data.ppi_nr + 16, gic_redist_wait_for_rwp);
++	gic_cpu_config(rbase, gic_data.ppi_nr + 16, GICD_INT_DEF_PRI);
++	gic_redist_wait_for_rwp();
+ 
+ 	mpidr = (unsigned long)cpu_logical_map(smp_processor_id());
+ 
+@@ -1305,7 +1307,7 @@ static void gic_cpu_init(void)
+ 			/* Configure SGIs/PPIs as non-secure Group-1 */
+ 			writel_relaxed(~0, rbase + GICR_IGROUPR0);
+ 
+-			gic_cpu_config(rbase, gic_data.ppi_nr + 16, NULL);
++			gic_cpu_config(rbase, gic_data.ppi_nr + 16, GICD_INT_DEF_PRI);
+ 			gic_do_wait_for_rwp(rbase - SZ_64K, GICR_CTLR_RWP);
+ 
+ 			rbase = rbase + SZ_128K;
+-- 
+2.20.1
+

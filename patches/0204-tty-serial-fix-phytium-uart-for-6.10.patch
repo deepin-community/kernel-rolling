@@ -1,0 +1,66 @@
+From 85806d3ec25f2b5581ed26076648f3f6b7cec993 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Thu, 22 Aug 2024 14:35:21 +0800
+Subject: [PATCH 204/360] tty: serial: fix phytium-uart for >= 6.10
+
+The following commit removed structs such as circ_buf and uart_circ_empty.
+
+    commit 1788cf6a91d9fa9aa61fc2917afe192c23d67f6a
+    Author: Jiri Slaby (SUSE) <jirislaby@kernel.org>
+    Date:   Fri Apr 5 08:08:23 2024 +0200
+
+        tty: serial: switch from circ_buf to kfifo
+
+Adapt module code in accordance with this commit to fix build.
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ drivers/tty/serial/phytium-uart.c | 14 ++++++--------
+ 1 file changed, 6 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/tty/serial/phytium-uart.c b/drivers/tty/serial/phytium-uart.c
+index 84a96350c3dc..5aa65635d56c 100644
+--- a/drivers/tty/serial/phytium-uart.c
++++ b/drivers/tty/serial/phytium-uart.c
+@@ -232,7 +232,7 @@ static bool phytium_tx_char(struct phytium_uart_port *pup, unsigned char c,
+ 
+ static bool phytium_tx_chars(struct phytium_uart_port *pup, bool from_irq)
+ {
+-	struct circ_buf *xmit = &pup->port.state->xmit;
++	struct tty_port *tport = &pup->port.state->port;
+ 	int count = pup->port.fifosize >> 1;
+ 
+ 	if (pup->port.x_char) {
+@@ -241,7 +241,7 @@ static bool phytium_tx_chars(struct phytium_uart_port *pup, bool from_irq)
+ 		pup->port.x_char = 0;
+ 		--count;
+ 	}
+-	if (uart_circ_empty(xmit) || uart_tx_stopped(&pup->port)) {
++	if (kfifo_is_empty(&tport->xmit_fifo) || uart_tx_stopped(&pup->port)) {
+ 		phytium_stop_tx(&pup->port);
+ 		return false;
+ 	}
+@@ -250,16 +250,14 @@ static bool phytium_tx_chars(struct phytium_uart_port *pup, bool from_irq)
+ 		if (likely(from_irq) && count-- == 0)
+ 			break;
+ 
+-		if (!phytium_tx_char(pup, xmit->buf[xmit->tail], from_irq))
++		if (!phytium_tx_char(pup, kfifo_len(&tport->xmit_fifo), from_irq))
+ 			break;
++	} while (!kfifo_is_empty(&tport->xmit_fifo));
+ 
+-		xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
+-	} while (!uart_circ_empty(xmit));
+-
+-	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
++	if (kfifo_len(&tport->xmit_fifo) < WAKEUP_CHARS)
+ 		uart_write_wakeup(&pup->port);
+ 
+-	if (uart_circ_empty(xmit)) {
++	if (kfifo_is_empty(&tport->xmit_fifo)) {
+ 		phytium_stop_tx(&pup->port);
+ 		return false;
+ 	}
+-- 
+2.20.1
+

@@ -1,0 +1,30 @@
+From bfbb731f89b60c07dd24dbd9b96655a7cdda579e Mon Sep 17 00:00:00 2001
+From: Jiakun Shuai <shuaijiakun1288@phytium.com.cn>
+Date: Thu, 9 May 2024 14:41:31 +0800
+Subject: [PATCH 023/360] i2c: designware: add i2c support for Phytium SoCs
+
+Phytium I2C adapter is compatible with Synopsys Designware, so we reuse its
+driver and add the Phytium's ACPI description to it.
+
+Signed-off-by: Chen Baozi <chenbaozi@phytium.com.cn>
+Signed-off-by: Wang Yinfeng <wangyinfeng@phytium.com.cn>
+Signed-off-by: Jiakun Shuai <shuaijiakun1288@phytium.com.cn>
+---
+ drivers/i2c/busses/i2c-designware-platdrv.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/i2c/busses/i2c-designware-platdrv.c b/drivers/i2c/busses/i2c-designware-platdrv.c
+index 2d0c7348e491..b54e1346ee93 100644
+--- a/drivers/i2c/busses/i2c-designware-platdrv.c
++++ b/drivers/i2c/busses/i2c-designware-platdrv.c
+@@ -360,6 +360,7 @@ static const struct acpi_device_id dw_i2c_acpi_match[] = {
+ 	{ "INT3432", 0 },
+ 	{ "INT3433", 0 },
+ 	{ "INTC10EF", 0 },
++	{ "PHYT0003", 0 },
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(acpi, dw_i2c_acpi_match);
+-- 
+2.20.1
+

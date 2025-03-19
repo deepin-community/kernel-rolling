@@ -1,0 +1,32 @@
+From 2ed1adf8d53678a54961ef126d7f936839e629ef Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Mon, 22 Jul 2024 14:55:53 +0800
+Subject: [PATCH 171/360] hwmon: zhaoxin-rng: remove log when CPU mismatch
+
+Delete this sentence "The CPU isn't support XSTORE" to avoid unnecessary
+redundant information.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ drivers/char/hw_random/zhaoxin-rng.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/char/hw_random/zhaoxin-rng.c b/drivers/char/hw_random/zhaoxin-rng.c
+index 1bd171eebf71..a189ace19dca 100644
+--- a/drivers/char/hw_random/zhaoxin-rng.c
++++ b/drivers/char/hw_random/zhaoxin-rng.c
+@@ -69,10 +69,8 @@ static int __init zhaoxin_rng_mod_init(void)
+ {
+ 	int err;
+ 
+-	if (!x86_match_cpu(zhaoxin_rng_cpu_ids)) {
+-		pr_err(PFX "The CPU isn't support XSTORE.\n");
++	if (!x86_match_cpu(zhaoxin_rng_cpu_ids))
+ 		return -ENODEV;
+-	}
+ 
+ 	pr_info("Zhaoxin RNG detected\n");
+ 
+-- 
+2.20.1
+

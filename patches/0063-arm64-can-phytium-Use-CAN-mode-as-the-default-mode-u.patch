@@ -1,0 +1,34 @@
+From 7ccfe94d3cf5ec5b1c2aaa77bd92241675413996 Mon Sep 17 00:00:00 2001
+From: yuanxia <yuanxia2073@phytium.com.cn>
+Date: Tue, 21 May 2024 16:42:17 +0800
+Subject: [PATCH 063/360] arm64: can: phytium: Use CAN mode as the default mode
+ under ACPI
+
+Phytium CANFD ususally is not supported without explicit specifying in
+ACPI. Therefore, the default mode under ACPI should be CAN rather than
+CANFD.
+
+Signed-off-by: yuanxia <yuanxia2073@phytium.com.cn>
+Signed-off-by: Chen Zhenhua <chenzhenhua@phytium.com.cn>
+Signed-off-by: Chen Baozi <chenbaozi@phytium.com.cn>
+Signed-off-by: Wang Yinfeng <wangyinfeng@phytium.com.cn>
+---
+ drivers/net/can/phytium/phytium_can_platform.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/can/phytium/phytium_can_platform.c b/drivers/net/can/phytium/phytium_can_platform.c
+index a4203a454baa..63f89d721784 100644
+--- a/drivers/net/can/phytium/phytium_can_platform.c
++++ b/drivers/net/can/phytium/phytium_can_platform.c
+@@ -80,7 +80,7 @@ static int phytium_can_plat_probe(struct platform_device *pdev)
+ 	const struct phytium_can_devtype *devtype = &phytium_can_data;
+ 	u32 tx_fifo_depth;
+ 	int ret;
+-	const char *str = "canfd";
++	const char *str = "can";
+ 
+ 	ret = fwnode_property_read_u32(dev_fwnode(&pdev->dev), "tx-fifo-depth", &tx_fifo_depth);
+ 	if (ret)
+-- 
+2.20.1
+

@@ -1,0 +1,38 @@
+From 5db9a98088da55b8409f846b08593b1af09af3c0 Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Fri, 19 Jul 2024 18:46:43 +0800
+Subject: [PATCH 170/360] hwmon: zhaoxin-cputemp: modify HWMON_THERMAL import
+
+Since the driver utilizes the hwmon_device_register_for_thermal function,
+it is necessary to add "MODULE_IMPORT_NS(HWMON_THERMAL)" to the
+zhaoxin-cputemp.c.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ drivers/hwmon/hwmon.c           | 1 -
+ drivers/hwmon/zhaoxin-cputemp.c | 2 ++
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/hwmon/hwmon.c b/drivers/hwmon/hwmon.c
+index 9c35c4d0369d..b3bd7ef6660e 100644
+--- a/drivers/hwmon/hwmon.c
++++ b/drivers/hwmon/hwmon.c
+@@ -1294,4 +1294,3 @@ module_exit(hwmon_exit);
+ MODULE_AUTHOR("Mark M. Hoffman <mhoffman@lightlink.com>");
+ MODULE_DESCRIPTION("hardware monitoring sysfs/class support");
+ MODULE_LICENSE("GPL");
+-
+diff --git a/drivers/hwmon/zhaoxin-cputemp.c b/drivers/hwmon/zhaoxin-cputemp.c
+index 00037e9cc91e..fdc0c5ba5e0c 100644
+--- a/drivers/hwmon/zhaoxin-cputemp.c
++++ b/drivers/hwmon/zhaoxin-cputemp.c
+@@ -329,3 +329,5 @@ MODULE_LICENSE("GPL");
+ 
+ module_init(zhaoxin_cputemp_init)
+ module_exit(zhaoxin_cputemp_exit)
++
++MODULE_IMPORT_NS(HWMON_THERMAL);
+\ No newline at end of file
+-- 
+2.20.1
+

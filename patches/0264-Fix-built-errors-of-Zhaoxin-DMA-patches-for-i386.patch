@@ -1,0 +1,100 @@
+From a81741667798df3cd5aa18b15e482ce1b4e03788 Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Wed, 28 Aug 2024 21:03:23 +0800
+Subject: [PATCH 264/360] Fix built errors of Zhaoxin DMA patches for i386
+
+After merging d3eb024789cc ("Add kh40000_direct_dma_ops for KH-40000
+platform"), builting with i386_defconfig, built errors occurred due to
+differences in configuration items:
+ld:arch/x86/kernel/early-quirks.o: in function `quirk_zhaoxin_dma_patch':
+early-quirks.c:(.text+0x2b): undefined reference to kh40000_dma_direct_ops
+
+Therefore, modified the conditionanl items related to the code and
+encapsulated the sturct pointer assignment into function.
+
+Fixes: d3eb024789cc ("Add kh40000_direct_dma_ops for KH-40000 platform")
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ arch/x86/kernel/Makefile          |  2 +-
+ arch/x86/kernel/early-quirks.c    |  2 +-
+ arch/x86/kernel/zhaoxin_kh40000.c |  5 +++++
+ include/linux/dma-map-ops.h       | 11 ++++++++---
+ 4 files changed, 15 insertions(+), 5 deletions(-)
+
+diff --git a/arch/x86/kernel/Makefile b/arch/x86/kernel/Makefile
+index 52a88b194204..940bea34a28f 100644
+--- a/arch/x86/kernel/Makefile
++++ b/arch/x86/kernel/Makefile
+@@ -163,5 +163,5 @@ ifeq ($(CONFIG_X86_64),y)
+ 
+ 	obj-$(CONFIG_MMCONF_FAM10H)	+= mmconf-fam10h_64.o
+ 	obj-y				+= vsmp_64.o
+-	obj-$(CONFIG_PCI)		+= zhaoxin_kh40000.o
++	obj-$(CONFIG_INTEL_IOMMU)	+= zhaoxin_kh40000.o
+ endif
+diff --git a/arch/x86/kernel/early-quirks.c b/arch/x86/kernel/early-quirks.c
+index 5b387e09c347..8f0c20847dcc 100644
+--- a/arch/x86/kernel/early-quirks.c
++++ b/arch/x86/kernel/early-quirks.c
+@@ -695,7 +695,7 @@ static void quirk_zhaoxin_dma_patch(int num, int slot, int func)
+ 	revision = read_pci_config_byte(num, slot, func, PCI_REVISION_ID);
+ 	if (revision == 0x10) {
+ 		is_zhaoxin_kh40000 = true;
+-		dma_ops = &kh40000_dma_direct_ops;
++		kh40000_get_direct_dma_ops();
+ 		pr_info("zhaoxin direct dma patch enabled\n");
+ 	}
+ }
+diff --git a/arch/x86/kernel/zhaoxin_kh40000.c b/arch/x86/kernel/zhaoxin_kh40000.c
+index e8dd3bd43e72..71c9a9cfa5f6 100644
+--- a/arch/x86/kernel/zhaoxin_kh40000.c
++++ b/arch/x86/kernel/zhaoxin_kh40000.c
+@@ -175,6 +175,11 @@ const struct dma_map_ops kh40000_dma_direct_ops = {
+ 	.map_resource		= dma_direct_map_resource,
+ };
+ 
++void kh40000_get_direct_dma_ops(void)
++{
++	dma_ops = &kh40000_dma_direct_ops;
++}
++
+ /* zhaoxin kh-40000 iommu dma ops */
+ static const struct dma_map_ops *iommu_dma_ops;
+ 
+diff --git a/include/linux/dma-map-ops.h b/include/linux/dma-map-ops.h
+index c8911f0e1926..db599421647c 100644
+--- a/include/linux/dma-map-ops.h
++++ b/include/linux/dma-map-ops.h
+@@ -488,20 +488,25 @@ pci_p2pdma_map_segment(struct pci_p2pdma_map_state *state, struct device *dev,
+ }
+ #endif /* CONFIG_PCI_P2PDMA */
+ 
+-#if defined CONFIG_PCI && defined CONFIG_X86
++#if IS_BUILTIN(CONFIG_INTEL_IOMMU) && IS_BUILTIN(CONFIG_X86_64)
+ 
+ extern bool is_zhaoxin_kh40000;
+-extern const struct dma_map_ops kh40000_dma_direct_ops;
++void kh40000_get_direct_dma_ops(void);
+ void kh40000_set_iommu_dma_ops(struct device *dev);
+ 
+ #else
+ 
+ bool __weak is_zhaoxin_kh40000;
+-static inline void kh40000_set_iommu_dma_ops(struct device *dev)
++
++static inline void kh40000_get_direct_dma_ops(void)
+ {
+ 
+ }
+ 
++static inline void kh40000_set_iommu_dma_ops(struct device *dev)
++{
++
++}
+ 
+ #endif
+ 
+-- 
+2.20.1
+

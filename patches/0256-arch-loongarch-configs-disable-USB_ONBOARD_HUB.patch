@@ -1,0 +1,35 @@
+From 5e11c609ea52eff4adc4b9cb16d881886af44e80 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <guanwentao@uniontech.com>
+Date: Wed, 23 Oct 2024 02:33:05 +0000
+Subject: [PATCH 256/360] arch: loongarch: configs: disable USB_ONBOARD_HUB
+
+Disable USB_ONBOARD_HUB loongarch,
+it breaks install in some platform
+
+Log:
+[ 13.1052881 usbcore: registered new device driver onboard-usb-hub
+usb 5-3.2: USB disconnect, device nunber 3
+usb 5-3.2: USB disconnect, device nunber 4
+usb 5-3.2: USB disconnect, device nunber 6
+SQUASHFS error:Unable to read SQUASHFS error: Unable to read fragment cache entry (6f249411)
+
+Signed-off-by: Wentao Guan <guanwentao@uniontech.com>
+---
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index b8fac258b0cf..a6eeba7c360f 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -4373,7 +4373,6 @@ CONFIG_USB_HUB_USB251XB=m
+ CONFIG_USB_HSIC_USB3503=m
+ CONFIG_USB_HSIC_USB4604=m
+ CONFIG_USB_CHAOSKEY=m
+-CONFIG_USB_ONBOARD_HUB=m
+ CONFIG_USB_ATM=m
+ CONFIG_USB_SPEEDTOUCH=m
+ CONFIG_USB_CXACRU=m
+-- 
+2.20.1
+

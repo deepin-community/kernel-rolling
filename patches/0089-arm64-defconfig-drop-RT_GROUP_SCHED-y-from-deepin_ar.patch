@@ -1,0 +1,49 @@
+From 3271537d650a65d4451b355d948085bd7ccb6a82 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <otgwt@outlook.com>
+Date: Tue, 4 Jun 2024 07:10:43 +0000
+Subject: [PATCH 089/360] arm64: defconfig: drop RT_GROUP_SCHED=y from
+ deepin_arm64_desktop_defconfig
+
+For cgroup v1, if turned on, and there's any cgroup in the "cpu" hierarchy it
+needs an RT budget assigned, otherwise the processes in it will not be able to
+get RT at all. The problem with RT group scheduling is that it requires the
+budget assigned but there's no way we could assign a default budget, since the
+values to assign are both upper and lower time limits, are absolute, and need to
+be sum up to < 1 for each individal cgroup. That means we cannot really come up
+with values that would work by default in the general case.[1]
+
+For cgroup v2, it's almost unusable as well. If it turned on, the cpu controller
+can only be enabled when all RT processes are in the root cgroup. But it will
+lose the benefits of cgroup v2 if all RT process were placed in the same cgroup.
+
+Red Hat, Gentoo, Arch Linux and Debian all disable it. systemd also doesn't
+support it.[2]
+
+I leave tools/testing/selftests/bpf/config.{s390x,aarch64} untouched because
+I don't whether bpf testing requires it.
+
+[1]: https://bugzilla.redhat.com/show_bug.cgi?id=1229700
+[2]: https://github.com/systemd/systemd/issues/13781#issuecomment-549164383
+
+Change-Id: I079a907dfba15bb48c58a39aba3b4f4e283b37fc
+Signed-off-by: Celeste Liu <CoelacanthusHex@gmail.com>
+Signed-off-by: Wentao Guan <guanwentao@uniontech.com>
+---
+ arch/arm64/configs/deepin_arm64_desktop_defconfig | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/arch/arm64/configs/deepin_arm64_desktop_defconfig b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+index bd779448f4b2..bf354cef9bd8 100644
+--- a/arch/arm64/configs/deepin_arm64_desktop_defconfig
++++ b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+@@ -21,7 +21,6 @@ CONFIG_UCLAMP_TASK=y
+ CONFIG_MEMCG=y
+ CONFIG_BLK_CGROUP=y
+ CONFIG_CFS_BANDWIDTH=y
+-CONFIG_RT_GROUP_SCHED=y
+ CONFIG_CGROUP_PIDS=y
+ CONFIG_CGROUP_RDMA=y
+ CONFIG_CGROUP_FREEZER=y
+-- 
+2.20.1
+

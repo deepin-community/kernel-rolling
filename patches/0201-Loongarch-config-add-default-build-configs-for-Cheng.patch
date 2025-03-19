@@ -1,0 +1,40 @@
+From 29712ccb14e272b7be04d4856f653e6f3d7e72c0 Mon Sep 17 00:00:00 2001
+From: WangYuli <wangyuli@uniontech.com>
+Date: Mon, 12 Aug 2024 14:13:40 +0800
+Subject: [PATCH 201/360] Loongarch: config: add default build configs for
+ Chengdu BeiZhongWangXin N5/N6 Network Card drivers
+
+Enable bzwx for Loongarch64.
+
+Signed-off-by: Hui Li <xiaohuihui@bzwx-kj.com>
+Signed-off-by: Hongyi Du <duhongyi@bzwx-kj.com>
+Signed-off-by: Xiaojun Zhao <xiaojun@bzwx-kj.com>
+Signed-off-by: WangYuli <wangyuli@uniontech.com>
+---
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index 24341e149dca..b8fac258b0cf 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -1452,6 +1452,7 @@ CONFIG_XILINX_EMACLITE=m
+ CONFIG_XILINX_AXI_EMAC=m
+ CONFIG_XILINX_LL_TEMAC=m
+ CONFIG_PCMCIA_XIRC2PS=m
++CONFIG_NCE=m
+ CONFIG_FDDI=m
+ CONFIG_DEFXX=m
+ CONFIG_SKFP=m
+@@ -5669,8 +5670,6 @@ CONFIG_MSDOS_FS=y
+ CONFIG_VFAT_FS=y
+ CONFIG_FAT_DEFAULT_UTF8=y
+ CONFIG_EXFAT_FS=y
+-CONFIG_NTFS_FS=m
+-CONFIG_NTFS_RW=y
+ CONFIG_NTFS3_FS=y
+ CONFIG_NTFS3_LZX_XPRESS=y
+ CONFIG_NTFS3_FS_POSIX_ACL=y
+-- 
+2.20.1
+

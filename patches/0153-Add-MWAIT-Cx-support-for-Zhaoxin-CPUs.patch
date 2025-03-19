@@ -1,0 +1,63 @@
+From b8a0eb0b5cfec65422f540a741ffc0a3e8cbf15b Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Thu, 13 Jun 2024 16:22:54 +0800
+Subject: [PATCH 153/360] Add MWAIT Cx support for Zhaoxin CPUs
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+zhaoxin inclusion
+category: bugfix
+CVE: NA
+
+-----------------
+
+When the processor is idle，low-power idle states (C-states) can be used
+to save power. For Zhaoxin processors，there are two methods to enter idle
+states. One is HLT instruction and legacy method of I/O reads from the
+ACPI-defined register (known as P_LVLx)，the other one is MWAIT
+instruction with idle states hints.
+
+Default for legacy operating system，HLT and P_LVLx I/O reads are used for
+Zhaoxin Processors to enter idle states, but we have checked on some
+Zhaoxin platform that MWAIT instruction is more efficient than P_LVLx I/O
+reads and HLT, so we add MWAIT Cx support for Zhaoxin Processors.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ arch/x86/include/asm/acpi.h   | 3 ++-
+ arch/x86/kernel/acpi/cstate.c | 4 +++-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/arch/x86/include/asm/acpi.h b/arch/x86/include/asm/acpi.h
+index 5ab1a4598d00..b4cc9bf14ae4 100644
+--- a/arch/x86/include/asm/acpi.h
++++ b/arch/x86/include/asm/acpi.h
+@@ -111,7 +111,8 @@ static inline bool arch_has_acpi_pdc(void)
+ {
+ 	struct cpuinfo_x86 *c = &cpu_data(0);
+ 	return (c->x86_vendor == X86_VENDOR_INTEL ||
+-		c->x86_vendor == X86_VENDOR_CENTAUR);
++		c->x86_vendor == X86_VENDOR_CENTAUR ||
++		c->x86_vendor == X86_VENDOR_ZHAOXIN);
+ }
+ 
+ static inline void arch_acpi_set_proc_cap_bits(u32 *cap)
+diff --git a/arch/x86/kernel/acpi/cstate.c b/arch/x86/kernel/acpi/cstate.c
+index f3ffd0a3a012..b2677f231164 100644
+--- a/arch/x86/kernel/acpi/cstate.c
++++ b/arch/x86/kernel/acpi/cstate.c
+@@ -221,7 +221,9 @@ static int __init ffh_cstate_init(void)
+ 
+ 	if (c->x86_vendor != X86_VENDOR_INTEL &&
+ 	    c->x86_vendor != X86_VENDOR_AMD &&
+-	    c->x86_vendor != X86_VENDOR_HYGON)
++	    c->x86_vendor != X86_VENDOR_HYGON &&
++	    c->x86_vendor != X86_VENDOR_CENTAUR &&
++	    c->x86_vendor != X86_VENDOR_ZHAOXIN)
+ 		return -1;
+ 
+ 	cpu_cstate_entry = alloc_percpu(struct cstate_entry);
+-- 
+2.20.1
+

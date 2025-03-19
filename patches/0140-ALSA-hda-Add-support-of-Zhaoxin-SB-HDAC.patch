@@ -1,0 +1,43 @@
+From 84bc112642d55e6f248a95c89eb0a80783bd9e1e Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Wed, 12 Jun 2024 15:55:10 +0800
+Subject: [PATCH 140/360] ALSA: hda: Add support of Zhaoxin SB HDAC
+
+zhaoxin inclusion
+category: feature
+
+-------------------
+
+Add some special initialization for Zhaoxin SB HDAC.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ sound/pci/hda/hda_intel.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/sound/pci/hda/hda_intel.c b/sound/pci/hda/hda_intel.c
+index ea52bc7370a5..ee19b2d82d38 100644
+--- a/sound/pci/hda/hda_intel.c
++++ b/sound/pci/hda/hda_intel.c
+@@ -1538,7 +1538,8 @@ static int check_position_fix(struct azx *chip, int fix)
+ 	}
+ 
+ 	/* Check VIA/ATI HD Audio Controller exist */
+-	if (chip->driver_type == AZX_DRIVER_VIA) {
++	if (chip->driver_type == AZX_DRIVER_VIA ||
++	    chip->driver_type == AZX_DRIVER_ZHAOXIN) {
+ 		dev_dbg(chip->card->dev, "Using VIACOMBO position fix\n");
+ 		return POS_FIX_VIACOMBO;
+ 	}
+@@ -1692,7 +1693,7 @@ static void azx_check_snoop_available(struct azx *chip)
+ 
+ 	snoop = true;
+ 	if (azx_get_snoop_type(chip) == AZX_SNOOP_TYPE_NONE &&
+-	    chip->driver_type == AZX_DRIVER_VIA) {
++	    (chip->driver_type == AZX_DRIVER_VIA || chip->driver_type == AZX_DRIVER_ZHAOXIN)) {
+ 		/* force to non-snoop mode for a new VIA controller
+ 		 * when BIOS is set
+ 		 */
+-- 
+2.20.1
+

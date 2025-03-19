@@ -1,0 +1,48 @@
+From 6cf08c4b191a80f60e3e413681aa1752c16ddd90 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Thu, 2 Jan 2025 11:18:52 +0800
+Subject: [PATCH 299/360] arch: arm64: disable ARM_GIC_PHYTIUM_2500 due to
+ build failure
+
+The following error occurs despite previous code fixes:
+
+ld: drivers/irqchip/irq-gic-phytium-2500.o: in function
+`gic_enable_nmi_support':
+./drivers/irqchip/irq-gic-phytium-2500.c:1870:(.init.text+0xf1c):
+undefined reference to `gic_nonsecure_priorities'
+ld: drivers/irqchip/irq-gic-phytium-2500.o: relocation
+R_AARCH64_ADR_PREL_PG_HI21 against symbol `gic_nonsecure_priorities' which
+may bind externally can not be used when making a shared object; recompile
+with -fPIC
+./drivers/irqchip/irq-gic-phytium-2500.c:1870:(.init.text+0xf1c):
+dangerous relocation: unsupported relocation
+ld: drivers/irqchip/irq-gic-phytium-2500.c:1870:(.init.text+0xf20):
+undefined reference to `gic_nonsecure_priorities'
+ld: drivers/irqchip/irq-gic-phytium-2500.o:(__jump_table+0x68): undefined
+reference to `gic_nonsecure_priorities'
+ld: drivers/irqchip/irq-gic-phytium-2500.o:(__jump_table+0xa8): undefined
+reference to `gic_nonsecure_priorities'
+
+Disable this driver for now as we would like to ship 6.12 for AArch64 and
+this piece of support code is probably seldom used by community users.
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ arch/arm64/Kconfig.platforms | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/arch/arm64/Kconfig.platforms b/arch/arm64/Kconfig.platforms
+index 3b6f332d7648..54fc8ab89ee7 100644
+--- a/arch/arm64/Kconfig.platforms
++++ b/arch/arm64/Kconfig.platforms
+@@ -264,7 +264,6 @@ config ARCH_PENSANDO
+ 
+ config ARCH_PHYTIUM
+ 	bool "Phytium SoC Family"
+-	select ARM_GIC_PHYTIUM_2500
+ 	help
+ 	  This enables support for Phytium ARMv8 SoC family, including:
+ 	   - Phytium Server SoC Family
+-- 
+2.20.1
+

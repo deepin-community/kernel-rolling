@@ -1,0 +1,74 @@
+From 67d1bc2005c98e425d92fc8ecc68cef30d0328ae Mon Sep 17 00:00:00 2001
+From: Wentao Guan <guanwentao@uniontech.com>
+Date: Mon, 13 Jan 2025 10:25:50 +0800
+Subject: [PATCH 347/360] deepin: config: enable NVME_HWMON config
+
++CONFIG_NVME_HWMON:
+Help show nvme temp by hwmon device without smartmontools.
+loongarch is already enabled, so enabled in x86 and arm64.
+
+-CONFIG_RCU_NOCB_CPU:
+select by RCU_LAZY, so removed by savedefconfig.
+
+Signed-off-by: Wentao Guan <guanwentao@uniontech.com>
+---
+ arch/arm64/configs/deepin_arm64_desktop_defconfig         | 2 +-
+ arch/loongarch/configs/deepin_loongarch_desktop_defconfig | 1 -
+ arch/x86/configs/deepin_x86_desktop_defconfig             | 2 +-
+ 3 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/arch/arm64/configs/deepin_arm64_desktop_defconfig b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+index c177bd641ec6..1417bcd5e392 100644
+--- a/arch/arm64/configs/deepin_arm64_desktop_defconfig
++++ b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+@@ -16,7 +16,6 @@ CONFIG_SCHED_CORE=y
+ CONFIG_PSI=y
+ CONFIG_RCU_EXPERT=y
+ CONFIG_RCU_BOOST=y
+-CONFIG_RCU_NOCB_CPU=y
+ CONFIG_RCU_LAZY=y
+ CONFIG_RCU_LAZY_DEFAULT_OFF=y
+ CONFIG_IKCONFIG=y
+@@ -938,6 +937,7 @@ CONFIG_VIRTIO_BLK=m
+ CONFIG_BLK_DEV_RBD=m
+ CONFIG_BLK_DEV_NVME=y
+ CONFIG_NVME_MULTIPATH=y
++CONFIG_NVME_HWMON=y
+ CONFIG_NVME_RDMA=m
+ CONFIG_NVME_FC=m
+ CONFIG_NVME_AUTH=y
+diff --git a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+index 4bfbb1b8d832..d8a715868450 100644
+--- a/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
++++ b/arch/loongarch/configs/deepin_loongarch_desktop_defconfig
+@@ -23,7 +23,6 @@ CONFIG_TASK_IO_ACCOUNTING=y
+ CONFIG_PSI=y
+ CONFIG_RCU_EXPERT=y
+ CONFIG_RCU_BOOST=y
+-CONFIG_RCU_NOCB_CPU=y
+ CONFIG_RCU_LAZY=y
+ CONFIG_RCU_LAZY_DEFAULT_OFF=y
+ CONFIG_IKCONFIG=y
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index 33bde2f97a77..dfa0230a30fc 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -21,7 +21,6 @@ CONFIG_TASK_IO_ACCOUNTING=y
+ CONFIG_PSI=y
+ CONFIG_RCU_EXPERT=y
+ CONFIG_RCU_BOOST=y
+-CONFIG_RCU_NOCB_CPU=y
+ CONFIG_RCU_LAZY=y
+ CONFIG_RCU_LAZY_DEFAULT_OFF=y
+ CONFIG_IKCONFIG=y
+@@ -883,6 +882,7 @@ CONFIG_VIRTIO_BLK=m
+ CONFIG_BLK_DEV_RBD=m
+ CONFIG_BLK_DEV_NVME=y
+ CONFIG_NVME_MULTIPATH=y
++CONFIG_NVME_HWMON=y
+ CONFIG_NVME_RDMA=m
+ CONFIG_NVME_FC=m
+ CONFIG_NVME_TCP=m
+-- 
+2.20.1
+

@@ -1,0 +1,280 @@
+From 657e48e361e440f3d92a7dee7cb493b54400730c Mon Sep 17 00:00:00 2001
+From: Kunyang_Fan <kunyang_fan@asus.com>
+Date: Wed, 16 Jun 2021 13:57:02 +0800
+Subject: [PATCH 276/360] UBUNTU: ODM: leds: add driver for AAEON devices
+
+BugLink: https://bugs.launchpad.net/bugs/1929504
+
+This patch adds support for the led devices which can
+be controlled from sysfs through ASUS WMI interface.
+
+Signed-off-by: Kunyang_Fan <kunyang_fan@asus.com>
+Review-by: Kai-Heng Feng <kai.heng.feng@canonical.com>
+Review-by: Chia-Lin Kao (AceLan) <acelan.kao@canonical.com>
+Signed-off-by: Chia-Lin Kao (AceLan) <acelan.kao@canonical.com>
+Acked-by: Stefan Bader <stefan.bader@canonical.com>
+Acked-by: Kleber Sacilotto de Souza <kleber.souza@canonical.com>
+Signed-off-by: Andrea Righi <andrea.righi@canonical.com>
+---
+ drivers/leds/Kconfig      |  11 +++
+ drivers/leds/Makefile     |   1 +
+ drivers/leds/leds-aaeon.c | 142 ++++++++++++++++++++++++++++++++++++++
+ net/bpfilter/bpfilter_umh | Bin 0 -> 16408 bytes
+ 4 files changed, 154 insertions(+)
+ create mode 100644 drivers/leds/leds-aaeon.c
+ create mode 100755 net/bpfilter/bpfilter_umh
+
+diff --git a/drivers/leds/Kconfig b/drivers/leds/Kconfig
+index b784bb74a837..bcc8928136c3 100644
+--- a/drivers/leds/Kconfig
++++ b/drivers/leds/Kconfig
+@@ -65,6 +65,17 @@ config LEDS_88PM860X
+ 	  This option enables support for on-chip LED drivers found on Marvell
+ 	  Semiconductor 88PM8606 PMIC.
+ 
++config LEDS_AAEON
++	tristate "AAEON LED driver"
++	depends on X86
++	select MFD_AAEON
++	help
++	  This led driver adds support for LED brightness control on Single
++	  Board Computers produced by AAEON.
++
++	  This driver leverages the ASUS WMI interface to access device
++	  resources.
++
+ config LEDS_AN30259A
+ 	tristate "LED support for Panasonic AN30259A"
+ 	depends on LEDS_CLASS && I2C && OF
+diff --git a/drivers/leds/Makefile b/drivers/leds/Makefile
+index 18afbb5a23ee..3edf87550390 100644
+--- a/drivers/leds/Makefile
++++ b/drivers/leds/Makefile
+@@ -9,6 +9,7 @@ obj-$(CONFIG_LEDS_TRIGGERS)		+= led-triggers.o
+ 
+ # LED Platform Drivers (keep this sorted, M-| sort)
+ obj-$(CONFIG_LEDS_88PM860X)		+= leds-88pm860x.o
++obj-$(CONFIG_LEDS_AAEON)		+= leds-aaeon.o
+ obj-$(CONFIG_LEDS_ACER_A500)		+= leds-acer-a500.o
+ obj-$(CONFIG_LEDS_ADP5520)		+= leds-adp5520.o
+ obj-$(CONFIG_LEDS_AN30259A)		+= leds-an30259a.o
+diff --git a/drivers/leds/leds-aaeon.c b/drivers/leds/leds-aaeon.c
+new file mode 100644
+index 000000000000..10090a4bff65
+--- /dev/null
++++ b/drivers/leds/leds-aaeon.c
+@@ -0,0 +1,142 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * AAEON LED driver
++ *
++ * Copyright (c) 2021, AAEON Ltd.
++ *
++ * Author: Kunyang Fan <kunyang_fan@aaeon.com.tw>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ */
++#include <linux/acpi.h>
++#include <linux/bitops.h>
++#include <linux/leds.h>
++#include <linux/module.h>
++#include <linux/platform_data/x86/asus-wmi.h>
++#include <linux/platform_device.h>
++
++#define DRVNAME "led_aaeon"
++#define ASUS_NB_WMI_EVENT_GUID   "0B3CBB35-E3C2-45ED-91C2-4C5A6D195D1C"
++#define AAEON_WMI_MGMT_GUID      "97845ED0-4E6D-11DE-8A39-0800200C9A66"
++
++#define GET_LED_NUMBER_ID        0x00060000
++#define GET_LED_METHOD_ID        0x00060001
++#define SET_LED_METHOD_ID        0x00060002
++#define GET_LED_NUMBER_METHOD_ID 0x10
++
++
++struct aaeon_led_data {
++	int id;
++	struct led_classdev cdev;
++};
++
++static int aaeon_led_get_number(void)
++{
++	int err, retval;
++
++	err = asus_wmi_evaluate_method(GET_LED_NUMBER_ID,
++				       GET_LED_NUMBER_METHOD_ID,
++				       0, &retval);
++	if (err)
++		return err;
++
++	return retval;
++}
++
++static enum led_brightness aaeon_led_brightness_get(struct led_classdev
++						      *cdev)
++{
++	int err, brightness;
++	struct aaeon_led_data *led =
++			container_of(cdev, struct aaeon_led_data, cdev);
++	u32 arg0;
++
++	arg0 = (u32)(led->id & 0xF);
++	err = asus_wmi_evaluate_method(GET_LED_METHOD_ID, arg0, 0, &brightness);
++	if (err)
++		return err;
++
++	return brightness;
++};
++
++static void aaeon_led_brightness_set(struct led_classdev *cdev,
++				       enum led_brightness brightness)
++{
++	int err, retval;
++	struct aaeon_led_data *led =
++			container_of(cdev, struct aaeon_led_data, cdev);
++	u32 arg0;
++
++	arg0 = (u32)(led->id & 0xF);
++	if (brightness != LED_OFF)
++		arg0 |= BIT(16);
++
++	err = asus_wmi_evaluate_method(SET_LED_METHOD_ID, arg0, 0, &retval);
++};
++
++static int __init aaeon_add_led_device(struct platform_device *pdev,
++					   int id)
++{
++	struct aaeon_led_data *led;
++
++	led = devm_kzalloc(&pdev->dev, sizeof(struct aaeon_led_data), GFP_KERNEL);
++	if (!led)
++		return -ENOMEM;
++
++	led->id = id;
++	led->cdev.brightness_get = aaeon_led_brightness_get;
++	led->cdev.brightness_set = aaeon_led_brightness_set;
++	led->cdev.name = devm_kasprintf(&pdev->dev, GFP_KERNEL, "led:%d:", id);
++
++	if (!led->cdev.name)
++		return -ENOMEM;
++
++	return devm_led_classdev_register(&pdev->dev, &led->cdev);
++}
++
++static int aaeon_led_probe(struct platform_device *pdev)
++{
++	int err = -ENODEV, i;
++	int led_number = 0;
++
++	pr_debug("aaeon led device probe!\n");
++	/* Prevent other drivers adding this platfom device */
++	if (!wmi_has_guid(AAEON_WMI_MGMT_GUID)) {
++		pr_debug("AAEON Management GUID not found\n");
++		return -ENODEV;
++	}
++
++	/* Query the number of led devices board support */
++	led_number = aaeon_led_get_number();
++
++	/*
++	 * If the number is 0 or can't get the number of leds,
++	 * no need to register any led device node.
++	 */
++	if (led_number <= 0)
++		return -ENODEV;
++
++	for (i = 0; i < led_number; i++) {
++		err = aaeon_add_led_device(pdev, i);
++		if (err)
++			break;
++	}
++
++	return err;
++}
++
++static struct platform_driver aaeon_led_driver = {
++	.driver = {
++		.name = "leds-aaeon",
++	},
++};
++
++module_platform_driver_probe(aaeon_led_driver, aaeon_led_probe);
++
++MODULE_ALIAS("platform:leds-aaeon");
++MODULE_DESCRIPTION("AAEON LED Driver");
++MODULE_AUTHOR("Kunyang Fan <kunyang_fan@asus.com>");
++MODULE_LICENSE("GPL v2");
+diff --git a/net/bpfilter/bpfilter_umh b/net/bpfilter/bpfilter_umh
+new file mode 100755
+index 0000000000000000000000000000000000000000..371c791480c428f25d53daf232932a3db12cd3b6
+GIT binary patch
+literal 16408
+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
+C+{?@W
+
+literal 0
+HcmV?d00001
+
+-- 
+2.20.1
+

@@ -1,0 +1,46 @@
+From 1c8347dba19cd506dc917f755888bc17d3ddb8a7 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Mon, 18 Nov 2024 17:25:18 +0800
+Subject: [PATCH 271/360] x86: configs: enable Elan and Goodix I2C-over-OF HID
+ devices
+
+The Elan driver in particular may be needed for Asus Vivobook S (2024).
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ arch/x86/configs/deepin_x86_desktop_defconfig | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index 2dbf27da8ec0..5215ea13fbda 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -841,6 +841,7 @@ CONFIG_MTD_UBI_FASTMAP=y
+ CONFIG_MTD_UBI_GLUEBI=m
+ CONFIG_MTD_UBI_BLOCK=y
+ CONFIG_MTD_HYPERBUS=m
++CONFIG_OF=y
+ CONFIG_PARPORT=m
+ CONFIG_PARPORT_PC=m
+ CONFIG_PARPORT_SERIAL=m
+@@ -3672,6 +3673,7 @@ CONFIG_HID_GFRM=m
+ CONFIG_HID_GLORIOUS=m
+ CONFIG_HID_HOLTEK=m
+ CONFIG_HOLTEK_FF=y
++CONFIG_HID_GOODIX_SPI=m
+ CONFIG_HID_GOOGLE_HAMMER=m
+ CONFIG_HID_VIVALDI=m
+ CONFIG_HID_GT683R=m
+@@ -3767,6 +3769,9 @@ CONFIG_USB_HIDDEV=y
+ CONFIG_USB_KBD=m
+ CONFIG_USB_MOUSE=m
+ CONFIG_I2C_HID_ACPI=m
++CONFIG_I2C_HID_OF=m
++CONFIG_I2C_HID_OF_ELAN=m
++CONFIG_I2C_HID_OF_GOODIX=m
+ CONFIG_INTEL_ISH_HID=m
+ CONFIG_INTEL_ISH_FIRMWARE_DOWNLOADER=m
+ CONFIG_AMD_SFH_HID=m
+-- 
+2.20.1
+

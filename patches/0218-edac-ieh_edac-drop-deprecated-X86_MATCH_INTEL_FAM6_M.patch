@@ -1,0 +1,34 @@
+From 076be145c078c0ace4bc65f9e3f21fa03255720a Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Wed, 13 Nov 2024 10:44:34 +0800
+Subject: [PATCH 218/360] edac: ieh_edac: drop deprecated
+ X86_MATCH_INTEL_FAM6_MODEL macro
+
+Use the new X86_MATCH_VFM macro to match processor models.
+
+This was introduced with commit 13ad4848dde0 ("x86/cpu/vfm: Delete
+X86_MATCH_INTEL_FAM6_MODEL[_STEPPING]() macros").
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ drivers/edac/ieh_edac.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/edac/ieh_edac.c b/drivers/edac/ieh_edac.c
+index 6c92352091b1..5539aa03a4d9 100644
+--- a/drivers/edac/ieh_edac.c
++++ b/drivers/edac/ieh_edac.c
+@@ -536,8 +536,8 @@ static struct notifier_block ieh_mce_dec = {
+ };
+ 
+ static const struct x86_cpu_id ieh_cpuids[] = {
+-	X86_MATCH_INTEL_FAM6_MODEL(TIGERLAKE_L,	&tgl_u_cfg),
+-	X86_MATCH_INTEL_FAM6_MODEL(TIGERLAKE,	&tgl_h_cfg),
++	X86_MATCH_VFM(INTEL_TIGERLAKE_L, &tgl_u_cfg),
++	X86_MATCH_VFM(INTEL_TIGERLAKE, &tgl_h_cfg),
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(x86cpu, ieh_cpuids);
+-- 
+2.20.1
+

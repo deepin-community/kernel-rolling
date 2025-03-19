@@ -1,0 +1,29 @@
+From fd363bfe3ee09cde1ad4b7fb2b449e44338d73f2 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <baimingcong@uniontech.com>
+Date: Tue, 2 Jul 2024 16:49:13 +0800
+Subject: [PATCH 108/360] char: ipmi: fix ipmi_si_ls2k500.c on 6.9
+
+Declare multiple functions as static functions to suppress warnings about
+missing prototypes.
+
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ drivers/char/ipmi/ipmi_si_ls2k500.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/char/ipmi/ipmi_si_ls2k500.c b/drivers/char/ipmi/ipmi_si_ls2k500.c
+index 7e259d85729f..1b851935d9b6 100644
+--- a/drivers/char/ipmi/ipmi_si_ls2k500.c
++++ b/drivers/char/ipmi/ipmi_si_ls2k500.c
+@@ -89,7 +89,7 @@ static void ipmi_ls2k500_cleanup(struct si_sm_io *io)
+ {
+ }
+ 
+-int ipmi_si_sim_setup(struct si_sm_io *io)
++static int ipmi_si_sim_setup(struct si_sm_io *io)
+ {
+ 	io->inputb = intf_sim_inb;
+ 	io->outputb = intf_sim_outb;
+-- 
+2.20.1
+

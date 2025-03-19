@@ -1,0 +1,30 @@
+From b165e574fa5718466d06344b905e804cfaa1ae1c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <guanwentao@uniontech.com>
+Date: Tue, 19 Nov 2024 03:00:27 +0000
+Subject: [PATCH 284/360] config: deepin_x86_desktop_defconfig: Enable
+ LIST_HARDENED
+
+Linux kernel 6.6 introduced CONFIG_LIST_HARDENED, of which CONFIG_DEBUG_LIST is a superset [1]. Since CONFIG_DEBUG_LIST selects CONFIG_LIST_HARDENED, configs that already selected CONFIG_DEBUG_LIST were not prompted for CONFIG_LIST_HARDENED.
+Since CONFIG_DEBUG_LIST has never been designed with performance in mind, non-debug kernels should prefer CONFIG_LIST_HARDENED. The main benefit is improved performance; the only downside is slightly worse error reporting (the WARNING is turned into an access fault in some cases). Hardening-wise there is no functional difference.
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=aebc7b0d8d91bbc69e976909963046bc48bca4fd
+
+Link: https://gitlab.archlinux.org/archlinux/packaging/packages/linux/-/issues/26
+---
+ arch/x86/configs/deepin_x86_desktop_defconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index 82210be89b6b..633e359d3119 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -5316,6 +5316,7 @@ CONFIG_EVM_ADD_XATTRS=y
+ CONFIG_DEFAULT_SECURITY_APPARMOR=y
+ CONFIG_LSM="lockdown,yama,integrity,apparmor,selinux,hookmanager"
+ CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y
++CONFIG_LIST_HARDENED=y
+ CONFIG_CRYPTO_USER=m
+ CONFIG_CRYPTO_PCRYPT=m
+ CONFIG_CRYPTO_ECRDSA=m
+-- 
+2.20.1
+

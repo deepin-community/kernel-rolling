@@ -1,0 +1,478 @@
+From 5e935ba031316b484c2639c1891e2e53c0a2c7a5 Mon Sep 17 00:00:00 2001
+From: Yanteng Si <siyanteng@loongson.cn>
+Date: Tue, 14 May 2024 10:03:11 +0800
+Subject: [PATCH 103/360] ipmi: add ls2k500 bmc ipmi support.
+
+Signed-off-by: Chong Qiao <qiaochong@loongson.cn>
+Signed-off-by: Hongchen Zhang <zhanghongchen@loongson.cn>
+Signed-off-by: Yanteng Si <siyanteng@loongson.cn>
+---
+ drivers/char/ipmi/Makefile          |   4 +
+ drivers/char/ipmi/btlock.h          |  92 +++++++++++++++
+ drivers/char/ipmi/ipmi_si.h         |  11 ++
+ drivers/char/ipmi/ipmi_si_intf.c    |   4 +
+ drivers/char/ipmi/ipmi_si_ls2k500.c | 173 ++++++++++++++++++++++++++++
+ drivers/char/ipmi/kcs_bmc_ls2k500.h |  67 +++++++++++
+ drivers/video/fbdev/ls2k500sfb.c    |   6 +-
+ 7 files changed, 356 insertions(+), 1 deletion(-)
+ create mode 100644 drivers/char/ipmi/btlock.h
+ create mode 100644 drivers/char/ipmi/ipmi_si_ls2k500.c
+ create mode 100644 drivers/char/ipmi/kcs_bmc_ls2k500.h
+
+diff --git a/drivers/char/ipmi/Makefile b/drivers/char/ipmi/Makefile
+index 831d98e2f4f4..4116cdc1d95e 100644
+--- a/drivers/char/ipmi/Makefile
++++ b/drivers/char/ipmi/Makefile
+@@ -10,6 +10,10 @@ ipmi_si-$(CONFIG_HAS_IOPORT) += ipmi_si_port_io.o
+ ipmi_si-$(CONFIG_PCI) += ipmi_si_pci.o
+ ipmi_si-$(CONFIG_PARISC) += ipmi_si_parisc.o
+ 
++ifdef CONFIG_LOONGARCH
++ipmi_si-y += ipmi_si_ls2k500.o
++endif
++
+ obj-$(CONFIG_IPMI_HANDLER) += ipmi_msghandler.o
+ obj-$(CONFIG_IPMI_DEVICE_INTERFACE) += ipmi_devintf.o
+ obj-$(CONFIG_IPMI_SI) += ipmi_si.o
+diff --git a/drivers/char/ipmi/btlock.h b/drivers/char/ipmi/btlock.h
+new file mode 100644
+index 000000000000..cf585e42d42d
+--- /dev/null
++++ b/drivers/char/ipmi/btlock.h
+@@ -0,0 +1,92 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef __BTLOCK_H__
++#define __BTLOCK_H__
++
++#include <linux/delay.h>
++#include <asm/timex.h>
++
++union btlock {
++	char b[2];
++	unsigned int u;
++};
++
++/*
++ *wait delay us if lock failed.
++ *lock fail if another one get lock or both try get lock.
++ *c must compile b with byte access.
++ */
++static inline int btlock_lock(volatile union btlock *p, int n, unsigned char delay)
++{
++	union btlock t, t1;
++	unsigned long flags;
++	unsigned long c0 = get_cycles(), c1;
++
++	if (n > 1)
++		return -1;
++	delay |= 0x80;
++	t1.u = 0;
++	t1.b[n] = delay;
++
++	while (1) {
++		local_irq_save(flags);
++		p->b[n] = delay;
++		t.u = p->u;
++		if (t.u == t1.u) {
++			wmb(); /* flush write out immediately */
++			local_irq_restore(flags);
++			return 0;
++		}
++		p->b[n] = 0;
++		t.u = p->u;
++		wmb(); /* flush write out immediately */
++		local_irq_restore(flags);
++		c1 = get_cycles();
++		if (c1 - c0 > *mscycles * 1000)
++			return -1;
++		ndelay(((t.b[1 - n] & 0x7f) + (c1 & 1)) * 100);
++	}
++	return 0;
++}
++
++static inline int btlock_trylock(volatile union btlock *p, int n, unsigned char delay)
++{
++	union btlock t, t1;
++	unsigned long flags;
++
++	if (n > 1)
++		return -1;
++	delay |= 0x80;
++	t1.u = 0;
++	t1.b[n] = delay;
++
++	local_irq_save(flags);
++	p->b[n] = delay;
++	t.u = p->u;
++	if (t.u == t1.u) {
++		wmb(); /* flush write out immediately */
++		local_irq_restore(flags);
++		return 0;
++	}
++	p->b[n] = 0;
++	t.u = p->u;
++	wmb(); /* flush write out immediately */
++	local_irq_restore(flags);
++	ndelay(((t.b[1 - n] & 0x7f) + (get_cycles() & 1)) * 100);
++	return -1;
++}
++
++static inline int btlock_unlock(volatile union btlock *p, int n)
++{
++		p->b[n] = 0;
++		wmb(); /* flush write out immediately */
++		return p->u;
++}
++
++static inline int btlock_islocked(volatile union btlock *p, int n)
++{
++	union btlock t;
++
++	t.u = p->u;
++	return t.b[n] && !t.b[1 - n];
++}
++#endif
+diff --git a/drivers/char/ipmi/ipmi_si.h b/drivers/char/ipmi/ipmi_si.h
+index a7ead2a4c753..aa2f81472ce5 100644
+--- a/drivers/char/ipmi/ipmi_si.h
++++ b/drivers/char/ipmi/ipmi_si.h
+@@ -51,6 +51,9 @@ struct si_sm_io {
+ 	unsigned int regshift;
+ 	enum ipmi_addr_space addr_space;
+ 	unsigned long addr_data;
++#ifdef CONFIG_LOONGARCH
++	void *addr_source_data;
++#endif
+ 	enum ipmi_addr_src addr_source; /* ACPI, PCI, SMBIOS, hardcode, etc. */
+ 	union ipmi_smi_info_union addr_info;
+ 
+@@ -101,6 +104,14 @@ static inline void ipmi_si_parisc_init(void) { }
+ static inline void ipmi_si_parisc_shutdown(void) { }
+ #endif
+ 
++#ifdef CONFIG_LOONGARCH
++int ipmi_si_ls2k500_init(void);
++void ipmi_si_ls2k500_shutdown(void);
++#else
++static inline void ipmi_si_ls2k500_init(void) { }
++static inline void ipmi_si_ls2k500_shutdown(void) { }
++#endif
++
+ int ipmi_si_port_setup(struct si_sm_io *io);
+ int ipmi_si_mem_setup(struct si_sm_io *io);
+ 
+diff --git a/drivers/char/ipmi/ipmi_si_intf.c b/drivers/char/ipmi/ipmi_si_intf.c
+index eea23a3b966e..155f19b68343 100644
+--- a/drivers/char/ipmi/ipmi_si_intf.c
++++ b/drivers/char/ipmi/ipmi_si_intf.c
+@@ -2105,6 +2105,8 @@ static int __init init_ipmi_si(void)
+ 
+ 	ipmi_si_platform_init();
+ 
++	ipmi_si_ls2k500_init();
++
+ 	ipmi_si_pci_init();
+ 
+ 	ipmi_si_parisc_init();
+@@ -2290,6 +2292,8 @@ static void cleanup_ipmi_si(void)
+ 
+ 	ipmi_si_parisc_shutdown();
+ 
++	ipmi_si_ls2k500_shutdown();
++
+ 	ipmi_si_platform_shutdown();
+ 
+ 	mutex_lock(&smi_infos_lock);
+diff --git a/drivers/char/ipmi/ipmi_si_ls2k500.c b/drivers/char/ipmi/ipmi_si_ls2k500.c
+new file mode 100644
+index 000000000000..7e259d85729f
+--- /dev/null
++++ b/drivers/char/ipmi/ipmi_si_ls2k500.c
+@@ -0,0 +1,173 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * ipmi_si_pci.c
++ *
++ * Handling for IPMI devices on the PCI bus.
++ */
++
++#define pr_fmt(fmt) "ipmi_pci: " fmt
++
++#include <linux/module.h>
++#include <linux/types.h>
++#include <linux/module.h>
++#include <linux/of_device.h>
++#include <linux/of_platform.h>
++#include <linux/of_address.h>
++#include <linux/of_irq.h>
++#include <linux/pci.h>
++#include <linux/ioport.h>
++#include <linux/version.h>
++#include "ipmi_si.h"
++static unsigned long *mscycles;
++static unsigned long *event_jiffies;
++#include "kcs_bmc_ls2k500.h"
++static int resetbootwait = 60;
++module_param(resetbootwait, int, 0664);
++
++#define KCS_STATUS_CMD_DAT      BIT(3)
++
++static int pcie_busy(void)
++{
++	if (time_before(jiffies, *event_jiffies + resetbootwait*HZ))
++		return -1;
++	return 0;
++}
++
++static unsigned char intf_sim_inb(const struct si_sm_io *io,
++				  unsigned int offset)
++{
++	IPMIKCS *ik = io->addr_source_data;
++	uint32_t ret;
++
++	if (pcie_busy())
++		return 0;
++	if (btlock_lock(&ik->lock, 0, 1) < 0)
++		return 0;
++	switch (offset & 1) {
++	case 0:
++		ret = ik->data_out_reg;
++		IPMI_KCS_SET_OBF(ik->status_reg, 0);
++		break;
++	case 1:
++		ret = ik->status_reg;
++		break;
++	}
++	btlock_unlock(&ik->lock, 0);
++	return ret;
++}
++
++static void intf_sim_outb(const struct si_sm_io *io, unsigned int offset,
++			  unsigned char val)
++{
++	IPMIKCS *ik = io->addr_source_data;
++
++	if (pcie_busy())
++		return;
++	if (btlock_lock(&ik->lock, 0, 1) < 0)
++		return;
++	if (IPMI_KCS_GET_IBF(ik->status_reg))
++		goto out;
++
++	switch (offset & 1) {
++	case 0:
++		ik->data_in_reg = val;
++		ik->status_reg &= ~KCS_STATUS_CMD_DAT;
++		break;
++
++	case 1:
++		ik->cmd_reg = val;
++		ik->status_reg |= KCS_STATUS_CMD_DAT;
++		break;
++	}
++	IPMI_KCS_SET_IBF(ik->status_reg, 1);
++	ik->write_req++;
++out:
++	btlock_unlock(&ik->lock, 0);
++}
++
++static void ipmi_ls2k500_cleanup(struct si_sm_io *io)
++{
++}
++
++int ipmi_si_sim_setup(struct si_sm_io *io)
++{
++	io->inputb = intf_sim_inb;
++	io->outputb = intf_sim_outb;
++	io->io_cleanup = ipmi_ls2k500_cleanup;
++	return 0;
++}
++
++#define platform_resource_start(dev, bar)   ((dev)->resource[(bar)].start)
++#define platform_resource_end(dev, bar)     ((dev)->resource[(bar)].end)
++static int of_ipmi_ls2k500_probe(struct platform_device *pdev)
++{
++	int rv;
++	struct si_sm_io io;
++	void **kcs_data;
++
++	memset(&io, 0, sizeof(io));
++	io.addr_source = SI_PLATFORM;
++	dev_info(&pdev->dev, "probing via ls2k500 platform");
++	io.si_type = SI_KCS;
++
++	io.addr_space = IPMI_MEM_ADDR_SPACE;
++	io.io_setup = ipmi_si_sim_setup;
++	io.addr_data = pdev->resource[0].start;
++	io.addr_source_data = ioremap(pdev->resource[0].start,
++					pdev->resource[0].end -
++					pdev->resource[0].start + 1);
++	kcs_data = dev_get_platdata(&pdev->dev);
++	event_jiffies = kcs_data[0];
++	mscycles = kcs_data[1];
++	io.dev = &pdev->dev;
++	io.regspacing = 4;
++	io.regsize = DEFAULT_REGSIZE;
++	io.regshift = 0;
++	io.irq = 0;
++	if (io.irq)
++		io.irq_setup = ipmi_std_irq_setup;
++
++	dev_info(&pdev->dev, "%pR regsize %d spacing %d irq %d\n",
++		&pdev->resource[0], io.regsize, io.regspacing, io.irq);
++
++	rv = ipmi_si_add_smi(&io);
++	if (rv)
++		ipmi_si_remove_by_dev(&pdev->dev);
++
++	return rv;
++}
++
++static int ipmi_ls2k500_remove(struct platform_device *pdev)
++{
++	ipmi_si_remove_by_dev(&pdev->dev);
++
++	return 0;
++}
++
++#define LS2K500_SI_DEVICE_NAME "ipmi_ls2k500_si"
++struct platform_driver ipmi_ls2k500_platform_driver = {
++	.driver = {
++		.name = LS2K500_SI_DEVICE_NAME,
++	},
++	.probe		= of_ipmi_ls2k500_probe,
++	.remove		= ipmi_ls2k500_remove,
++};
++
++static bool platform_registered;
++int ipmi_si_ls2k500_init(void)
++{
++	int rv;
++
++	rv = platform_driver_register(&ipmi_ls2k500_platform_driver);
++	if (rv)
++		pr_err("Unable to register driver: %d\n", rv);
++	else
++		platform_registered = true;
++	return rv;
++}
++
++void ipmi_si_ls2k500_shutdown(void)
++{
++	if (platform_registered)
++		platform_driver_unregister(&ipmi_ls2k500_platform_driver);
++}
+diff --git a/drivers/char/ipmi/kcs_bmc_ls2k500.h b/drivers/char/ipmi/kcs_bmc_ls2k500.h
+new file mode 100644
+index 000000000000..86e08a08d41a
+--- /dev/null
++++ b/drivers/char/ipmi/kcs_bmc_ls2k500.h
+@@ -0,0 +1,67 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef __KCS_BMC_LS2K500__
++#define __KCS_BMC_LS2K500__ 1
++#include <linux/list.h>
++#include "btlock.h"
++#define IPMI_KCS_OBF_BIT        0
++#define IPMI_KCS_IBF_BIT        1
++#define IPMI_KCS_SMS_ATN_BIT    2
++#define IPMI_KCS_CD_BIT         3
++
++#define IPMI_KCS_OBF_MASK          (1 << IPMI_KCS_OBF_BIT)
++#define IPMI_KCS_GET_OBF(d)        (((d) >> IPMI_KCS_OBF_BIT) & 0x1)
++#define IPMI_KCS_SET_OBF(d, v)     ((d) = (((d) & ~IPMI_KCS_OBF_MASK) | \
++					(((v) & 1) << IPMI_KCS_OBF_BIT)))
++#define IPMI_KCS_IBF_MASK          (1 << IPMI_KCS_IBF_BIT)
++#define IPMI_KCS_GET_IBF(d)        (((d) >> IPMI_KCS_IBF_BIT) & 0x1)
++#define IPMI_KCS_SET_IBF(d, v)     ((d) = (((d) & ~IPMI_KCS_IBF_MASK) | \
++					(((v) & 1) << IPMI_KCS_IBF_BIT)))
++#define IPMI_KCS_SMS_ATN_MASK      (1 << IPMI_KCS_SMS_ATN_BIT)
++#define IPMI_KCS_GET_SMS_ATN(d)    (((d) >> IPMI_KCS_SMS_ATN_BIT) & 0x1)
++#define IPMI_KCS_SET_SMS_ATN(d, v) ((d) = (((d) & ~IPMI_KCS_SMS_ATN_MASK) | \
++					((v) & 1) << IPMI_KCS_SMS_ATN_BIT))
++#define IPMI_KCS_CD_MASK           (1 << IPMI_KCS_CD_BIT)
++#define IPMI_KCS_GET_CD(d)         (((d) >> IPMI_KCS_CD_BIT) & 0x1)
++#define IPMI_KCS_SET_CD(d, v)      ((d) = (((d) & ~IPMI_KCS_CD_MASK) | \
++					(((v) & 1) << IPMI_KCS_CD_BIT)))
++
++#define IPMI_KCS_IDLE_STATE        0
++#define IPMI_KCS_READ_STATE        1
++#define IPMI_KCS_WRITE_STATE       2
++#define IPMI_KCS_ERROR_STATE       3
++
++#define IPMI_KCS_GET_STATE(d)    (((d) >> 6) & 0x3)
++#define IPMI_KCS_SET_STATE(d, v) ((d) = ((d) & ~0xc0) | (((v) & 0x3) << 6))
++
++#define IPMI_KCS_ABORT_STATUS_CMD       0x60
++#define IPMI_KCS_WRITE_START_CMD        0x61
++#define IPMI_KCS_WRITE_END_CMD          0x62
++#define IPMI_KCS_READ_CMD               0x68
++#define IPMI_KCS_STATUS_NO_ERR          0x00
++#define IPMI_KCS_STATUS_ABORTED_ERR     0x01
++#define IPMI_KCS_STATUS_BAD_CC_ERR      0x02
++#define IPMI_KCS_STATUS_LENGTH_ERR      0x06
++#define KCS_STATUS_CMD_DAT      BIT(3)
++
++typedef struct IPMIKCS {
++	union btlock lock;
++	uint8_t status_reg;
++	uint8_t data_out_reg;
++
++	int16_t data_in_reg;
++	int16_t cmd_reg;
++	int16_t reserved2;
++
++	uint32_t write_req;
++	uint32_t write_ack;
++
++	uint32_t reserved3;
++	uint32_t reserved4;
++} IPMIKCS;
++
++struct loongson_kcs_bmc {
++	struct list_head next;
++	IPMIKCS *kcs;
++	struct kcs_bmc *bmc;
++};
++#endif
+diff --git a/drivers/video/fbdev/ls2k500sfb.c b/drivers/video/fbdev/ls2k500sfb.c
+index a3722dcaada0..00a83ea7c1e3 100644
+--- a/drivers/video/fbdev/ls2k500sfb.c
++++ b/drivers/video/fbdev/ls2k500sfb.c
+@@ -111,6 +111,7 @@ static void ls2k500sfb_redraw_fn(struct work_struct *work)
+ 	switch_console(saved_console);
+ }
+ 
++static unsigned long event_jiffies;
+ static void ls2k500sfb_events_fn(struct work_struct *work)
+ {
+ 	struct ls2k500sfb_struct *priv = container_of(work, struct ls2k500sfb_struct, work);
+@@ -151,6 +152,7 @@ static void ls2k500sfb_events_fn(struct work_struct *work)
+ 	pci_write_config_dword(ppdev, 0x18, 0);
+ 	pci_write_config_dword(ppdev, 0x1c, 0);
+ 	pci_write_config_dword(ppdev, 0x20, 0);
++	event_jiffies = jiffies;
+ 	atomic_set(&waiting_for_pciebreak_ipi, 0);
+ 	wmb(); /* flush all write after change pcie window */
+ 	local_bh_enable();
+@@ -648,6 +650,7 @@ static struct platform_driver simplefb_driver = {
+ 	.remove = simplefb_remove,
+ };
+ 
++static void *kcs_data[2] = {&event_jiffies, &mscycles};
+ static int ls2k500sfb_probe(struct pci_dev *dev, const struct pci_device_id *id)
+ {
+ 	struct simplefb_platform_data mode;
+@@ -740,7 +743,8 @@ static int ls2k500sfb_probe(struct pci_dev *dev, const struct pci_device_id *id)
+ 	for (i = 0; i < 5; i++) {
+ 		res[0].start = phybase + 0x00f00000 + 0x1c*i;
+ 		res[0].end = phybase + 0x00f00000 + 0x1c*(i+1) - 1;
+-		platform_device_register_simple("ipmi_ls2k500_si", i, res, 1);
++		platform_device_register_resndata(NULL, "ipmi_ls2k500_si", i, res, 1,
++						kcs_data, sizeof(kcs_data));
+ 	}
+ 
+ 	return PTR_ERR_OR_ZERO(pd);
+-- 
+2.20.1
+

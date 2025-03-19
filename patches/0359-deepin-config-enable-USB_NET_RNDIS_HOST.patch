@@ -1,0 +1,26 @@
+From 3cc3836864f469edaae6f91979889ce206250966 Mon Sep 17 00:00:00 2001
+From: Wang huai <guanwentao@uniontech.com>
+Date: Wed, 12 Mar 2025 17:28:17 +0800
+Subject: [PATCH 359/360] deepin: config: enable USB_NET_RNDIS_HOST
+
+enable USB_NET_RNDIS_HOST for android phone usbnet share
+---
+ arch/x86/configs/deepin_x86_desktop_defconfig | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index e8f6e47440cc..8696f3c9c4a5 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -1472,6 +1472,8 @@ CONFIG_USB_PEGASUS=m
+ CONFIG_USB_RTL8150=m
+ CONFIG_USB_RTL8152=m
+ CONFIG_USB_LAN78XX=m
++CONFIG_USB_USBNET=m
++CONFIG_USB_NET_RNDIS_HOST=m
+ CONFIG_USB_HSO=m
+ CONFIG_USB_IPHETH=m
+ CONFIG_ADM8211=m
+-- 
+2.20.1
+

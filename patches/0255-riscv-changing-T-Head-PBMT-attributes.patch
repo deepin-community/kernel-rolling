@@ -1,0 +1,32 @@
+From 5213125022fdc4c2b1bd80bbc0906ee1cb9806fc Mon Sep 17 00:00:00 2001
+From: Icenowy Zheng <uwu@icenowy.me>
+Date: Fri, 24 Feb 2023 17:22:38 +0800
+Subject: [PATCH 255/360] riscv: changing T-Head PBMT attributes
+
+Originally the T-Head PBMT implementation in the kernel is intended for
+D1, thus the Sharable bit is not set. In addition, the Bufferable bit
+is not set for writecombine situation.
+
+Set these bits in the T-Head PBMT attributes definition.
+
+Signed-off-by: Icenowy Zheng <uwu@icenowy.me>
+---
+ arch/riscv/include/asm/pgtable-64.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/riscv/include/asm/pgtable-64.h b/arch/riscv/include/asm/pgtable-64.h
+index 0897dd99ab8d..9dd07a6cce4b 100644
+--- a/arch/riscv/include/asm/pgtable-64.h
++++ b/arch/riscv/include/asm/pgtable-64.h
+@@ -129,7 +129,7 @@ enum napot_cont_order {
+  * bit[61] B - Bufferable
+  * bit[60] SH - Shareable
+  * bit[59] Sec - Trustable
+- * 00110 - NC   Weakly-ordered, Non-cacheable, Bufferable, Shareable, Non-trustable
++ * 00010 - NC   Weakly-ordered, Non-cacheable, Non-bufferable, Shareable, Non-trustable
+  * 01110 - PMA  Weakly-ordered, Cacheable, Bufferable, Shareable, Non-trustable
+  * 10010 - IO   Strongly-ordered, Non-cacheable, Non-bufferable, Shareable, Non-trustable
+  */
+-- 
+2.20.1
+

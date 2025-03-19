@@ -1,0 +1,78 @@
+From 874feb0e52229e988f80d47d4f620d21b20d5470 Mon Sep 17 00:00:00 2001
+From: Lugang He <helugang@uniontech.com>
+Date: Fri, 12 Jan 2024 15:02:06 +0800
+Subject: [PATCH 008/360] scripts: adapt to UOS/deepin scripting
+
+Update scripts for use with build_kernel.sh.
+
+Signed-off-by: Lugang He <helugang@uniontech.com>
+Signed-off-by: Mingcong Bai <baimingcong@uniontech.com>
+---
+ Makefile                 | 9 +++------
+ scripts/build-version    | 8 +++++++-
+ scripts/package/mkdebian | 2 +-
+ 3 files changed, 11 insertions(+), 8 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 343c9f25433c..c059b0b025fc 100644
+--- a/Makefile
++++ b/Makefile
+@@ -354,7 +354,7 @@ else # !mixed-build
+ include $(srctree)/scripts/Kbuild.include
+ 
+ # Read KERNELRELEASE from include/config/kernel.release (if it exists)
+-KERNELRELEASE = $(call read-file, include/config/kernel.release)
++KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
+ KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
+ export VERSION PATCHLEVEL SUBLEVEL KERNELRELEASE KERNELVERSION
+ 
+@@ -1182,11 +1182,8 @@ vmlinux: vmlinux.o $(KBUILD_LDS) modpost
+ # make sure no implicit rule kicks in
+ $(sort $(KBUILD_LDS) $(KBUILD_VMLINUX_OBJS) $(KBUILD_VMLINUX_LIBS)): . ;
+ 
+-ifeq ($(origin KERNELRELEASE),file)
+-filechk_kernel.release = $(srctree)/scripts/setlocalversion $(srctree)
+-else
+-filechk_kernel.release = echo $(KERNELRELEASE)
+-endif
++filechk_kernel.release = \
++	echo "$$($(CONFIG_SHELL) $(srctree)/scripts/setlocalversion $(srctree))"
+ 
+ # Store (new) KERNELRELEASE string in include/config/kernel.release
+ include/config/kernel.release: FORCE
+diff --git a/scripts/build-version b/scripts/build-version
+index 537d45815083..0fbc0cd46f44 100755
+--- a/scripts/build-version
++++ b/scripts/build-version
+@@ -3,8 +3,14 @@
+ 
+ prev_ver=$(cat .version 2>/dev/null) &&
+ ver=$(expr ${prev_ver} + 1 2>/dev/null) ||
+-ver=1
+ 
++# Respect $prev_ver as the final build version ID.
++if [ X$prev_ver = "X" ]
++then
++	ver=1
++else
++	ver=$prev_ver
++fi
+ echo ${ver} > .version
+ 
+ echo ${ver}
+diff --git a/scripts/package/mkdebian b/scripts/package/mkdebian
+index fc3b7fa709fc..3505d5609b8a 100755
+--- a/scripts/package/mkdebian
++++ b/scripts/package/mkdebian
+@@ -152,7 +152,7 @@ version=$KERNELRELEASE
+ if [ "${KDEB_PKGVERSION:+set}" ]; then
+ 	packageversion=$KDEB_PKGVERSION
+ else
+-	packageversion=$(${srctree}/scripts/setlocalversion --no-local ${srctree})-$($srctree/scripts/build-version)
++	packageversion=$($srctree/init/build-version)
+ fi
+ sourcename=${KDEB_SOURCENAME:-linux-upstream}
+ 
+-- 
+2.20.1
+

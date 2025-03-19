@@ -1,0 +1,87 @@
+From 47457325b7e9dc3a7275dda800f12076ecc1900a Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Thu, 30 Nov 2023 15:59:27 +0800
+Subject: [PATCH 152/360] x86/tsc: Make cur->adjusted values in package#1 to be
+ the same
+
+zhaoxin inclusion
+category: bugfix
+CVE: NA
+
+-----------------
+
+When resume from S4 on Zhaoxin 2 packages platform that support
+X86_FEATURE_TSC_ADJUST, the following warning messages appear:
+
+[  327.445302] [Firmware Bug]: TSC ADJUST differs: CPU15 45960750 --> 78394770. Restoring
+[  329.209120] [Firmware Bug]: TSC ADJUST differs: CPU14 45960750 --> 78394770. Restoring
+[  329.209128] [Firmware Bug]: TSC ADJUST differs: CPU13 45960750 --> 78394770. Restoring
+[  329.209138] [Firmware Bug]: TSC ADJUST differs: CPU12 45960750 --> 78394770. Restoring
+[  329.209151] [Firmware Bug]: TSC ADJUST differs: CPU11 45960750 --> 78394770. Restoring
+[  329.209160] [Firmware Bug]: TSC ADJUST differs: CPU10 45960750 --> 78394770. Restoring
+[  329.209169] [Firmware Bug]: TSC ADJUST differs: CPU9 45960750 --> 78394770. Restoring
+
+The reason is:
+
+Step 1: Bring up.
+	TSC is sync after bring up with following settings:
+				MSR 0x3b	cur->adjusted
+	Package#0 CPU 0-7	  0		  0
+	Package#1 first CPU	  value1	  value1
+	Package#1 non-first CPU	  value1	  value1
+
+Step 2: Suspend to S4.
+	Settings in Step 1 are not changed in this Step.
+
+Step 3: Bring up caused by S4 wake up event.
+	TSC is sync when bring up with following settings:
+				MSR 0x3b	cur->adjusted
+	Package#0 CPU 0-7	  0		  0
+	Package#1 first CPU	  value2	  value2
+	Package#1 non-first CPU	  value2	  value2
+
+Step 4: Resume from S4.
+	When resuming from S4, Current TSC synchronous mechanism
+	cause following settings:
+				MSR 0x3b	cur->adjusted
+	Package#0 CPU 0-7	  0		  0
+	Package#1 first CPU	  value2	  value2
+	Package#1 non-first CPU	  value2	  value1
+
+In these Steps, value1 != 0 and value2 != value1.
+
+In Step4, as function tsc_store_and_check_tsc_adjust() do, when the value
+of MSR 0x3b on the non-first online CPU in package#1 is equal to the value
+of cur->adjusted on the first online CPU in the same package, the
+cur->adjusted value on this non-first online CPU will hold the old value1.
+This cause function tsc_verify_tsc_adjust() set the value of MSR 0x3b on
+the non-first online CPUs in the package#1 to the old value1 and print the
+beginning warning messages.
+
+Fix it by setting cur->adjusted value on the non-first online CPU in a
+package to the value of MSR 0x3b on the same CPU when they are not equal.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ arch/x86/kernel/tsc_sync.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/arch/x86/kernel/tsc_sync.c b/arch/x86/kernel/tsc_sync.c
+index 4334033658ed..3998d1f681bc 100644
+--- a/arch/x86/kernel/tsc_sync.c
++++ b/arch/x86/kernel/tsc_sync.c
+@@ -230,6 +230,11 @@ bool tsc_store_and_check_tsc_adjust(bool bootcpu)
+ 	if (bootval != ref->adjusted) {
+ 		cur->adjusted = ref->adjusted;
+ 		wrmsrl(MSR_IA32_TSC_ADJUST, ref->adjusted);
++	} else if (cur->adjusted != bootval) {
++		if (boot_cpu_data.x86_vendor == X86_VENDOR_CENTAUR ||
++			boot_cpu_data.x86_vendor == X86_VENDOR_ZHAOXIN) {
++			cur->adjusted = bootval;
++		}
+ 	}
+ 	/*
+ 	 * We have the TSCs forced to be in sync on this package. Skip sync
+-- 
+2.20.1
+

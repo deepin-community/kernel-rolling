@@ -1,0 +1,34 @@
+From 833a4cda0a736d6370778d6951ad6818316ac34a Mon Sep 17 00:00:00 2001
+From: Li Guohui <liguohui2061@phytium.com.cn>
+Date: Thu, 16 May 2024 16:39:07 +0800
+Subject: [PATCH 055/360] gpio : Phytium: Get max IRQ from platform_irq_count
+ function
+
+If set max gpio irq number from gpio->ngpio[0], it will
+get more IRQ than expected, So use platform_irq_count()
+to get the real IRQ num from device tree.
+
+Signed-off-by: Li Guohui <liguohui2061@phytium.com.cn>
+Signed-off-by: Liu Tianyu <liutianyu1250@phytium.com.cn>
+Signed-off-by: Li Mingzhe <limingzhe1839@phytium.com.cn>
+Signed-off-by: Wang Yinfeng <wangyinfeng@phytium.com.cn>
+---
+ drivers/gpio/gpio-phytium-platform.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/gpio/gpio-phytium-platform.c b/drivers/gpio/gpio-phytium-platform.c
+index 6c5d3b0a4bbb..b95f0315cf98 100644
+--- a/drivers/gpio/gpio-phytium-platform.c
++++ b/drivers/gpio/gpio-phytium-platform.c
+@@ -106,7 +106,7 @@ static int phytium_gpio_probe(struct platform_device *pdev)
+ 	girq->handler = handle_bad_irq;
+ 	girq->default_type = IRQ_TYPE_NONE;
+ 
+-	for (irq_count = 0; irq_count < gpio->ngpio[0]; irq_count++) {
++	for (irq_count = 0; irq_count < platform_irq_count(pdev); irq_count++) {
+ 		gpio->irq[irq_count] = -ENXIO;
+ 		gpio->irq[irq_count] = platform_get_irq(pdev, irq_count);
+ 		if (gpio->irq[irq_count] < 0) {
+-- 
+2.20.1
+

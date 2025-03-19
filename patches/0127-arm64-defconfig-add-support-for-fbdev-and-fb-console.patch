@@ -1,0 +1,33 @@
+From 315b4116c609c715e43ac67e393013e4c279b70a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=BF=98=E6=80=80?= <guanwentao@uniontech.com>
+Date: Thu, 4 Jul 2024 09:11:45 +0000
+Subject: [PATCH 127/360] arm64: defconfig: add support for fbdev and fb
+ console for tty
+
+---
+ arch/arm64/configs/deepin_arm64_desktop_defconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/configs/deepin_arm64_desktop_defconfig b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+index bf354cef9bd8..9cfcab229f9c 100644
+--- a/arch/arm64/configs/deepin_arm64_desktop_defconfig
++++ b/arch/arm64/configs/deepin_arm64_desktop_defconfig
+@@ -2771,7 +2771,6 @@ CONFIG_DVB_FIREDTV=m
+ CONFIG_PANEL=m
+ CONFIG_IMX_IPUV3_CORE=m
+ CONFIG_DRM=y
+-# CONFIG_DRM_FBDEV_EMULATION is not set
+ CONFIG_DRM_LOAD_EDID_FIRMWARE=y
+ CONFIG_DRM_DP_AUX_CHARDEV=y
+ CONFIG_DRM_DP_CEC=y
+@@ -2977,6 +2976,7 @@ CONFIG_BACKLIGHT_ADP8860=m
+ CONFIG_BACKLIGHT_ADP8870=m
+ CONFIG_BACKLIGHT_LM3630A=m
+ CONFIG_BACKLIGHT_GPIO=m
++CONFIG_FRAMEBUFFER_CONSOLE_LEGACY_ACCELERATION=y
+ CONFIG_LOGO=y
+ CONFIG_DRM_ACCEL=y
+ CONFIG_DRM_ACCEL_QAIC=m
+-- 
+2.20.1
+

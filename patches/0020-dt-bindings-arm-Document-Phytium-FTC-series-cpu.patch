@@ -1,0 +1,35 @@
+From 76c2e109c774d60886e83fa6795a9885fbeebb6e Mon Sep 17 00:00:00 2001
+From: Chen Baozi <chenbaozi@phytium.com.cn>
+Date: Fri, 14 Jul 2023 08:33:59 +0800
+Subject: [PATCH 020/360] dt-bindings: arm: Document Phytium FTC series cpu
+
+Document the compatible string for the FTC series cpus found in Phytium
+SoCs.
+
+Signed-off-by: Chen Baozi <chenbaozi@phytium.com.cn>
+Signed-off-by: Wang Yinfeng <wangyinfeng@phytium.com.cn>
+Signed-off-by: Jiakun Shuai <shuaijiakun1288@phytium.com.cn>
+---
+ Documentation/devicetree/bindings/arm/cpus.yaml | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/arm/cpus.yaml b/Documentation/devicetree/bindings/arm/cpus.yaml
+index f308ff6c3532..75feb8007370 100644
+--- a/Documentation/devicetree/bindings/arm/cpus.yaml
++++ b/Documentation/devicetree/bindings/arm/cpus.yaml
+@@ -188,6 +188,12 @@ properties:
+       - nvidia,tegra132-denver
+       - nvidia,tegra186-denver
+       - nvidia,tegra194-carmel
++      - phytium,ftc310
++      - phytium,ftc660
++      - phytium,ftc661
++      - phytium,ftc662
++      - phytium,ftc663
++      - phytium,ftc664
+       - qcom,krait
+       - qcom,kryo
+       - qcom,kryo240
+-- 
+2.20.1
+

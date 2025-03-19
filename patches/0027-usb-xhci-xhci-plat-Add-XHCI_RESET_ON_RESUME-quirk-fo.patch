@@ -1,0 +1,61 @@
+From 1d5d3d0b3cee187838c125f36485e11f23da0102 Mon Sep 17 00:00:00 2001
+From: Chen Zhenhua <chenzhenhua@phytium.com.cn>
+Date: Mon, 19 Feb 2024 15:31:10 +0800
+Subject: [PATCH 027/360] usb: xhci: xhci-plat: Add XHCI_RESET_ON_RESUME quirk
+ for Phytium Pe220x
+
+Phytium Pe220x xHCI host controller does not have suspend/resume
+support. Therefore, use of the XHCI_RESET_ON_RESUME quirk is
+mandatory in order to avoid failures after resume.
+
+Signed-off-by: Wang Zhimin <wangzhimin1179@phytium.com.cn>
+Signed-off-by: Chen Zhenhua <chenzhenhua@phytium.com.cn>
+---
+ drivers/usb/host/xhci-plat.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/drivers/usb/host/xhci-plat.c b/drivers/usb/host/xhci-plat.c
+index e6660472501e..1c64a349de27 100644
+--- a/drivers/usb/host/xhci-plat.c
++++ b/drivers/usb/host/xhci-plat.c
+@@ -113,6 +113,10 @@ static const struct xhci_plat_priv xhci_plat_brcm = {
+ 	.quirks = XHCI_RESET_ON_RESUME | XHCI_SUSPEND_RESUME_CLKS,
+ };
+ 
++static const struct xhci_plat_priv xhci_plat_phytium_pe220x = {
++	.quirks = XHCI_RESET_ON_RESUME,
++};
++
+ static const struct of_device_id usb_xhci_of_match[] = {
+ 	{
+ 		.compatible = "generic-xhci",
+@@ -136,6 +140,9 @@ static const struct of_device_id usb_xhci_of_match[] = {
+ 	}, {
+ 		.compatible = "brcm,bcm7445-xhci",
+ 		.data = &xhci_plat_brcm,
++	}, {
++		.compatible = "phytium,pe220x-xhci",
++		.data = &xhci_plat_phytium_pe220x,
+ 	},
+ 	{},
+ };
+@@ -409,6 +416,8 @@ static int xhci_generic_plat_probe(struct platform_device *pdev)
+ 
+ 	if (pdev->dev.of_node)
+ 		priv_match = of_device_get_match_data(&pdev->dev);
++	else if (has_acpi_companion(&pdev->dev))
++		priv_match = acpi_device_get_match_data(&pdev->dev);
+ 	else
+ 		priv_match = dev_get_platdata(&pdev->dev);
+ 
+@@ -567,6 +576,7 @@ EXPORT_SYMBOL_GPL(xhci_plat_pm_ops);
+ static const struct acpi_device_id usb_xhci_acpi_match[] = {
+ 	/* XHCI-compliant USB Controller */
+ 	{ "PNP0D10", },
++	{ "PHYT0039", (kernel_ulong_t)&xhci_plat_phytium_pe220x },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(acpi, usb_xhci_acpi_match);
+-- 
+2.20.1
+

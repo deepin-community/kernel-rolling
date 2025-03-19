@@ -1,0 +1,330 @@
+From 9065492af5904f66cbaca53152e0a48d5f9c1085 Mon Sep 17 00:00:00 2001
+From: leoliu-oc <leoliu-oc@zhaoxin.com>
+Date: Wed, 3 Jul 2024 11:38:04 +0800
+Subject: [PATCH 148/360] iommu/vt-d: Add support for detecting ACPI namespace
+ device in RMRR
+
+zhaoxin inclusion
+category: feature
+CVE: NA
+
+-----------------
+
+As below, ZX-200 xHCI mcu is a RMRR ANDD device in some case.
+
+[060h 0096   2]                Subtable Type : 0001 [Reserved Memory Region
+[062h 0098   2]                       Length : 0020
+
+[064h 0100   2]                     Reserved : 0000
+[066h 0102   2]           PCI Segment Number : 0000
+[068h 0104   8]                 Base Address : 00000000B5DA5000
+[070h 0112   8]          End Address (limit) : 00000000B5DDDFFF
+
+[078h 0120   1]            Device Scope Type : 05 [Namespace Device]
+[079h 0121   1]                 Entry Length : 08
+[07Ah 0122   2]                     Reserved : 0000
+[07Ch 0124   1]               Enumeration ID : 02
+[07Dh 0125   1]               PCI Bus Number : 09
+
+[07Eh 0126   2]                     PCI Path : 12,00
+
+iommu driver cannot find this device and build identity map for the RMRR
+region, DMAR faults would occur for xHCI controller.
+
+Add func dmar_acpi_bus_add_dev to find the RMRR ANDD device.
+
+Add func acpi_rmrr_andd_probe to build identity map for the RMRR region
+into the domain of the correspanding xHCI controller.
+
+Add func iova_reserve_domain_addr to keep away from RMRR region when using
+dma iova.
+
+Signed-off-by: leoliu-oc <leoliu-oc@zhaoxin.com>
+---
+ drivers/iommu/dma-iommu.c   | 19 ++++++++++++
+ drivers/iommu/intel/dmar.c  | 57 ++++++++++++++++++++++++++++++++++-
+ drivers/iommu/intel/iommu.c | 59 +++++++++++++++++++++++++++++++++++++
+ drivers/iommu/iommu.c       |  9 +++++-
+ include/linux/dmar.h        |  9 ++++++
+ include/linux/iommu.h       | 15 ++++++++++
+ 6 files changed, 166 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/iommu/dma-iommu.c b/drivers/iommu/dma-iommu.c
+index 2a9fa0c8cc00..27d53376e382 100644
+--- a/drivers/iommu/dma-iommu.c
++++ b/drivers/iommu/dma-iommu.c
+@@ -560,6 +560,25 @@ static int iova_reserve_pci_windows(struct pci_dev *dev,
+ 	return 0;
+ }
+ 
++int iova_reserve_domain_addr(struct iommu_domain *domain, dma_addr_t start, dma_addr_t end)
++{
++	struct iommu_dma_cookie *cookie = domain->iova_cookie;
++	struct iova_domain *iovad = &cookie->iovad;
++
++	unsigned long lo, hi;
++
++	lo = iova_pfn(iovad, start);
++	hi = iova_pfn(iovad, end);
++
++	if (!cookie)
++		return -EINVAL;
++
++	reserve_iova(iovad, lo, hi);
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(iova_reserve_domain_addr);
++
+ static int iova_reserve_iommu_regions(struct device *dev,
+ 		struct iommu_domain *domain)
+ {
+diff --git a/drivers/iommu/intel/dmar.c b/drivers/iommu/intel/dmar.c
+index 7f553f7aa3cb..fa7c34346649 100644
+--- a/drivers/iommu/intel/dmar.c
++++ b/drivers/iommu/intel/dmar.c
+@@ -768,6 +768,57 @@ static void __init dmar_acpi_insert_dev_scope(u8 device_number,
+ 		device_number, dev_name(&adev->dev));
+ }
+ 
++/* Return: > 0 if match found, 0 if no match found */
++bool dmar_rmrr_acpi_insert_dev_scope(u8 device_number, struct acpi_device *adev, void *start,
++				     void *end, struct dmar_dev_scope *devices, int devices_cnt)
++{
++	struct acpi_dmar_device_scope *scope;
++	struct device *tmp;
++	int i;
++	struct acpi_dmar_pci_path *path;
++
++	for (; start < end; start += scope->length) {
++		scope = start;
++		if (scope->entry_type != ACPI_DMAR_SCOPE_TYPE_NAMESPACE)
++			continue;
++		if (scope->enumeration_id != device_number)
++			continue;
++		path = (void *)(scope + 1);
++		pr_info("ACPI device \"%s\" under DMAR as %02x:%02x.%d\n", dev_name(&adev->dev),
++			scope->bus, path->device, path->function);
++		for_each_dev_scope(devices, devices_cnt, i, tmp)
++			if (tmp == NULL) {
++				devices[i].bus = scope->bus;
++				devices[i].devfn = PCI_DEVFN(path->device, path->function);
++				rcu_assign_pointer(devices[i].dev, get_device(&adev->dev));
++				return true;
++			}
++		WARN_ON(i >= devices_cnt);
++	}
++
++	return false;
++}
++
++static int dmar_acpi_bus_add_dev(u8 device_number, struct acpi_device *adev)
++{
++	struct dmar_drhd_unit *dmaru;
++	struct acpi_dmar_hardware_unit *drhd;
++	int ret;
++
++	for_each_drhd_unit(dmaru) {
++		drhd = container_of(dmaru->hdr, struct acpi_dmar_hardware_unit, header);
++		ret = dmar_rmrr_acpi_insert_dev_scope(device_number, adev, (void *)(drhd+1),
++						      ((void *)drhd)+drhd->header.length,
++						      dmaru->devices, dmaru->devices_cnt);
++		if (ret)
++			break;
++	}
++	if (ret > 0)
++		ret = dmar_rmrr_add_acpi_dev(device_number, adev);
++
++	return ret;
++}
++
+ static int __init dmar_acpi_dev_scope_init(void)
+ {
+ 	struct acpi_dmar_andd *andd;
+@@ -795,7 +846,11 @@ static int __init dmar_acpi_dev_scope_init(void)
+ 				       andd->device_name);
+ 				continue;
+ 			}
+-			dmar_acpi_insert_dev_scope(andd->device_number, adev);
++
++			if (apply_zhaoxin_dmar_acpi_a_behavior())
++				dmar_acpi_bus_add_dev(andd->device_number, adev);
++			else
++				dmar_acpi_insert_dev_scope(andd->device_number, adev);
+ 		}
+ 	}
+ 	return 0;
+diff --git a/drivers/iommu/intel/iommu.c b/drivers/iommu/intel/iommu.c
+index 9c46a4cd3848..fee2d1499551 100644
+--- a/drivers/iommu/intel/iommu.c
++++ b/drivers/iommu/intel/iommu.c
+@@ -2945,6 +2945,24 @@ static int dmar_ats_supported(struct pci_dev *dev, struct intel_iommu *iommu)
+ 	return ret;
+ }
+ 
++int dmar_rmrr_add_acpi_dev(u8 device_number, struct acpi_device *adev)
++{
++	int ret;
++	struct dmar_rmrr_unit *rmrru;
++	struct acpi_dmar_reserved_memory *rmrr;
++
++	list_for_each_entry(rmrru, &dmar_rmrr_units, list) {
++		rmrr = container_of(rmrru->hdr, struct acpi_dmar_reserved_memory, header);
++		ret = dmar_rmrr_acpi_insert_dev_scope(device_number, adev, (void *)(rmrr + 1),
++					((void *)rmrr) + rmrr->header.length,
++					rmrru->devices, rmrru->devices_cnt);
++		if (ret)
++			break;
++	}
++
++	return 0;
++}
++
+ int dmar_iommu_notify_scope_dev(struct dmar_pci_notify_info *info)
+ {
+ 	int ret;
+@@ -3157,6 +3175,43 @@ static int __init platform_optin_force_iommu(void)
+ 	return 1;
+ }
+ 
++static inline int acpi_rmrr_device_create_direct_mappings(struct iommu_domain *domain,
++				struct device *dev)
++{
++	int ret;
++
++	pr_info("rmrr andd dev:%s enter to %s\n", dev_name(dev), __func__);
++	ret = __acpi_rmrr_device_create_direct_mappings(domain, dev);
++
++	return ret;
++}
++
++static inline int acpi_rmrr_andd_probe(struct device *dev)
++{
++	struct intel_iommu *iommu = NULL;
++	struct pci_dev *pci_device = NULL;
++	u8 bus, devfn;
++	int ret = 0;
++
++	ret = iommu_probe_device(dev);
++
++	iommu = device_to_iommu(dev, &bus, &devfn);
++	if (!iommu) {
++		pr_info("dpoint-- cannot get acpi device corresponding iommu\n");
++		return -EINVAL;
++	}
++
++	pci_device = pci_get_domain_bus_and_slot(iommu->segment, bus, devfn);
++	if (!pci_device) {
++		pr_info("dpoint-- cannot get acpi devie corresponding pci_device\n");
++		return -EINVAL;
++	}
++	ret = acpi_rmrr_device_create_direct_mappings(iommu_get_domain_for_dev(&pci_device->dev),
++			dev);
++
++	return ret;
++}
++
+ static int __init probe_acpi_namespace_devices(void)
+ {
+ 	struct dmar_drhd_unit *drhd;
+@@ -3179,6 +3234,10 @@ static int __init probe_acpi_namespace_devices(void)
+ 			list_for_each_entry(pn,
+ 					    &adev->physical_node_list, node) {
+ 				ret = iommu_probe_device(pn->dev);
++
++				if (apply_zhaoxin_dmar_acpi_a_behavior())
++					ret = acpi_rmrr_andd_probe(dev);
++
+ 				if (ret)
+ 					break;
+ 			}
+diff --git a/drivers/iommu/iommu.c b/drivers/iommu/iommu.c
+index 83c8e617a2c5..002207fdcf70 100644
+--- a/drivers/iommu/iommu.c
++++ b/drivers/iommu/iommu.c
+@@ -1139,7 +1139,8 @@ static int iommu_create_device_direct_mappings(struct iommu_domain *domain,
+ 				map_size = 0;
+ 			}
+ 		}
+-
++		if (apply_zhaoxin_dmar_acpi_a_behavior())
++			iova_reserve_domain_addr(domain, start, end);
+ 	}
+ 
+ 	if (!list_empty(&mappings) && iommu_is_dma_domain(domain))
+@@ -1207,6 +1208,12 @@ static struct group_device *iommu_group_alloc_device(struct iommu_group *group,
+ 	return ERR_PTR(ret);
+ }
+ 
++int __acpi_rmrr_device_create_direct_mappings(struct iommu_domain *domain, struct device *dev)
++{
++	return iommu_create_device_direct_mappings(domain, dev);
++}
++EXPORT_SYMBOL_GPL(__acpi_rmrr_device_create_direct_mappings);
++
+ /**
+  * iommu_group_add_device - add a device to an iommu group
+  * @group: the group into which to add the device (reference should be held)
+diff --git a/include/linux/dmar.h b/include/linux/dmar.h
+index 499bb2c63483..33c72667ece2 100644
+--- a/include/linux/dmar.h
++++ b/include/linux/dmar.h
+@@ -112,6 +112,9 @@ extern int dmar_insert_dev_scope(struct dmar_pci_notify_info *info,
+ 				 void *start, void*end, u16 segment,
+ 				 struct dmar_dev_scope *devices,
+ 				 int devices_cnt);
++extern bool dmar_rmrr_acpi_insert_dev_scope(u8 device_number,
++				struct acpi_device *adev, void *start, void *end,
++				struct dmar_dev_scope *devices, int devices_cnt);
+ extern int dmar_remove_dev_scope(struct dmar_pci_notify_info *info,
+ 				 u16 segment, struct dmar_dev_scope *devices,
+ 				 int count);
+@@ -144,6 +147,7 @@ extern int dmar_check_one_atsr(struct acpi_dmar_header *hdr, void *arg);
+ extern int dmar_parse_one_satc(struct acpi_dmar_header *hdr, void *arg);
+ extern int dmar_release_one_atsr(struct acpi_dmar_header *hdr, void *arg);
+ extern int dmar_iommu_hotplug(struct dmar_drhd_unit *dmaru, bool insert);
++extern int dmar_rmrr_add_acpi_dev(u8 device_number, struct acpi_device *adev);
+ extern int dmar_iommu_notify_scope_dev(struct dmar_pci_notify_info *info);
+ #else /* !CONFIG_INTEL_IOMMU: */
+ static inline int intel_iommu_init(void) { return -ENODEV; }
+@@ -155,6 +159,11 @@ static inline void intel_iommu_shutdown(void) { }
+ #define	dmar_release_one_atsr		dmar_res_noop
+ #define	dmar_parse_one_satc		dmar_res_noop
+ 
++static inline int dmar_rmrr_add_acpi_dev(u8 device_number, struct acpi_device *adev)
++{
++	return 0;
++}
++
+ static inline int dmar_iommu_notify_scope_dev(struct dmar_pci_notify_info *info)
+ {
+ 	return 0;
+diff --git a/include/linux/iommu.h b/include/linux/iommu.h
+index bd722f473635..59fb34d86f01 100644
+--- a/include/linux/iommu.h
++++ b/include/linux/iommu.h
+@@ -853,6 +853,21 @@ void iommu_set_dma_strict(void);
+ extern int report_iommu_fault(struct iommu_domain *domain, struct device *dev,
+ 			      unsigned long iova, int flags);
+ 
++static inline bool apply_zhaoxin_dmar_acpi_a_behavior(void)
++{
++#if defined(CONFIG_CPU_SUP_ZHAOXIN) || defined(CONFIG_CPU_SUP_CENTAUR)
++	if (((boot_cpu_data.x86_vendor == X86_VENDOR_CENTAUR) ||
++	     (boot_cpu_data.x86_vendor == X86_VENDOR_ZHAOXIN)) &&
++	    ((boot_cpu_data.x86 == 7) && (boot_cpu_data.x86_model == 0x3b)))
++		return true;
++#endif
++	return false;
++}
++
++extern int iova_reserve_domain_addr(struct iommu_domain *domain, dma_addr_t start, dma_addr_t end);
++
++int __acpi_rmrr_device_create_direct_mappings(struct iommu_domain *domain, struct device *dev);
++
+ static inline void iommu_flush_iotlb_all(struct iommu_domain *domain)
+ {
+ 	if (domain->ops->flush_iotlb_all)
+-- 
+2.20.1
+

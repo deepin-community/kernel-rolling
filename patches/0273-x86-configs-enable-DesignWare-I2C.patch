@@ -1,0 +1,32 @@
+From 47062d2adf16b7479acc2a25c7100ec60eee8ebb Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Mon, 18 Nov 2024 18:00:45 +0800
+Subject: [PATCH 273/360] x86: configs: enable DesignWare I2C
+
+This is needed for the touchpad on Asus Vivobook S 2024 OLED to work.
+
+Enable some sub-modules for other similar devices, too.
+
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+---
+ arch/x86/configs/deepin_x86_desktop_defconfig | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index 5215ea13fbda..ce7fc1b001ba 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -2002,6 +2002,10 @@ CONFIG_I2C_VIA=m
+ CONFIG_I2C_VIAPRO=m
+ CONFIG_I2C_SCMI=m
+ CONFIG_I2C_CBUS_GPIO=m
++CONFIG_I2C_DESIGNWARE_CORE=m
++CONFIG_I2C_DESIGNWARE_SLAVE=y
++CONFIG_I2C_DESIGNWARE_AMDPSP=y
++CONFIG_I2C_DESIGNWARE_BAYTRAIL=y
+ CONFIG_I2C_EMEV2=m
+ CONFIG_I2C_GPIO=m
+ CONFIG_I2C_KEMPLD=m
+-- 
+2.20.1
+

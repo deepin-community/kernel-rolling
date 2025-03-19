@@ -1,0 +1,84 @@
+From 7350f1e036e2fd65c043700a974c0ed0231fb425 Mon Sep 17 00:00:00 2001
+From: Li Guohui <liguohui2061@phytium.com.cn>
+Date: Tue, 14 May 2024 16:25:30 +0800
+Subject: [PATCH 031/360] dt-bindings: phytium-ddma: Add bindings for Phytium
+ DDMA
+
+This patch document provide DT bindings for the Phytium DDMA controller.
+
+Signed-off-by: Li Guohui <liguohui2061@phytium.com.cn>
+Signed-off-by: Liu Tianyu <liutianyu1250@phytium.com.cn>
+Signed-off-by: Li Mingzhe <limingzhe1839@phytium.com.cn>
+Signed-off-by: Wang Yinfeng <wangyinfeng@phytium.com.cn>
+Signed-off-by: Lan Hengyu <lanhengyu1395@phytium.com.cn>
+---
+ .../devicetree/bindings/dma/phytium-ddma.yaml | 57 +++++++++++++++++++
+ 1 file changed, 57 insertions(+)
+ create mode 100644 Documentation/devicetree/bindings/dma/phytium-ddma.yaml
+
+diff --git a/Documentation/devicetree/bindings/dma/phytium-ddma.yaml b/Documentation/devicetree/bindings/dma/phytium-ddma.yaml
+new file mode 100644
+index 000000000000..098dbd867a19
+--- /dev/null
++++ b/Documentation/devicetree/bindings/dma/phytium-ddma.yaml
+@@ -0,0 +1,57 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++title: Phytium DDMA Controller bindings
++
++description:
++The Phytium DDMA is a general-purpose direct memory access
++controller capable of supporting 8 independent DMA channels.
++Each channel can have up to 32 requests.DMA clients connected
++to the Phytium DDMA controller must use the format described
++in the dma.txt file, using a two-cell specifier for each
++channel:
++  a phandle to the DMA controller plus the following two integer cells:
++    1. The channel id
++    2. The request line number
++
++maintainers:
++  - Huang Jie <huangjie1663@phytium.com.cn>
++
++allOf:
++  - $ref: "dma-controller.yaml#"
++
++properties:
++  "#dma-cells":
++    const: 2
++
++  compatible:
++    const: phytium,ddma
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  dma-channels:
++    minItems: 1
++    maxItems: 8
++    description: it indicates that the number of channels are used
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - dma-channels
++
++unevaluatedProperties: false
++
++examples:
++    ddma0: ddma@28003000 {
++        compatible = "phytium,ddma";
++        reg = <0x0 0x28003000 0x0 0x1000>;
++        interrupts = <GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>;
++        #dma-cells = <2>;
++        dma-channels = <8>;
++    };
++...
+-- 
+2.20.1
+

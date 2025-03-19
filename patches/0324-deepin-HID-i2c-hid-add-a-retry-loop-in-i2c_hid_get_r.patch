@@ -1,0 +1,56 @@
+From 8300abb65ae5081b4eac542d7ac71a5c60aed22e Mon Sep 17 00:00:00 2001
+From: Wentao Guan <guanwentao@uniontech.com>
+Date: Thu, 20 Feb 2025 11:21:25 +0800
+Subject: [PATCH 324/360] deepin: HID: i2c-hid: add a retry loop in
+ i2c_hid_get_report
+
+A touchscreen cannot work in matebook 14(FLMH model),
+failed in i2c_hid_get_report, it return -EAGAIN but retry in
+i2c-core is failed, it use i2c-desginware-pcidrv.
+usleep(400, 500) not okay,  usleep(4000, 5000) is okay.
+
+Signed-off-by: Wentao Guan <guanwentao@uniontech.com>
+---
+ drivers/hid/i2c-hid/i2c-hid-core.c | 26 ++++++++++++++++----------
+ 1 file changed, 16 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/hid/i2c-hid/i2c-hid-core.c b/drivers/hid/i2c-hid/i2c-hid-core.c
+index 4e87380d3edd..a1e63e6023ad 100644
+--- a/drivers/hid/i2c-hid/i2c-hid-core.c
++++ b/drivers/hid/i2c-hid/i2c-hid-core.c
+@@ -276,16 +276,22 @@ static int i2c_hid_get_report(struct i2c_hid *ihid,
+ 			   ihid->cmdbuf + length);
+ 	length += sizeof(__le16);
+ 
+-	/*
+-	 * In addition to report data device will supply data length
+-	 * in the first 2 bytes of the response, so adjust .
+-	 */
+-	error = i2c_hid_xfer(ihid, ihid->cmdbuf, length,
+-			     ihid->rawbuf, recv_len + sizeof(__le16));
+-	if (error) {
+-		dev_err(&ihid->client->dev,
+-			"failed to set a report to device: %d\n", error);
+-		return error;
++	for (int i = 0; i < 5; ++i) {
++		/*
++		 * In addition to report data device will supply data length
++		 * in the first 2 bytes of the response, so adjust .
++		 */
++		error = i2c_hid_xfer(ihid, ihid->cmdbuf, length,
++					ihid->rawbuf, recv_len + sizeof(__le16));
++		if (!error)
++			break;
++
++		if (error != -EAGAIN) {
++			dev_err(&ihid->client->dev,
++				"failed to set a report to device: %d\n", error);
++			return error;
++		}
++		usleep_range(4000, 5000);
+ 	}
+ 
+ 	/* The buffer is sufficiently aligned */
+-- 
+2.20.1
+

@@ -1,0 +1,2278 @@
+From 1eeb32b25ea8d89e8b25037d34421b1be7018cff Mon Sep 17 00:00:00 2001
+From: "Carrie.Cai" <carrie.cai@montage-tech.com>
+Date: Tue, 28 May 2024 14:57:29 +0800
+Subject: [PATCH 129/360] driver:crypto:add support for montage Mont-TSSE
+
+add Mont-TSSE driver
+
+Signed-off-by: Carrie.Cai <carrie.cai@montage-tech.com>
+---
+ arch/x86/configs/deepin_x86_desktop_defconfig |   1 +
+ drivers/crypto/Kconfig                        |   1 +
+ drivers/crypto/Makefile                       |   1 +
+ drivers/crypto/montage/Kconfig                |   3 +
+ drivers/crypto/montage/Makefile               |   3 +
+ drivers/crypto/montage/tsse/Kconfig           |   9 +
+ drivers/crypto/montage/tsse/Makefile          |  15 +
+ drivers/crypto/montage/tsse/tsse_dev.h        | 102 +++
+ drivers/crypto/montage/tsse/tsse_dev_drv.c    | 383 +++++++++++
+ drivers/crypto/montage/tsse/tsse_dev_drv.h    |  25 +
+ drivers/crypto/montage/tsse/tsse_dev_mgr.c    | 201 ++++++
+ drivers/crypto/montage/tsse/tsse_fw_service.c | 170 +++++
+ drivers/crypto/montage/tsse/tsse_fw_service.h |  19 +
+ drivers/crypto/montage/tsse/tsse_ipc.c        | 216 +++++++
+ drivers/crypto/montage/tsse/tsse_ipc.h        | 103 +++
+ drivers/crypto/montage/tsse/tsse_irq.c        |  30 +
+ drivers/crypto/montage/tsse/tsse_irq.h        |  30 +
+ drivers/crypto/montage/tsse/tsse_log.h        |  24 +
+ drivers/crypto/montage/tsse/tsse_service.c    |  28 +
+ drivers/crypto/montage/tsse/tsse_service.h    |  16 +
+ drivers/crypto/montage/tsse/tsse_vuart.c      | 596 ++++++++++++++++++
+ drivers/crypto/montage/tsse/tsse_vuart.h      |  23 +
+ drivers/crypto/montage/tsse/tsse_vuart_regs.h |  72 +++
+ 23 files changed, 2071 insertions(+)
+ create mode 100644 drivers/crypto/montage/Kconfig
+ create mode 100644 drivers/crypto/montage/Makefile
+ create mode 100644 drivers/crypto/montage/tsse/Kconfig
+ create mode 100644 drivers/crypto/montage/tsse/Makefile
+ create mode 100644 drivers/crypto/montage/tsse/tsse_dev.h
+ create mode 100644 drivers/crypto/montage/tsse/tsse_dev_drv.c
+ create mode 100644 drivers/crypto/montage/tsse/tsse_dev_drv.h
+ create mode 100644 drivers/crypto/montage/tsse/tsse_dev_mgr.c
+ create mode 100644 drivers/crypto/montage/tsse/tsse_fw_service.c
+ create mode 100644 drivers/crypto/montage/tsse/tsse_fw_service.h
+ create mode 100644 drivers/crypto/montage/tsse/tsse_ipc.c
+ create mode 100644 drivers/crypto/montage/tsse/tsse_ipc.h
+ create mode 100644 drivers/crypto/montage/tsse/tsse_irq.c
+ create mode 100644 drivers/crypto/montage/tsse/tsse_irq.h
+ create mode 100644 drivers/crypto/montage/tsse/tsse_log.h
+ create mode 100644 drivers/crypto/montage/tsse/tsse_service.c
+ create mode 100644 drivers/crypto/montage/tsse/tsse_service.h
+ create mode 100644 drivers/crypto/montage/tsse/tsse_vuart.c
+ create mode 100644 drivers/crypto/montage/tsse/tsse_vuart.h
+ create mode 100644 drivers/crypto/montage/tsse/tsse_vuart_regs.h
+
+diff --git a/arch/x86/configs/deepin_x86_desktop_defconfig b/arch/x86/configs/deepin_x86_desktop_defconfig
+index d39babadd09b..4efef28204d7 100644
+--- a/arch/x86/configs/deepin_x86_desktop_defconfig
++++ b/arch/x86/configs/deepin_x86_desktop_defconfig
+@@ -5546,6 +5546,7 @@ CONFIG_CRYPTO_DEV_ASPEED=m
+ CONFIG_CRYPTO_DEV_ASPEED_HACE_HASH=y
+ CONFIG_CRYPTO_DEV_ASPEED_HACE_CRYPTO=y
+ CONFIG_CRYPTO_DEV_ASPEED_ACRY=y
++CONFIG_CRYPTO_DEV_TSSE=m
+ CONFIG_PKCS8_PRIVATE_KEY_PARSER=m
+ CONFIG_PKCS7_TEST_KEY=m
+ CONFIG_SIGNED_PE_FILE_VERIFICATION=y
+diff --git a/drivers/crypto/Kconfig b/drivers/crypto/Kconfig
+index 08b1238bcd7b..fac52ffed83d 100644
+--- a/drivers/crypto/Kconfig
++++ b/drivers/crypto/Kconfig
+@@ -851,5 +851,6 @@ config CRYPTO_DEV_SA2UL
+ 
+ source "drivers/crypto/aspeed/Kconfig"
+ source "drivers/crypto/starfive/Kconfig"
++source "drivers/crypto/montage/Kconfig"
+ 
+ endif # CRYPTO_HW
+diff --git a/drivers/crypto/Makefile b/drivers/crypto/Makefile
+index ad4ccef67d12..c449cc04ba27 100644
+--- a/drivers/crypto/Makefile
++++ b/drivers/crypto/Makefile
+@@ -52,3 +52,4 @@ obj-y += hisilicon/
+ obj-$(CONFIG_CRYPTO_DEV_AMLOGIC_GXL) += amlogic/
+ obj-y += intel/
+ obj-y += starfive/
++obj-y += montage/
+diff --git a/drivers/crypto/montage/Kconfig b/drivers/crypto/montage/Kconfig
+new file mode 100644
+index 000000000000..e8e4b287a792
+--- /dev/null
++++ b/drivers/crypto/montage/Kconfig
+@@ -0,0 +1,3 @@
++# SPDX-License-Identifier: GPL-2.0
++
++source "drivers/crypto/montage/tsse/Kconfig"
+diff --git a/drivers/crypto/montage/Makefile b/drivers/crypto/montage/Makefile
+new file mode 100644
+index 000000000000..a50415fe10c7
+--- /dev/null
++++ b/drivers/crypto/montage/Makefile
+@@ -0,0 +1,3 @@
++# SPDX-License-Identifier: GPL-2.0
++
++obj-$(CONFIG_CRYPTO_DEV_TSSE) += tsse/
+diff --git a/drivers/crypto/montage/tsse/Kconfig b/drivers/crypto/montage/tsse/Kconfig
+new file mode 100644
+index 000000000000..5854f8e4525c
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/Kconfig
+@@ -0,0 +1,9 @@
++# SPDX-License-Identifier: GPL-2.0-only
++config CRYPTO_DEV_TSSE
++	tristate "Support for Montage(R) TSSE"
++	depends on X86 && PCI
++	select FW_LOADER
++	help
++	  Support for Montage(R) TSSE for accelerating crypto workloads.
++
++	  To compile this as a module, choose M here.
+\ No newline at end of file
+diff --git a/drivers/crypto/montage/tsse/Makefile b/drivers/crypto/montage/tsse/Makefile
+new file mode 100644
+index 000000000000..d67ffde3a5b0
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/Makefile
+@@ -0,0 +1,15 @@
++# SPDX-License-Identifier: GPL-2.0-or-later
++#
++# This file is part of tsse driver for Linux
++#
++# Copyright © 2023 Montage Technology. All rights reserved.
++
++obj-m += tsse.o
++
++tsse-objs := tsse_dev_mgr.o \
++	tsse_ipc.o \
++	tsse_fw_service.o \
++	tsse_service.o \
++	tsse_irq.o \
++	tsse_dev_drv.o \
++	tsse_vuart.o
+diff --git a/drivers/crypto/montage/tsse/tsse_dev.h b/drivers/crypto/montage/tsse/tsse_dev.h
+new file mode 100644
+index 000000000000..c16d2ae7c414
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_dev.h
+@@ -0,0 +1,102 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#ifndef __TSSE_DEV_H__
++#define __TSSE_DEV_H__
++#include <linux/kernel.h>
++#include <linux/device.h>
++#include <linux/module.h>
++#include <linux/pci.h>
++#include <linux/pci-ats.h>
++#include <linux/serial_core.h>
++#include <linux/firmware.h>
++#include "tsse_ipc.h"
++
++#define TSSE_PCI_MAX_BARS 4
++#define TSSE_FW_VERSION_LEN 32
++
++struct tsse_bar {
++	void __iomem *virt_addr;
++	resource_size_t addr;
++	resource_size_t size;
++};
++struct tsse_dev_pci {
++	struct pci_dev *pci_dev;
++	struct tsse_bar bars[TSSE_PCI_MAX_BARS];
++	u8 revid;
++};
++enum tsse_dev_status_bit {
++	TSSE_DEV_STATUS_STARTING = 0,
++	TSSE_DEV_STATUS_STARTED = 1
++
++};
++struct tsse_qpairs_bank {
++	struct tsse_dev *tsse_dev;
++	void __iomem *reg_base;
++
++	u32 num_qparis;
++	u32 irq_vec;
++};
++struct tsse_dev {
++	struct module *owner;
++	struct dentry *debugfs_dir;
++	unsigned long status;
++	struct list_head list;
++	struct tsse_dev_pci tsse_pci_dev;
++	struct tsse_qpairs_bank qpairs_bank;
++	atomic_t ref_count;
++	bool is_vf;
++	int id;
++	u32 num_irqs;
++	u32 num_vfs;
++	struct uart_port *port;
++	struct tsse_ipc *ipc;
++	void *adi;
++	void *mbx_hw;
++	const struct firmware *fw;
++	char fw_version[TSSE_FW_VERSION_LEN];
++	bool fw_version_exist;
++};
++#define TSSEDEV_TO_DEV(tssedev) (&((tssedev)->tsse_pci_dev.pci_dev->dev))
++#define TSSE_DEV_BARS(tssedev) ((tssedev)->tsse_pci_dev.bars)
++
++#include "tsse_log.h"
++
++struct list_head *tsse_devmgr_get_head(void);
++
++int tsse_dev_get(struct tsse_dev *tsse_dev);
++void tsse_dev_put(struct tsse_dev *tsse_dev);
++int tsse_devmgr_add_dev(struct tsse_dev *tsse_dev);
++void tsse_devmgr_rm_dev(struct tsse_dev *tdev);
++int tsse_prepare_restart_dev(struct tsse_dev *tdev);
++int tsse_start_dev(struct tsse_dev *tdev);
++
++static inline struct tsse_dev *pci_to_tsse_dev(struct pci_dev *pci_dev)
++{
++	return (struct tsse_dev *)pci_get_drvdata(pci_dev);
++}
++
++static inline int tsse_get_cur_node(void)
++{
++	int cpu, node;
++
++	cpu = get_cpu();
++	node = topology_physical_package_id(cpu);
++	put_cpu();
++
++	return node;
++}
++
++static inline int tsse_dev_started(struct tsse_dev *tdev)
++{
++	return test_bit(TSSE_DEV_STATUS_STARTED, &tdev->status);
++}
++static inline int tsse_dev_in_use(struct tsse_dev *tdev)
++{
++	return atomic_read(&tdev->ref_count) != 0;
++}
++#endif
+diff --git a/drivers/crypto/montage/tsse/tsse_dev_drv.c b/drivers/crypto/montage/tsse/tsse_dev_drv.c
+new file mode 100644
+index 000000000000..81cbf74ec91f
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_dev_drv.c
+@@ -0,0 +1,383 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#include <linux/kernel.h>
++#include <linux/device.h>
++#include <linux/module.h>
++#include <linux/moduleparam.h>
++#include <linux/pci.h>
++#include <linux/pci-ats.h>
++#include <linux/sysfs.h>
++
++#include "tsse_dev_drv.h"
++#include "tsse_vuart.h"
++#include "tsse_ipc.h"
++#include "tsse_fw_service.h"
++
++#define CLUSTER_SLOT_CONFIG_OFFSET 0x5780000
++#define QPAIR_SETTING_OFFSET 0x50000
++#define BAR_START 2
++#define BAR_END 4
++
++static DEFINE_IDA(tsse_ida);
++
++static inline void tsse_qpair_enable_pf(struct tsse_dev *tdev, bool enable)
++{
++	writel(enable ? 1 : 0,
++	       TSSE_DEV_BARS(tdev)[2].virt_addr +
++		   CLUSTER_SLOT_CONFIG_OFFSET + QPAIR_SETTING_OFFSET);
++}
++static int tsse_sriov_disable(struct tsse_dev *tdev)
++{
++	pci_disable_sriov(tdev->tsse_pci_dev.pci_dev);
++	tsse_qpair_enable_pf(tdev, true);
++
++	return 0;
++}
++
++static int tsse_sriov_configure(struct pci_dev *pdev, int num_vfs_param)
++{
++	int totalvfs = pci_sriov_get_totalvfs(pdev);
++	struct tsse_dev *tdev = pci_to_tsse_dev(pdev);
++	int ret = 0;
++
++	if ((!tdev) || (num_vfs_param < 0) || (totalvfs <= 0)) {
++		dev_err(&pdev->dev,
++			"%s %d: failed to config sriov, tdev=%p totalvfs=%d num_vfs_param=%d\n",
++			__func__, __LINE__, tdev, totalvfs, num_vfs_param);
++		return -EBADE;
++	}
++
++	if (num_vfs_param > totalvfs)
++		num_vfs_param = totalvfs;
++
++	dev_info(&pdev->dev, "%s %d: has total %d vfs, and enable %d vfs\n",
++		 __func__, __LINE__, totalvfs, num_vfs_param);
++
++	if ((num_vfs_param > TSSE_PF_MAX_IRQ_NUM) ||
++	    (num_vfs_param > TSSE_PF_MAX_QPAIR_NUM)) {
++		tsse_dev_err(
++			tdev,
++			"vfs number is greater than pf's \"max_irq_num=%d or max_qpairs_num=%d\"\n",
++			TSSE_PF_MAX_IRQ_NUM, TSSE_PF_MAX_QPAIR_NUM);
++		return -EBADE;
++	}
++
++	if (!tsse_dev_started(tdev)) {
++		dev_err(&pdev->dev, "%s %d: device is not started\n", __func__,
++			__LINE__);
++		return -EBADE;
++	}
++
++	if (tsse_dev_in_use(tdev)) {
++		dev_err(&pdev->dev, "%s %d: device is busy\n", __func__,
++			__LINE__);
++		return -EBUSY;
++	}
++
++	tsse_sriov_disable(tdev);
++
++	tsse_prepare_restart_dev(tdev);
++
++	tdev->num_vfs = num_vfs_param;
++
++	if (tdev->num_vfs > 0) {
++		tdev->num_irqs = TSSE_SRIOV_PF_MAX_IRQ_NUM;
++		tdev->qpairs_bank.num_qparis = TSSE_SRIOV_PF_MAX_QPAIR_NUM;
++	} else {
++		tdev->num_irqs = TSSE_PF_MAX_IRQ_NUM;
++		tdev->qpairs_bank.num_qparis = TSSE_PF_MAX_QPAIR_NUM;
++	}
++
++	tsse_dev_info(
++		tdev,
++		"num_irqs:%u num_qparis:%u qpairs' start irq vector index:%u qpairs' reg base:0x%lx\n",
++		tdev->num_irqs, tdev->qpairs_bank.num_qparis,
++		tdev->qpairs_bank.irq_vec, (ulong)tdev->qpairs_bank.reg_base);
++
++	ret = tsse_start_dev(tdev);
++	if (ret) {
++		dev_err(&pdev->dev, "%s %d: failed to start the device\n",
++			__func__, __LINE__);
++		return ret;
++	}
++
++	if (num_vfs_param > 0) {
++		tsse_qpair_enable_pf(tdev, false);
++		pci_enable_sriov(pdev, num_vfs_param);
++	}
++
++	return num_vfs_param;
++}
++
++/**
++ * tsse_image_load_store() - This function will be called when user
++ * writes string to /sys/bus/pci/devices/.../tsse_image_load.
++ * Driver will always loads /lib/firmware/tsse_firmware.bin.
++ * @dev: device
++ * @attr: device attribute
++ * @buf: string that user writes
++ * @count: string length that user writes
++ * Return: the number of bytes used from the buffer, here it is just the count argument.
++*/
++static ssize_t tsse_image_load_store(struct device *dev, struct device_attribute *attr,
++	const char *buf, size_t count)
++{
++	struct pci_dev *pdev = NULL;
++	struct tsse_dev *tdev = NULL;
++
++	pdev = container_of(dev, struct pci_dev, dev);
++	if (pdev)
++		tdev = pci_to_tsse_dev(pdev);
++	if (buf && count && tdev) {
++		tsse_dev_info(tdev, "receive command to load firmware %s\n", TSSE_FIRMWARE);
++		if (!tsse_fw_load(pdev, TSSE_FIRMWARE, &tdev->fw)) {
++			if (!get_firmware_version(tdev->fw, tdev->fw_version))
++				tdev->fw_version_exist = true;
++			if (tsse_fw_manual_load_ipc(pdev))
++				dev_err(&pdev->dev, "%s %d: firmware update failed\n",
++					__func__, __LINE__);
++		}
++	}
++	return count;
++}
++
++DEVICE_ATTR_WO(tsse_image_load);
++
++static int device_probe(struct pci_dev *pdev, const struct pci_device_id *id)
++{
++	int status = 0;
++	int bar;
++	u32 tmp_val;
++	struct tsse_dev *tdev;
++
++	if (!pdev->is_physfn) {
++		dev_err(&pdev->dev, "%s %d: this is not Physical fn\n",
++			__func__, __LINE__);
++		return -EPERM;
++	}
++
++	if (num_possible_nodes() > 1 && dev_to_node(&pdev->dev) < 0) {
++		dev_err(&pdev->dev,
++			"%s %d: invalid numa configuration for tsse\n",
++			__func__, __LINE__);
++		return -EINVAL;
++	}
++
++	tdev = kzalloc_node(sizeof(*tdev), GFP_KERNEL, dev_to_node(&pdev->dev));
++
++	if (!tdev)
++		return -ENOMEM;
++
++	status = pcim_enable_device(pdev);
++
++	if (status) {
++		dev_err(&pdev->dev, "pcim_enable_device failed\n");
++		goto out_err;
++	}
++
++	pci_set_master(pdev);
++
++	if (dma_set_mask(&pdev->dev, DMA_BIT_MASK(48))) {
++		if ((dma_set_mask(&pdev->dev, DMA_BIT_MASK(32)))) {
++			dev_err(&pdev->dev,
++				"failed to set tsse dma address width\n");
++			status = -EFAULT;
++			goto out_err;
++		} else {
++			dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
++		}
++
++	} else {
++		dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(48));
++	}
++
++	dma_set_max_seg_size(&pdev->dev, UINT_MAX);
++
++	status = pcim_iomap_regions(pdev, BIT(0) | BIT(2), TSSE_DEV_NAME);
++	if (status) {
++		dev_err(&pdev->dev, "I/O memory remapping failed\n");
++		goto out_err;
++	}
++
++	for (bar = BAR_START; bar < BAR_END;) {
++		TSSE_DEV_BARS(tdev)[bar].addr = pci_resource_start(pdev, bar);
++		TSSE_DEV_BARS(tdev)[bar].size = pci_resource_len(pdev, bar);
++		TSSE_DEV_BARS(tdev)
++		[bar].virt_addr = pcim_iomap_table(pdev)[bar];
++
++		dev_info(&pdev->dev,
++			 "bar[%d]: addr=0x%llx, size=0x%llx, virt_addr=0x%lx\n",
++			 bar, TSSE_DEV_BARS(tdev)[bar].addr,
++			 TSSE_DEV_BARS(tdev)[bar].size,
++			 (ulong)TSSE_DEV_BARS(tdev)[bar].virt_addr);
++
++		bar += 2;
++	}
++
++	tdev->owner = THIS_MODULE;
++	tdev->is_vf = false;
++	tdev->tsse_pci_dev.pci_dev = pdev;
++	tdev->id = ida_alloc(&tsse_ida, GFP_KERNEL);
++	if (tdev->id < 0) {
++		dev_err(&pdev->dev, "Unable to get id\n");
++		status = tdev->id;
++		goto out_err;
++	}
++
++	pci_set_drvdata(pdev, tdev);
++
++	tdev->num_irqs = TSSE_PF_MAX_IRQ_NUM;
++	tdev->qpairs_bank.num_qparis = TSSE_PF_MAX_QPAIR_NUM;
++	tdev->qpairs_bank.irq_vec = TSSE_PF_QPAIR_START_IRQ_VECTOR;
++	tdev->qpairs_bank.reg_base =
++		TSSE_DEV_BARS(tdev)[2].virt_addr + TSSE_PF_QPAIR_REG_BASE;
++
++	tsse_qpair_enable_pf(tdev, true);
++
++	tsse_dev_info(
++		tdev,
++		"num_irqs:%u num_qparis:%u qpairs' start irq vector index:%u qpairs' reg base:0x%lx\n",
++		tdev->num_irqs, tdev->qpairs_bank.num_qparis,
++		tdev->qpairs_bank.irq_vec, (ulong)tdev->qpairs_bank.reg_base);
++
++	if (tsse_devmgr_add_dev(tdev)) {
++		dev_err(&pdev->dev,
++			"%s %d: tsse_devmgr failed to add new device\n",
++			__func__, __LINE__);
++		status = -EFAULT;
++		goto out_err_ida_free;
++	}
++
++	if (vuart_init_port(pdev)) {
++		dev_err(&pdev->dev,
++			"%s %d: vuart_init_port failed to init vuart.\n",
++			__func__, __LINE__);
++		status = -EFAULT;
++		goto out_err_port_init;
++	}
++
++	tdev->fw_version_exist = false;
++	/* Its result not break driver init process */
++	if (!tsse_fw_load(pdev, TSSE_FIRMWARE, &tdev->fw)) {
++		if (!get_firmware_version(tdev->fw, tdev->fw_version))
++			tdev->fw_version_exist = true;
++	}
++
++	if (tsse_ipc_init(pdev)) {
++		dev_err(&pdev->dev,
++			"%s %d: tsse_ipc_init failed to tsse_ipc.\n", __func__,
++			__LINE__);
++		status = -EFAULT;
++		goto out_err_ipc;
++	}
++
++	if (sysfs_create_file(&pdev->dev.kobj, &dev_attr_tsse_image_load.attr)) {
++		dev_err(&pdev->dev,
++			"%s %d: sysfs_create_file failed for tsse image load.\n",
++			__func__, __LINE__);
++		status = -EFAULT;
++		goto out_err_image_load;
++	}
++
++	tsse_dev_info(tdev, "successful\n");
++
++	pci_read_config_dword(pdev, 0x720, &tmp_val);
++	tsse_dev_dbg(tdev, "the value of FILTER_MASK_2_REG is 0x%x\n", tmp_val);
++
++	return 0;
++out_err_image_load:
++	tsse_ipc_deinit(tdev);
++out_err_ipc:
++	vuart_uninit_port(pdev);
++out_err_port_init:
++	tsse_devmgr_rm_dev(tdev);
++out_err_ida_free:
++	ida_free(&tsse_ida, tdev->id);
++out_err:
++	kfree(tdev);
++	return status;
++}
++
++static void device_remove(struct pci_dev *pdev)
++{
++	struct tsse_dev *tdev = pci_to_tsse_dev(pdev);
++
++	pr_info("%s %d: pci_dev 0x%lx tsse_dev 0x%lx\n", __func__, __LINE__,
++		(ulong)pdev, (ulong)tdev);
++
++	tsse_sriov_disable(tdev);
++	if (tdev->fw) {
++		release_firmware(tdev->fw);
++		tdev->fw = NULL;
++	}
++	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_tsse_image_load.attr);
++	tsse_ipc_deinit(tdev);
++	vuart_uninit_port(pdev);
++	tsse_devmgr_rm_dev(tdev);
++	ida_free(&tsse_ida, tdev->id);
++	kfree(tdev);
++	dev_info(&pdev->dev, "%s %d: successful\n", __func__, __LINE__);
++}
++
++static const struct pci_device_id pci_ids[] = {
++	{
++		PCI_DEVICE(0x1b00, 0xc011),
++	},
++	{
++		PCI_DEVICE(0x1b00, 0xd011),
++	},
++	{ 0 }
++};
++
++static struct pci_driver pci_driver = {
++	.name = TSSE_DEV_NAME,
++	.id_table = pci_ids,
++	.probe = device_probe,
++	.remove = device_remove,
++	.sriov_configure = tsse_sriov_configure,
++};
++
++MODULE_DEVICE_TABLE(pci, pci_ids);
++
++static int __init tsse_init(void)
++{
++	int status;
++
++	status = vuart_register();
++	if (status) {
++		pr_err("vuart_register failed[%d].\n", status);
++		return status;
++	}
++
++	status = pci_register_driver(&pci_driver);
++	if (status) {
++		vuart_unregister();
++		return status;
++	}
++
++	pr_info(KBUILD_MODNAME ": loaded.\n");
++
++	return 0;
++}
++
++static void __exit tsse_exit(void)
++{
++	pci_unregister_driver(&pci_driver);
++	vuart_unregister();
++
++	pr_info(KBUILD_MODNAME ": unloaded.\n");
++}
++
++module_init(tsse_init);
++module_exit(tsse_exit);
++
++MODULE_AUTHOR("montage-tech.com");
++MODULE_DESCRIPTION("TSSE device driver");
++MODULE_VERSION("1.0.0");
++MODULE_LICENSE("GPL");
++MODULE_FIRMWARE(TSSE_FIRMWARE);
+diff --git a/drivers/crypto/montage/tsse/tsse_dev_drv.h b/drivers/crypto/montage/tsse/tsse_dev_drv.h
+new file mode 100644
+index 000000000000..6a05572a3849
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_dev_drv.h
+@@ -0,0 +1,25 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#ifndef __TSSE_DEV_DRV_H__
++#define __TSSE_DEV_DRV_H__
++#define TSSE_DEV_NAME "tsse"
++
++// TODO: need to support full qpairs
++#define TSSE_PF_MAX_QPAIR_NUM 16
++
++#define TSSE_PF_MAX_IRQ_NUM 96
++#define TSSE_PF_QPAIR_START_IRQ_VECTOR 32
++
++#define TSSE_SRIOV_PF_MAX_QPAIR_NUM 0
++#define TSSE_SRIOV_PF_MAX_IRQ_NUM 16
++
++#define TSSE_PF_QPAIR_REG_BASE 0x5700000
++
++#include "tsse_dev.h"
++
++#endif
+diff --git a/drivers/crypto/montage/tsse/tsse_dev_mgr.c b/drivers/crypto/montage/tsse/tsse_dev_mgr.c
+new file mode 100644
+index 000000000000..39553eb96832
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_dev_mgr.c
+@@ -0,0 +1,201 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#include <linux/types.h>
++#include <linux/module.h>
++#include <linux/mutex.h>
++#include <linux/list.h>
++#include <linux/device.h>
++#include <linux/iommu.h>
++#include <linux/delay.h>
++#include "tsse_dev.h"
++#include "tsse_irq.h"
++static DEFINE_MUTEX(tsse_dev_table_lock);
++static LIST_HEAD(tsse_dev_table);
++
++static DEFINE_MUTEX(algs_lock);
++
++static inline void tsse_list_del(struct list_head *entry)
++{
++	WRITE_ONCE(entry->next->prev, entry->prev);
++	WRITE_ONCE(entry->prev->next, entry->next);
++}
++static inline void tsse_list_add(struct list_head *new, struct list_head *prev,
++				 struct list_head *next)
++{
++	WRITE_ONCE(new->next, next);
++	WRITE_ONCE(new->prev, prev);
++	mb();  /* Make sure new node updates first */
++	WRITE_ONCE(next->prev, new);
++	WRITE_ONCE(prev->next, new);
++}
++
++static int tsse_dev_pf_get(struct tsse_dev *vf_tsse_dev)
++{
++	int ret = 0;
++	struct tsse_dev *pf_tsse_dev = NULL;
++	struct pci_dev *pf_pci_dev = NULL;
++
++	pf_pci_dev = vf_tsse_dev->tsse_pci_dev.pci_dev->physfn;
++
++	if (!pf_pci_dev)
++		return 0;
++
++	pf_tsse_dev = pci_to_tsse_dev(pf_pci_dev);
++	if (pf_tsse_dev) {
++		if (atomic_add_return(1, &pf_tsse_dev->ref_count) == 1) {
++			if (!try_module_get(pf_tsse_dev->owner))
++				ret = -EFAULT;
++		}
++	}
++	return ret;
++}
++
++static void tsse_dev_pf_put(struct tsse_dev *vf_tsse_dev)
++{
++	struct tsse_dev *pf_tsse_dev = NULL;
++	struct pci_dev *pf_pci_dev = NULL;
++
++	pf_pci_dev = vf_tsse_dev->tsse_pci_dev.pci_dev->physfn;
++
++	if (!pf_pci_dev)
++		return;
++
++	pf_tsse_dev = pci_to_tsse_dev(pf_pci_dev);
++	if (pf_tsse_dev) {
++		if (atomic_sub_return(1, &pf_tsse_dev->ref_count) == 0)
++			module_put(pf_tsse_dev->owner);
++	}
++}
++
++int tsse_dev_get(struct tsse_dev *tdev)
++{
++	int ref_count = atomic_add_return(1, &tdev->ref_count);
++
++	if (!tsse_dev_started(tdev)) {
++		atomic_sub(1, &tdev->ref_count);
++		return -EAGAIN;
++	}
++
++	if (ref_count == 1) {
++		if (!try_module_get(tdev->owner))
++			return -EFAULT;
++		if (tdev->is_vf)
++			return tsse_dev_pf_get(tdev);
++	}
++	return 0;
++}
++void tsse_dev_put(struct tsse_dev *tdev)
++{
++	if (atomic_sub_return(1, &tdev->ref_count) == 0) {
++		module_put(tdev->owner);
++		if (tdev->is_vf)
++			tsse_dev_pf_put(tdev);
++	}
++}
++
++static int tsse_stop_dev(struct tsse_dev *tdev, bool busy_exit)
++{
++	int times, max_retry = 150;
++
++	clear_bit(TSSE_DEV_STATUS_STARTING, &tdev->status);
++	clear_bit(TSSE_DEV_STATUS_STARTED, &tdev->status);
++
++	for (times = 0; times < max_retry; times++) {
++		if (!tsse_dev_in_use(tdev))
++			break;
++		msleep(100);
++	}
++
++	if (times >= max_retry) {
++		tsse_dev_err(tdev, "Failed to stop busy device\n");
++		if (busy_exit)
++			return -EBUSY;
++	}
++	if (tdev->qpairs_bank.num_qparis != 0) {
++		mutex_lock(&tsse_dev_table_lock);
++		tsse_list_del(&tdev->list);
++		mutex_unlock(&tsse_dev_table_lock);
++		tsse_dev_info(tdev, "removed from active dev table list\n");
++	}
++
++	tsse_dev_info(tdev, "device stopped\n");
++
++	return 0;
++}
++
++int tsse_start_dev(struct tsse_dev *tdev)
++{
++	struct tsse_dev *tmp_dev;
++	struct list_head *prev_node = &tsse_dev_table;
++	int ret = 0;
++
++	if (tdev->qpairs_bank.num_qparis == 0) {
++		set_bit(TSSE_DEV_STATUS_STARTED, &tdev->status);
++		tsse_dev_info(tdev, "device started\n");
++		return 0;
++	}
++
++	set_bit(TSSE_DEV_STATUS_STARTING, &tdev->status);
++
++	mutex_lock(&tsse_dev_table_lock);
++
++	list_for_each_entry(tmp_dev, &tsse_dev_table, list) {
++		if (tmp_dev == tdev) {
++			ret = -EEXIST;
++			tsse_dev_err(tdev,
++				     "The device cannot be added repeatedly\n");
++			goto clear_status;
++		}
++	}
++
++	set_bit(TSSE_DEV_STATUS_STARTED, &tdev->status);
++	tsse_list_add(&tdev->list, prev_node, prev_node->next);
++
++	tsse_dev_info(tdev, "device started\n");
++	mutex_unlock(&tsse_dev_table_lock);
++
++	return 0;
++clear_status:
++	mutex_unlock(&tsse_dev_table_lock);
++	clear_bit(TSSE_DEV_STATUS_STARTING, &tdev->status);
++	clear_bit(TSSE_DEV_STATUS_STARTED, &tdev->status);
++	return ret;
++}
++
++int tsse_prepare_restart_dev(struct tsse_dev *tdev)
++{
++	return tsse_stop_dev(tdev, false);
++}
++
++void tsse_devmgr_rm_dev(struct tsse_dev *tdev)
++{
++	tsse_stop_dev(tdev, false);
++	tsse_dev_free_irq_vectors(tdev);
++	msleep(300);
++}
++
++int tsse_devmgr_add_dev(struct tsse_dev *tdev)
++{
++	int ret;
++
++	ret = tsse_dev_alloc_irq_vectors(tdev);
++	if (ret == 0) {
++		atomic_set(&tdev->ref_count, 0);
++		tdev->status = 0;
++		ret = tsse_start_dev(tdev);
++
++		if (ret != 0)
++			tsse_dev_free_irq_vectors(tdev);
++	}
++	return ret;
++}
++
++struct list_head *tsse_devmgr_get_head(void)
++{
++	return &tsse_dev_table;
++}
+diff --git a/drivers/crypto/montage/tsse/tsse_fw_service.c b/drivers/crypto/montage/tsse/tsse_fw_service.c
+new file mode 100644
+index 000000000000..aeada6ec7fa0
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_fw_service.c
+@@ -0,0 +1,170 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#include <linux/types.h>
++#include <linux/errno.h>
++#include <linux/kernel.h>
++#include <linux/fs.h>
++#include <linux/io.h>
++#include <linux/uaccess.h>
++#include <linux/wait.h>
++#include <linux/mm.h>
++#include <linux/pci.h>
++#include <linux/string.h>
++#include <linux/firmware.h>
++
++#include "tsse_dev.h"
++#include "tsse_service.h"
++
++#define SEARCH_PATTERN "MT_CFG_BUILD_VERSION_DETAIL"
++#define SPACE_CH ' '
++
++static int fw_send_msg(struct tsse_ipc *tsseipc, struct ipc_msg *msg)
++{
++	u8 *h2d;
++	u32 int_reg;
++
++	mutex_lock(&tsseipc->list_lock);
++
++	int_reg = readl(tsseipc->virt_addr + HOST2MAIN_INTR_SET_OFFSET);
++	if ((int_reg & IPC_REGISTER_INT_SET) != 0) {
++		mutex_unlock(&tsseipc->list_lock);
++		return -EFAULT;
++	}
++	if (msg->header.i_len < sizeof(struct ipc_header) +
++		sizeof(struct msg_info) + sizeof(struct fw_load)) {
++		dev_err(tsseipc->dev, "msg format error\n");
++		return -EFAULT;
++	}
++	h2d = (u8 *)(tsseipc->virt_addr + HOST2MAIN_IPC_OFFSET);
++	memcpy_toio(h2d, msg, sizeof(struct ipc_header));
++	memcpy_toio(h2d + sizeof(struct ipc_header), (u8 *)msg->i_data,
++		    msg->header.i_len - sizeof(struct ipc_header));
++	writel(0x1, tsseipc->virt_addr + HOST2MAIN_INTR_SET_OFFSET);
++
++	dev_info(tsseipc->dev, "notify device to get firmware\n");
++	mutex_unlock(&tsseipc->list_lock);
++	return 0;
++}
++
++/**
++ * get_firmware_version() - Get version information from firmware
++ * @fw: firmware pointer
++ * @fw_version_out: firmware version string output
++ * Return: 0 on success, error code otherwise
++*/
++int get_firmware_version(const struct firmware *fw, char *fw_version_out)
++{
++	const char *pattern = SEARCH_PATTERN;
++	const uint8_t *fw_buffer = fw->data;
++	uint32_t pattern_i = 0, buffer_i = 0;
++	uint32_t pattern_len = strlen(pattern); // Not include "\0"
++	uint32_t version_start = 0;
++	uint32_t version_len = 0;
++
++	while (buffer_i < fw->size) {
++		if (pattern[pattern_i] == (char) fw_buffer[buffer_i]) {
++			buffer_i++;
++			pattern_i++;
++		}
++		if (pattern_i == pattern_len) {
++			break;	// pattern found
++		} else if ((buffer_i < fw->size) &&
++			 (pattern[pattern_i] != (char) fw_buffer[buffer_i])) {
++			// mismatch after pattern_i matches
++			if (pattern_i != 0) {
++				// since the pattern has no common prefix, when mismatch,
++				// the next compare should start from pattern beginning
++				pattern_i = 0;
++			} else {
++				buffer_i++;
++			}
++		}
++	}
++	if (pattern_i == pattern_len) {
++		buffer_i++;
++		version_start = buffer_i;
++		while (buffer_i < fw->size) {
++			if (fw_buffer[buffer_i] == SPACE_CH) {
++				version_len = buffer_i - version_start;
++				if (version_len >= TSSE_FW_VERSION_LEN - 1)
++					version_len = TSSE_FW_VERSION_LEN - 2;
++				strscpy(fw_version_out, fw_buffer + version_start, version_len + 1);
++				return 0;
++			}
++			buffer_i++;
++		}
++	}
++	return -EINVAL;
++}
++
++/**
++ * fw_service() - Firmware service to handle IPC message from mainCPU.
++ * It will write init or manual load firmware to PCIe BAR and send message back.
++ * @tsseipc_t: pointer to a structure used for IPC
++ * @msg_t: pointer to IPC message
++*/
++void fw_service(void *tsseipc_t, void *msg_t)
++{
++	void __iomem *fw;
++	uint32_t size;
++	uint32_t task_offset;
++	struct fw_load *fw_task;
++	struct tsse_dev *tdev;
++	struct tsse_ipc *tsseipc = (struct tsse_ipc *)tsseipc_t;
++	struct ipc_msg *msg = (struct ipc_msg *)msg_t;
++
++	task_offset = sizeof(struct msg_info);
++	fw_task = (struct fw_load *)((uint8_t *)msg->i_data + task_offset);
++	tdev = pci_to_tsse_dev(tsseipc->pdev);
++
++	if (!tdev || !tdev->fw) {
++		fw_task->result = 1;
++		fw_task->size = 0;
++		dev_info(tsseipc->dev, "firmware loading failed\n");
++		if (fw_send_msg(tsseipc, msg))
++			dev_err(tsseipc->dev, "notify device failed\n");
++		return;
++	}
++
++	fw_task->result = 0;
++	fw_task->size = tdev->fw->size;
++	size = tdev->fw->size;
++	fw = tsseipc->virt_addr + fw_task->offset + FW_BASE;
++
++	memcpy_toio((u8 *)fw, tdev->fw->data, size);
++	dev_info(tsseipc->dev, "firmware loading done\n");
++	if (fw_send_msg(tsseipc, msg))
++		dev_err(tsseipc->dev, "notify device failed\n");
++
++	if (tdev->fw_version_exist)
++		dev_info(tsseipc->dev, "firmware version: %s\n", tdev->fw_version);
++
++	if (tdev->fw) {
++		release_firmware(tdev->fw);
++		tdev->fw = NULL;
++		memset(tdev->fw_version, 0, TSSE_FW_VERSION_LEN);
++		tdev->fw_version_exist = false;
++	}
++}
++
++/**
++ * tsse_fw_load() - Load firmware from /lib/firmware
++ * @pdev: pci device
++ * @name: firmware file name
++ * @fw: pointer to firmware pointer
++ * Return: 0 on success, error code otherwise
++*/
++int tsse_fw_load(struct pci_dev *pdev, const char *name, const struct firmware **fw)
++{
++	int result;
++
++	result = request_firmware(fw, name, &pdev->dev);
++	if (result)
++		dev_err(&pdev->dev, "%s failed for %s\n", __func__, name);
++	return result;
++}
+diff --git a/drivers/crypto/montage/tsse/tsse_fw_service.h b/drivers/crypto/montage/tsse/tsse_fw_service.h
+new file mode 100644
+index 000000000000..706ea6d29769
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_fw_service.h
+@@ -0,0 +1,19 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#ifndef __TSSE_FW_SERVICE_H__
++#define __TSSE_FW_SERVICE_H__
++
++#include <linux/firmware.h>
++
++#define FW_BASE 0x7000000
++#define TSSE_FIRMWARE "tsse_firmware.bin"
++
++void fw_service(void *tsseipc_t, void *msg_t);
++int tsse_fw_load(struct pci_dev *pdev, const char *name, const struct firmware **fw);
++int get_firmware_version(const struct firmware *fw, char *fw_version_out);
++#endif
+diff --git a/drivers/crypto/montage/tsse/tsse_ipc.c b/drivers/crypto/montage/tsse/tsse_ipc.c
+new file mode 100644
+index 000000000000..c03d5209551b
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_ipc.c
+@@ -0,0 +1,216 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#include <linux/module.h>
++#include <linux/types.h>
++#include <linux/kernel.h>
++#include <linux/init.h>
++
++#include "tsse_ipc.h"
++#include "tsse_dev.h"
++#include "tsse_service.h"
++
++/**
++ * get_msginf() - Create ipc_msg and read message from BAR.
++ * Return the pointer to ipc_msg, the caller is responsible for free it.
++ * @d2h: device2host memory pointer
++ * Return: new ipc_msg pointer, which points to message read from device
++*/
++static struct ipc_msg *get_msginf(void __iomem *d2h)
++{
++	uint32_t u_len = 0;
++	struct ipc_msg *msg = NULL;
++
++	uint8_t *device_msg_data = NULL;
++	struct ipc_header *ipc_info = (struct ipc_header *)d2h;
++
++	// The memory layout in d2h should at least contains:
++	// ipc_header, msg_info and fw_load (message body)
++	if (ipc_info->i_len < sizeof(struct ipc_header) +
++		sizeof(struct msg_info) + sizeof(struct fw_load)) {
++		pr_info("%s(): msg format error\n", __func__);
++		return NULL;
++	}
++	u_len = ipc_info->i_len - sizeof(struct ipc_header);
++	msg = (struct ipc_msg *)(kzalloc(sizeof(struct ipc_msg) + u_len,
++					      GFP_ATOMIC));
++	if (!msg) {
++		pr_info("%s(): ipc_msg kzalloc failed\n", __func__);
++		return NULL;
++	}
++
++	msg->header.inst_id = ipc_info->inst_id;
++	msg->header.tgid = ipc_info->tgid;
++	msg->header.i_len = ipc_info->i_len;
++
++	device_msg_data = (uint8_t *)(d2h + sizeof(struct ipc_header));
++	memcpy_fromio((uint8_t *)msg->i_data, device_msg_data, u_len);
++
++	return msg;
++}
++
++static irqreturn_t tsse_ipc_d2h_irqhandler(int irq, void *dev_id)
++{
++	struct tsse_ipc *tsseipc = (struct tsse_ipc *)dev_id;
++
++	writel(0x0, tsseipc->virt_addr + MAIN2HOST_INTR_SET_OFFSET);
++	tasklet_hi_schedule(&tsseipc->ipc_handle);
++	dev_err(tsseipc->dev, "irq%d\n", irq);
++	return IRQ_HANDLED;
++}
++
++bool check_send_enbit(struct tsse_ipc *tsseipc)
++{
++	u32 int_reg;
++
++	int_reg = readl(tsseipc->virt_addr + HOST2MAIN_INTR_SET_OFFSET);
++	if ((int_reg & IPC_REGISTER_INT_SET) == 0)
++		return true;
++	else
++		return false;
++}
++
++void notify_device(struct tsse_ipc *tsseipc)
++{
++	writel(0x1, tsseipc->virt_addr + HOST2MAIN_INTR_SET_OFFSET);
++	return;
++
++}
++
++/**
++ * ipc_hw_init()- Enable main2host interrupt, cleanup interrupt
++ * set value in host2main and main2host.
++ * @hw_ipc: pointer to a structure used for IPC
++*/
++static void ipc_hw_init(struct tsse_ipc *hw_ipc)
++{
++	writel(0x1, hw_ipc->virt_addr + MAIN2HOST_INTR_ENABLE_OFFSET);
++	writel(0x0, hw_ipc->virt_addr + HOST2MAIN_INTR_SET_OFFSET);
++	writel(0x0, hw_ipc->virt_addr + MAIN2HOST_INTR_SET_OFFSET);
++}
++
++static int ipc_init_msg(struct tsse_ipc *tsseipc)
++{
++	u8 *h2d;
++	u32 int_reg;
++	u32 cmd_len;
++	u32 i_len;
++	struct ipc_msg *msg;
++	struct msg_info *info_msg;
++
++	cmd_len = sizeof(uint32_t);
++	i_len = sizeof(struct ipc_header) + sizeof(struct msg_info) + cmd_len;
++	msg = (struct ipc_msg *)(kzalloc(i_len, GFP_ATOMIC));
++
++	if (!msg) {
++		pr_info("%s(): msg kzalloc failed\n", __func__);
++		return -EFAULT;
++	}
++	msg->header.i_len = i_len;
++	info_msg = (struct msg_info *)msg->i_data;
++	info_msg->msg_class = IPC_MESSAGE_BASIC;
++	*(uint32_t *)((uint8_t *)msg->i_data + sizeof(struct msg_info)) = IPC_BASIC_CMD_HOST_INIT;
++
++	mutex_lock(&tsseipc->list_lock);
++	int_reg = readl(tsseipc->virt_addr + HOST2MAIN_INTR_SET_OFFSET);
++	if ((int_reg & IPC_REGISTER_INT_SET) != 0) {
++		mutex_unlock(&tsseipc->list_lock);
++		kfree(msg);
++		return -EFAULT;
++	}
++	h2d = (u8 *)(tsseipc->virt_addr + HOST2MAIN_IPC_OFFSET);
++
++	memcpy_toio(h2d, msg, sizeof(struct ipc_header));
++	memcpy_toio(h2d + sizeof(struct ipc_header), (u8 *)msg->i_data,
++		    sizeof(struct msg_info) + sizeof(uint32_t));
++
++	writel(0x1, tsseipc->virt_addr + HOST2MAIN_INTR_SET_OFFSET);
++	mutex_unlock(&tsseipc->list_lock);
++	kfree(msg);
++
++	return 0;
++}
++
++static void tsse_ipc_bh_handler(unsigned long data)
++{
++	struct tsse_ipc *tsseipc = (struct tsse_ipc *)data;
++
++	void __iomem *d2h_payload = tsseipc->virt_addr + MAIN2HOST_IPC_OFFSET;
++	struct ipc_msg *msg = get_msginf(d2h_payload);
++
++	if (!msg) {
++		dev_err(tsseipc->dev, "get_msginf is NULL\n");
++		return;
++	}
++	if (service_rout(tsseipc, msg))
++		dev_err(tsseipc->dev, "illegal message class\n");
++	kfree(msg);
++}
++
++int tsse_ipc_init(struct pci_dev *pdev)
++{
++	struct tsse_dev *tdev = pci_to_tsse_dev(pdev);
++	struct tsse_ipc *ipc;
++	int rc;
++
++	ipc = devm_kzalloc(&pdev->dev, sizeof(*ipc), GFP_KERNEL);
++	if (ipc == NULL)
++		return -ENOMEM;
++	tdev->ipc = ipc;
++	ipc->pdev = pdev;
++	ipc->dev = &pdev->dev;
++	ipc->virt_addr = TSSE_DEV_BARS(tdev)[2].virt_addr;
++
++	mutex_init(&ipc->list_lock);
++	tasklet_init(&(ipc->ipc_handle), tsse_ipc_bh_handler,
++		     (ulong)(ipc));
++
++	rc = request_threaded_irq(pci_irq_vector(pdev, 0), NULL,
++				  tsse_ipc_d2h_irqhandler, IRQF_SHARED,
++				  "pf-ipc", ipc);
++	if (rc) {
++		dev_err(&pdev->dev, "request_threaded_irq failed\n");
++		return rc;
++	}
++	ipc_hw_init(ipc);
++	rc = ipc_init_msg(ipc);
++	if (rc) {
++		dev_err(&pdev->dev, "ipc_init_msg failed\n");
++		tsse_ipc_deinit(tdev);
++	}
++	return rc;
++}
++
++void tsse_ipc_deinit(void *tdev_t)
++{
++	struct tsse_ipc *tsseipc;
++	struct pci_dev *pdev;
++	struct tsse_dev *tdev;
++
++	tdev = tdev_t;
++	tsseipc = tdev->ipc;
++	pdev = tsseipc->pdev;
++	if (tsseipc) {
++		free_irq(pci_irq_vector(pdev, 0), tdev->ipc);
++		tdev->ipc = NULL;
++	}
++}
++
++int tsse_fw_manual_load_ipc(struct pci_dev *pdev)
++{
++	struct tsse_dev *tdev = pci_to_tsse_dev(pdev);
++	struct tsse_ipc *ipc = tdev->ipc;
++	int rc = -EFAULT;
++
++	if (ipc) {
++		ipc_hw_init(ipc);
++		rc = ipc_init_msg(ipc);
++		if (rc)
++			dev_err(&pdev->dev, "ipc_init_msg failed\n");
++	}
++	return rc;
++}
+diff --git a/drivers/crypto/montage/tsse/tsse_ipc.h b/drivers/crypto/montage/tsse/tsse_ipc.h
+new file mode 100644
+index 000000000000..82f8df71c983
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_ipc.h
+@@ -0,0 +1,103 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#ifndef __TM_HOST_IPC_H__
++#define __TM_HOST_IPC_H__
++
++#include <linux/types.h>
++#include <linux/mutex.h>
++#include <linux/interrupt.h>
++
++#define TSSE_PASID_SVA
++
++#define HOST2MAIN_INTR_SET_OFFSET 0x2000
++#define HOST2MAIN_INTR_ENABLE_OFFSET 0x2004
++#define HOST2MAIN_ACK_INTR_CLR_OFFSET 0x2008
++#define HOST2MAIN_ACK_INTR_ENABLE_OFFSET 0x200c
++#define HOST2MAIN_VLD_INTR_STATUS_OFFSET 0x2010
++#define HOST2MAIN_ACK_INTR_STATUS_OFFSET 0x2014
++#define MSIX_MASK_EN_REG_OFFSET 0x2020
++#define INTR_MASK_BIT_OFFSET 0x2024
++#define INTR_PENDING_BIT_OFFSET 0x2028
++#define HOST2MAIN_IPC_OFFSET 0x2400
++
++#define MAIN2HOST_INTR_SET_OFFSET 0x3000
++#define MAIN2HOST_INTR_ENABLE_OFFSET 0x3004
++#define MAIN2HOST_ACK_INTR_CLR_OFFSET 0x3008
++#define MAIN2HOST_ACK_INTR_ENABLE_OFFSET 0x300c
++#define MAIN2HOST_VEN_MSI_FUNC_NUM_OFFSET 0x3010
++#define MAIN2HOST_VEN_MSI_VFUNC_ACTIVE_OFFSET 0x3014
++#define MAIN2HOST_IPC_OFFSET 0x3400
++
++#define IPC_REGISTER_INT_SET BIT(0)
++#define IPC_REGISTER_INT_MASK BIT(1)
++
++enum IPC_BASIC_CMD {
++	IPC_BASIC_CMD_HOST_INIT = 0x1,
++	IPC_BASIC_CMD_PING = 0x2
++};
++
++enum IPC_BOOT_CMD {
++	IPC_BOOT_CMD_GET_FIRMWARE = 0x1
++};
++
++enum IPC_MESSAGE_CLASS {
++	IPC_MESSAGE_BASIC = 1,
++	IPC_MESSAGE_BOOT,
++	IPC_MESSAGE_CLASS_NUM,
++};
++
++struct ipc_header {
++	uint32_t inst_id;
++	pid_t tgid;
++	uint32_t i_len;
++	uint32_t pasid : 20;
++	uint32_t reserved_1 : 4;
++	uint32_t pasid_en : 8;
++
++	uint32_t reserved[2];
++};
++
++struct ipc_msg {
++	struct ipc_header header;
++	uint32_t i_data[];
++};
++
++struct fw_load {
++	uint32_t command;
++	uint32_t result;
++	uint8_t name[32];
++	uint32_t offset;
++	uint32_t size;
++};
++
++struct msg_info {
++	uint32_t host_id;
++	uint32_t msg_class;
++	uint32_t flags;
++	uint32_t reserved[3];
++};
++
++struct ipc_layout {
++	struct ipc_header header;
++	struct msg_info info;
++};
++
++struct tsse_ipc {
++	struct device *dev;
++	struct pci_dev *pdev;
++	void __iomem *virt_addr;
++	struct mutex list_lock;
++	struct tasklet_struct ipc_handle;
++};
++
++int tsse_ipc_init(struct pci_dev *pdev);
++void tsse_ipc_deinit(void *tdev);
++int tsse_fw_manual_load_ipc(struct pci_dev *pdev);
++bool check_send_enbit(struct tsse_ipc *tsseipc);
++void notify_device(struct tsse_ipc *tsseipc);
++#endif
+diff --git a/drivers/crypto/montage/tsse/tsse_irq.c b/drivers/crypto/montage/tsse/tsse_irq.c
+new file mode 100644
+index 000000000000..8cb94fea3da4
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_irq.c
+@@ -0,0 +1,30 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#include <linux/msi.h>
++#include <linux/delay.h>
++#include "tsse_dev.h"
++#include "tsse_irq.h"
++
++#undef TSSE_IRQ_DBG
++
++int tsse_dev_alloc_irq_vectors(struct tsse_dev *tdev)
++{
++	int request_num = tdev->num_irqs;
++	int irq_num = pci_alloc_irq_vectors(tdev->tsse_pci_dev.pci_dev,
++					    request_num, request_num,
++					    PCI_IRQ_MSIX);
++
++	if (irq_num < 0) {
++		dev_err(TSSEDEV_TO_DEV(tdev),
++			"%s %d :failed to alloc MSIX interrupt vectors\n",
++			__func__, __LINE__);
++		return irq_num;
++	}
++
++	return 0;
++}
+diff --git a/drivers/crypto/montage/tsse/tsse_irq.h b/drivers/crypto/montage/tsse/tsse_irq.h
+new file mode 100644
+index 000000000000..09bed4e6d58a
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_irq.h
+@@ -0,0 +1,30 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#ifndef __TSSE_IRQ_H__
++#define __TSSE_IRQ_H__
++
++#include <linux/types.h>
++#include <linux/mutex.h>
++#include <linux/list.h>
++#include <linux/bitops.h>
++#include <linux/delay.h>
++#include <linux/spinlock.h>
++#include <linux/dma-mapping.h>
++
++#include <linux/irq.h>
++#include <linux/interrupt.h>
++#include "tsse_dev.h"
++
++static inline void tsse_dev_free_irq_vectors(struct tsse_dev *tdev)
++{
++	pci_free_irq_vectors(tdev->tsse_pci_dev.pci_dev);
++}
++
++int tsse_dev_alloc_irq_vectors(struct tsse_dev *tdev);
++
++#endif
+diff --git a/drivers/crypto/montage/tsse/tsse_log.h b/drivers/crypto/montage/tsse/tsse_log.h
+new file mode 100644
+index 000000000000..153cbe16374e
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_log.h
+@@ -0,0 +1,24 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#ifndef __TSSE_LOG_H__
++#define __TSSE_LOG_H__
++
++#define tsse_dev_err(tssedev, fmt, ...)                                        \
++	dev_err(TSSEDEV_TO_DEV(tssedev), "%s %d: " fmt, __func__, __LINE__,    \
++		##__VA_ARGS__)
++#define tsse_dev_warn(tssedev, fmt, ...)                                       \
++	dev_warn(TSSEDEV_TO_DEV(tssedev), "%s %d: " fmt, __func__, __LINE__,   \
++		 ##__VA_ARGS__)
++#define tsse_dev_info(tssedev, fmt, ...)                                       \
++	dev_info(TSSEDEV_TO_DEV(tssedev), "%s %d: " fmt, __func__, __LINE__,   \
++		 ##__VA_ARGS__)
++#define tsse_dev_dbg(tssedev, fmt, ...)                                        \
++	dev_dbg(TSSEDEV_TO_DEV(tssedev), "%s %d: " fmt, __func__, __LINE__,    \
++		##__VA_ARGS__)
++
++#endif
+diff --git a/drivers/crypto/montage/tsse/tsse_service.c b/drivers/crypto/montage/tsse/tsse_service.c
+new file mode 100644
+index 000000000000..e4be85535b77
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_service.c
+@@ -0,0 +1,28 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++#include <linux/errno.h>
++#include "tsse_service.h"
++
++int service_rout(struct tsse_ipc *tsseipc, struct ipc_msg *msg)
++{
++	struct msg_info *info;
++	uint32_t msg_class;
++	int ret = 0;
++
++	info = (struct msg_info *)msg->i_data;
++	msg_class = info->msg_class;
++	switch (msg_class) {
++	case IPC_MESSAGE_BOOT:
++		fw_service(tsseipc, msg);
++		break;
++
++	default:
++		ret = -EINVAL;
++		break;
++	}
++	return ret;
++}
+diff --git a/drivers/crypto/montage/tsse/tsse_service.h b/drivers/crypto/montage/tsse/tsse_service.h
+new file mode 100644
+index 000000000000..d5fd87ee7dce
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_service.h
+@@ -0,0 +1,16 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#ifndef __TSSE_SERVICE_H__
++#define __TSSE_SERVICE_H__
++
++#include "tsse_ipc.h"
++#include "tsse_fw_service.h"
++
++int service_rout(struct tsse_ipc *tsseipc, struct ipc_msg *msg);
++
++#endif
+diff --git a/drivers/crypto/montage/tsse/tsse_vuart.c b/drivers/crypto/montage/tsse/tsse_vuart.c
+new file mode 100644
+index 000000000000..f49d4ffc9f3c
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_vuart.c
+@@ -0,0 +1,596 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#include <linux/module.h>
++#include <linux/moduleparam.h>
++#include <linux/init.h>
++#include <linux/console.h>
++#include <linux/sysrq.h>
++#include <linux/delay.h>
++#include <linux/platform_device.h>
++#include <linux/tty.h>
++#include <linux/tty_flip.h>
++#include <linux/serial.h>
++#include <linux/serial_reg.h>
++#include <linux/mutex.h>
++#include <linux/nmi.h>
++#include <linux/version.h>
++#include <linux/bitops.h>
++#include <linux/slab.h>
++
++#include "tsse_dev.h"
++#include "tsse_vuart_regs.h"
++#include "tsse_vuart.h"
++
++#ifdef DEBUG
++#define VUART_PRINT(fmt, ...) pr_info(fmt, ##__VA_ARGS__)
++#else
++#define VUART_PRINT(fmt, ...)
++#endif
++
++#define TSSE_VUART_BAUD (38400)
++#define TSSE_VUART_MAX_RX_COUNT (256)
++#define BOTH_EMPTY (VUART_FSR_TXFIFOE | VUART_FSR_RXFIFO)
++struct tsse_vuart {
++	struct uart_port port;
++	unsigned int tx_threshold;
++	unsigned int rx_threshold;
++	unsigned int tx_loadsz;
++	unsigned char shutdown;
++	unsigned char confige_done;
++};
++
++#define SERIAL_LSR_NAME "tsse_vuart"
++
++static struct uart_driver g_vuart_reg = {
++	.owner = THIS_MODULE,
++	.driver_name = SERIAL_LSR_NAME,
++	.dev_name = "ttyTSSE",
++	.nr = TSSE_VUART_MAX_DEV,
++};
++
++static unsigned int g_trigger_level[4] = { 0, 31, 63, 111 };
++static unsigned long g_line[TSSE_VUART_BITMAP_SIZE];
++
++static unsigned int vuart_serial_in(struct uart_port *port, int offset)
++{
++	unsigned int ret = le32_to_cpu(readl(port->membase + offset));
++#ifdef DEBUG
++	pr_debug("%s offset 0x%x, v 0x%x\n", __func__, offset, ret);
++#endif
++	return ret;
++}
++
++static void vuart_serial_out(struct uart_port *port, int offset, int value)
++{
++#ifdef DEBUG
++	pr_debug("%s offset 0x%x, v 0x%x\n", __func__, offset, value);
++#endif
++	value = cpu_to_le32(value);
++	writel(value, port->membase + offset);
++}
++
++static void vuart_wait_for_xmitr(struct uart_port *port)
++{
++	unsigned int status, tmout = 10000;
++
++	for (;;) {
++		status = vuart_serial_in(port, VUART_FSR);
++		if (FIELD_GET(VUART_FSR_TXFIFOE, status))
++			break;
++		if (--tmout == 0) {
++			pr_err("%s:timeout(10ms), TX is not empty.\n",
++			       __func__);
++			break;
++		}
++		udelay(1);
++		touch_nmi_watchdog();
++	}
++}
++
++static unsigned int vuart_tx_empty(struct uart_port *port)
++{
++	unsigned long flags;
++	unsigned int lsr;
++
++	spin_lock_irqsave(&port->lock, flags);
++	lsr = vuart_serial_in(port, VUART_FSR);
++	spin_unlock_irqrestore(&port->lock, flags);
++
++	return (lsr & BOTH_EMPTY) == BOTH_EMPTY ? TIOCSER_TEMT : 0;
++}
++
++static void vuart_set_mctrl(struct uart_port *port, unsigned int mctrl)
++{
++}
++
++static unsigned int vuart_get_mctrl(struct uart_port *port)
++{
++	return 0;
++}
++
++static void vuart_stop_tx(struct uart_port *port)
++{
++	unsigned int ier;
++	struct tsse_vuart *vuart = (struct tsse_vuart *)port;
++
++	if (!vuart->confige_done)
++		return;
++
++	ier = vuart_serial_in(port, VUART_IER);
++	ier &= ~VUART_IER_HETXEI;
++	vuart_serial_out(port, VUART_IER, ier);
++}
++
++static void vuart_tx_chars(struct uart_port *port)
++{
++	struct circ_buf *xmit = &port->state->xmit;
++	struct tsse_vuart *vuart = (struct tsse_vuart *)port;
++	int count;
++
++	if (port->x_char) {
++		pr_err("x_char %d\n", port->x_char);
++		return;
++	}
++
++	if (uart_tx_stopped(port) || uart_circ_empty(xmit)) {
++		vuart_stop_tx(port);
++		return;
++	}
++
++	count = vuart->tx_loadsz;
++	do {
++		vuart_serial_out(port, VUART_TX, xmit->buf[xmit->tail]);
++		xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
++		port->icount.tx++;
++		if (uart_circ_empty(xmit))
++			break;
++	} while (--count > 0);
++
++	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
++		uart_write_wakeup(port);
++}
++
++static void vuart_start_tx(struct uart_port *port)
++{
++	unsigned int ier, fsr;
++	struct tsse_vuart *vuart = (struct tsse_vuart *)port;
++
++	if (!vuart->confige_done)
++		return;
++
++	if (uart_tx_stopped(port)) {
++		vuart_stop_tx(port);
++		return;
++	}
++
++	fsr = vuart_serial_in(port, VUART_FSR);
++	VUART_PRINT("==>Existing Data number in TX FIFO %ld\n",
++		    FIELD_GET(VUART_FSR_TFIFODN, fsr));
++	VUART_PRINT("==>Existing Data number in RX FIFO %ld\n",
++		    FIELD_GET(VUART_FSR_RFIFODN, fsr));
++	if (fsr & VUART_FSR_TXFIFOE)
++		vuart_tx_chars(port);
++	ier = vuart_serial_in(port, VUART_IER);
++	ier |= VUART_IER_HETXEI | VUART_IER_HETXUI;
++	vuart_serial_out(port, VUART_IER, ier);
++}
++
++static void vuart_throttle(struct uart_port *port)
++{
++}
++
++static void vuart_unthrottle(struct uart_port *port)
++{
++}
++
++static void vuart_stop_rx(struct uart_port *port)
++{
++	unsigned int ier;
++	struct tsse_vuart *vuart = (struct tsse_vuart *)port;
++
++	if (!vuart->confige_done)
++		return;
++
++	ier = vuart_serial_in(port, VUART_IER);
++	ier &= ~(VUART_IER_HERXTOI | VUART_IER_HETXDRI | VUART_IER_HERXOI);
++	vuart_serial_out(port, VUART_IER, ier);
++}
++
++static void vuart_enable_ms(struct uart_port *port)
++{
++}
++
++static void vuart_break_ctl(struct uart_port *port, int ctl)
++{
++}
++
++static irqreturn_t vuart_interrupt(int irq, void *port)
++{
++	int handled = 0;
++	struct uart_port *p = (struct uart_port *)port;
++
++	if (p->handle_irq(p))
++		handled = 1;
++
++	return IRQ_RETVAL(handled);
++}
++
++static void vuart_check_config_done(struct uart_port *port)
++{
++	struct tsse_vuart *vuart = (struct tsse_vuart *)port;
++
++	if (vuart_serial_in(port, VUART_CFG) == 1)
++		vuart->confige_done = 1;
++}
++
++static int vuart_startup(struct uart_port *port)
++{
++	unsigned int ret, hcr, ier, fcr = 0;
++	struct tsse_vuart *vuart = (struct tsse_vuart *)port;
++
++	if (port->flags & UPF_SHARE_IRQ)
++		port->irqflags |= IRQF_SHARED;
++	ret = request_irq(port->irq, vuart_interrupt, port->irqflags,
++			  "tsse_uart", port);
++	if (ret)
++		return ret;
++
++	hcr = vuart_serial_in(port, VUART_HCR);
++	vuart->rx_threshold = FIELD_GET(VUART_HCR_RFIFOT, hcr);
++	vuart->tx_threshold = FIELD_GET(VUART_HCR_TFIFOT, hcr);
++	fcr |= FIELD_PREP(VUART_FCR_RFIFOT, vuart->rx_threshold);
++	fcr |= FIELD_PREP(VUART_FCR_TFIFOT, vuart->tx_threshold);
++	fcr |= FIELD_PREP(VUART_FCR_TFIFORST, 1);
++	fcr |= FIELD_PREP(VUART_FCR_RFIFORST, 1);
++	vuart_serial_out(port, VUART_FCR, fcr);
++
++	vuart->rx_threshold = g_trigger_level[vuart->rx_threshold];
++	vuart->tx_threshold = g_trigger_level[vuart->tx_threshold];
++
++	vuart_check_config_done(port);
++	ier = vuart_serial_in(port, VUART_IER);
++	ier |= VUART_IER_CCFGDI | VUART_IER_HETXDRI | VUART_IER_HERXTOI;
++	vuart_serial_out(port, VUART_IER, ier);
++
++	vuart_serial_out(port, VUART_SCR, FIELD_PREP(VUART_SCR_SCR, 1));
++
++	vuart->shutdown = 0;
++
++	return 0;
++}
++
++static void vuart_shutdown(struct uart_port *port)
++{
++	struct tsse_vuart *vuart = (struct tsse_vuart *)port;
++
++	vuart->shutdown = 1;
++	vuart_stop_rx(port);
++	vuart_stop_tx(port);
++	free_irq(port->irq, port);
++	vuart_serial_out(port, VUART_SCR, 0);
++}
++
++static void vuart_set_termios(struct uart_port *port, struct ktermios *termios,
++			      const struct ktermios *old)
++{
++	unsigned int baud;
++	unsigned long flags;
++
++	if ((termios->c_cflag & CSIZE) != CS8)
++		pr_err("Warning:termios is not CS8.\n");
++
++	baud = uart_get_baud_rate(port, termios, old, 0, TSSE_VUART_BAUD);
++
++	spin_lock_irqsave(&port->lock, flags);
++	uart_update_timeout(port, termios->c_cflag, baud);
++
++	port->read_status_mask =
++		VUART_FSR_TXFIFOE | VUART_FSR_TXOE | VUART_FSR_RXDR;
++	if (termios->c_iflag & INPCK)
++		port->read_status_mask |= VUART_FSR_RXUE;
++
++	port->ignore_status_mask = 0;
++	if (termios->c_iflag & IGNPAR)
++		port->ignore_status_mask |= VUART_FSR_RXUE;
++	if (termios->c_iflag & (IGNBRK | IGNPAR))
++		port->ignore_status_mask |= VUART_FSR_TXFIFOE;
++
++	if ((termios->c_cflag & CREAD) == 0) {
++		port->ignore_status_mask |= VUART_FSR_RXDR;
++		pr_err("Warning:termios is not set CREAD.\n");
++	}
++
++	spin_unlock_irqrestore(&port->lock, flags);
++
++	if (tty_termios_baud_rate(termios))
++		tty_termios_encode_baud_rate(termios, baud, baud);
++}
++
++static void vuart_set_ldisc(struct uart_port *port, struct ktermios *ktermios)
++{
++}
++
++static void vuart_pm(struct uart_port *port, unsigned int state,
++		     unsigned int oldstate)
++{
++}
++
++static void vuart_release_port(struct uart_port *port)
++{
++}
++
++static int vuart_request_port(struct uart_port *port)
++{
++	return 0;
++}
++
++static void vuart_config_port(struct uart_port *port, int flags)
++{
++	if (flags & UART_CONFIG_TYPE)
++		port->type = PORT_16550A;
++}
++
++static int vuart_verify_port(struct uart_port *port, struct serial_struct *ser)
++{
++	if (port->type != PORT_16550A)
++		return -EINVAL;
++	return 0;
++}
++
++#ifdef CONFIG_CONSOLE_POLL
++static void vuart_poll_put_char(struct uart_port *port, unsigned char c)
++{
++	unsigned int ier_save;
++
++	ier_save = vuart_serial_in(port, VUART_IER);
++	vuart_wait_for_xmitr(port);
++	vuart_serial_out(port, VUART_TX, c);
++
++	vuart_wait_for_xmitr(port);
++	vuart_serial_out(port, VUART_IER, ier_save);
++}
++
++static int vuart_poll_get_char(struct uart_port *port)
++{
++	int status;
++
++	status = vuart_serial_in(port, VUART_FSR);
++	if (!FIELD_GET(VUART_FSR_RXDR, status))
++		return NO_POLL_CHAR;
++
++	return vuart_serial_in(port, VUART_RX);
++}
++
++#endif
++
++static const char *vuart_type(struct uart_port *port)
++{
++	return "tsse_vuart";
++}
++
++static const struct uart_ops vuart_ops = {
++	.tx_empty = vuart_tx_empty,
++	.set_mctrl = vuart_set_mctrl,
++	.get_mctrl = vuart_get_mctrl,
++	.stop_tx = vuart_stop_tx,
++	.start_tx = vuart_start_tx,
++	.throttle = vuart_throttle,
++	.unthrottle = vuart_unthrottle,
++	.stop_rx = vuart_stop_rx,
++	.enable_ms = vuart_enable_ms,
++	.break_ctl = vuart_break_ctl,
++	.startup = vuart_startup,
++	.shutdown = vuart_shutdown,
++	.set_termios = vuart_set_termios,
++	.set_ldisc = vuart_set_ldisc,
++	.pm = vuart_pm,
++	.type = vuart_type,
++	.release_port = vuart_release_port,
++	.request_port = vuart_request_port,
++	.config_port = vuart_config_port,
++	.verify_port = vuart_verify_port,
++#ifdef CONFIG_CONSOLE_POLL
++	.poll_get_char = vuart_poll_get_char,
++	.poll_put_char = vuart_poll_put_char,
++#endif
++};
++
++static unsigned int vuart_rx_chars(struct uart_port *port, unsigned int lsr)
++{
++	int max_count = TSSE_VUART_MAX_RX_COUNT;
++	unsigned char ch;
++	struct tty_port *tport = &port->state->port;
++
++	do {
++		if (lsr & VUART_FSR_RXDR)
++			ch = vuart_serial_in(port, VUART_RX);
++		else
++			ch = 0;
++		port->icount.rx++;
++		if (lsr & VUART_FSR_RXUE) {
++			port->icount.overrun++;
++			pr_err("income byte underflow, record and clear int.\n");
++			vuart_serial_out(port, VUART_IIR, VUART_IIR_RXUE);
++		}
++
++		if (!uart_prepare_sysrq_char(port, ch)) {
++			if (tty_insert_flip_char(tport, ch, TTY_NORMAL) == 0)
++				++port->icount.buf_overrun;
++		}
++
++		if (--max_count == 0)
++			break;
++		lsr = vuart_serial_in(port, VUART_FSR);
++	} while (lsr & VUART_FSR_RXDR);
++
++	tty_flip_buffer_push(&port->state->port);
++	return lsr;
++}
++
++static int vuart_deal_irq(struct uart_port *port, unsigned int iir)
++{
++	unsigned char status;
++	unsigned int ier;
++	struct tsse_vuart *vuart = (struct tsse_vuart *)port;
++
++	if (iir & VUART_IIR_CPUCD)
++		vuart->confige_done = 1;
++
++	status = vuart_serial_in(port, VUART_FSR);
++	if (port->read_status_mask & VUART_FSR_RXDR)
++		vuart_rx_chars(port, status);
++	else
++		pr_err("read_status_mask not set VUART_FSR_RXDR, ignor rx.\n");
++
++	ier = vuart_serial_in(port, VUART_IER);
++	if (!(status & VUART_FSR_TXOE) && (status & VUART_FSR_TXFIFOE) &&
++	    (ier & VUART_IER_HETXEI))
++		vuart_tx_chars(port);
++
++	return 1;
++}
++
++#ifdef DEBUG
++static void vuart_debug_iir(unsigned int iir)
++{
++	VUART_PRINT("%s called iir %u.\n", __func__, iir);
++	if (iir & VUART_IIR_TXEI)
++		pr_err("TX FIFO empty interrupt.\n");
++
++	if (iir & VUART_IIR_RXTOI)
++		pr_err("Host RX FIFO character timeout interrupt.\n");
++
++	if (iir & VUART_IIR_RXDAI)
++		pr_err("Host RX FIFO data available interrupt.\n");
++
++	if (iir & VUART_IIR_RXUE)
++		pr_err("HOST RX FIFO Underflow error.\n");
++
++	if (iir & VUART_IIR_TXOE)
++		pr_err("HOST TX FIFO Overrun error.\n");
++
++	if (iir & VUART_IIR_CPUCD)
++		pr_err("CPU has finished configuration for virtual UART");
++
++	if (iir & VUART_IIR_TXFI)
++		pr_err("Host TX FIFO full interrupt.\n");
++}
++#endif
++
++static int vuart_handle_irq(struct uart_port *port)
++{
++	unsigned int iir;
++	unsigned long flags;
++	int ret;
++
++	iir = vuart_serial_in(port, VUART_IIR);
++	vuart_serial_out(port, VUART_IIR, iir);
++#ifdef DEBUG
++	vuart_debug_iir(iir);
++#endif
++	spin_lock_irqsave(&port->lock, flags);
++	ret = vuart_deal_irq(port, iir);
++
++	uart_unlock_and_check_sysrq_irqrestore(port, flags);
++
++	return ret;
++}
++
++static int vuart_get_line(void)
++{
++	int bit = 0;
++
++	bit = find_first_zero_bit(&g_line[0], TSSE_VUART_MAX_DEV);
++	if (bit >= TSSE_VUART_MAX_DEV)
++		return -ENOSPC;
++	set_bit(bit, &g_line[0]);
++	return bit;
++}
++
++static void vuart_free_line(int line)
++{
++	clear_bit(line, &g_line[0]);
++}
++
++int vuart_init_port(struct pci_dev *pdev)
++{
++	struct tsse_dev *tdev = pci_to_tsse_dev(pdev);
++	struct tsse_vuart *vuart = NULL;
++	struct uart_port *p = NULL;
++	int ret = 0;
++	int line = vuart_get_line();
++
++	if (line == -ENOSPC) {
++		dev_err(&pdev->dev, "device too more, max is 64.\n");
++		return -ENOMEM;
++	}
++
++	vuart = kzalloc_node(sizeof(struct tsse_vuart), GFP_KERNEL,
++			     dev_to_node(&pdev->dev));
++	if (!vuart) {
++		ret = -ENOMEM;
++		goto zalloc_fail;
++	}
++	vuart->shutdown = 1;
++	p = &(vuart->port);
++	p->mapbase = 0;
++	p->mapsize = 0;
++	p->membase = TSSE_DEV_BARS(tdev)[2].virt_addr + RLS_VUART_OFFSET;
++	p->irq = pci_irq_vector(pdev, RLS_VUART_IRQ_NUM);
++	p->handle_irq = vuart_handle_irq;
++	spin_lock_init(&p->lock);
++	p->line = line;
++	p->type = PORT_16550A;
++	p->uartclk = TSSE_VUART_BAUD * 16;
++	p->iotype = UPIO_MEM;
++	p->ops = &vuart_ops;
++	p->fifosize = 128;
++	vuart->tx_loadsz = 128;
++	p->flags = UPF_BOOT_AUTOCONF | UPF_FIXED_TYPE | UPF_FIXED_PORT |
++		   UPF_SHARE_IRQ;
++	p->dev = &pdev->dev;
++	p->private_data = tdev;
++
++	tdev->port = (struct uart_port *)vuart;
++	ret = uart_add_one_port(&g_vuart_reg, p);
++	if (ret != 0) {
++		dev_err(&pdev->dev, "add port fialed.[%d]\n", ret);
++		goto add_port_fail;
++	}
++	return 0;
++add_port_fail:
++	kfree(vuart);
++zalloc_fail:
++	vuart_free_line(line);
++
++	return ret;
++}
++
++void vuart_uninit_port(struct pci_dev *pdev)
++{
++	struct tsse_dev *tdev = pci_to_tsse_dev(pdev);
++	struct tsse_vuart *vuart = (struct tsse_vuart *)(tdev->port);
++
++	if (tdev->port) {
++		if (!vuart->shutdown)
++			free_irq(tdev->port->irq, tdev->port);
++		vuart_free_line(tdev->port->line);
++		uart_remove_one_port(&g_vuart_reg, tdev->port);
++		kfree(vuart);
++	}
++}
++
++int vuart_register(void)
++{
++	return uart_register_driver(&g_vuart_reg);
++}
++
++void vuart_unregister(void)
++{
++	uart_unregister_driver(&g_vuart_reg);
++}
+diff --git a/drivers/crypto/montage/tsse/tsse_vuart.h b/drivers/crypto/montage/tsse/tsse_vuart.h
+new file mode 100644
+index 000000000000..1ed43368751a
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_vuart.h
+@@ -0,0 +1,23 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#ifndef __TSSE_VUART_H__
++#define __TSSE_VUART_H__
++
++#include <linux/pci.h>
++
++#define RLS_VUART_OFFSET (0x680000)
++#define RLS_VUART_IRQ_NUM (10)
++#define TSSE_VUART_MAX_DEV (64)
++#define TSSE_VUART_BITMAP_SIZE (ALIGN(TSSE_VUART_MAX_DEV, 64) / 64)
++
++int vuart_register(void);
++void vuart_unregister(void);
++int vuart_init_port(struct pci_dev *pdev);
++void vuart_uninit_port(struct pci_dev *pdev);
++
++#endif
+diff --git a/drivers/crypto/montage/tsse/tsse_vuart_regs.h b/drivers/crypto/montage/tsse/tsse_vuart_regs.h
+new file mode 100644
+index 000000000000..26fa62f5014a
+--- /dev/null
++++ b/drivers/crypto/montage/tsse/tsse_vuart_regs.h
+@@ -0,0 +1,72 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++/*
++ * This file is part of tsse driver for Linux
++ *
++ * Copyright © 2023 Montage Technology. All rights reserved.
++ */
++
++#ifndef __TSSE_VUART_REGS_H__
++#define __TSSE_VUART_REGS_H__
++
++#include <linux/bits.h>
++#include <linux/bitfield.h>
++
++#define VUART_ID 0x0
++#define VUART_ID_MASK GENMASK(31, 0)
++
++#define VUART_HCR 0x10
++#define VUART_HCR_RFIFOT GENMASK(3, 2)
++#define VUART_HCR_TFIFOT GENMASK(5, 4)
++
++#define INTRID_NONE BIT(0)
++#define INTRID_CPU_LSR (BIT(2) | BIT(1))
++#define INTRID_TRIGGER_LEVEL BIT(2)
++#define INTRID_RX_TIMEOUT (BIT(2) | BIT(3))
++#define INTRID_TX_EMPTY BIT(1)
++
++#define VUART_IIR 0x28
++#define VUART_IIR_TXEI GENMASK(0, 0)
++#define VUART_IIR_RXTOI GENMASK(1, 1)
++#define VUART_IIR_RXDAI GENMASK(2, 2)
++#define VUART_IIR_CPUCD GENMASK(3, 3)
++#define VUART_IIR_TXFI GENMASK(4, 4)
++#define VUART_IIR_RXUE GENMASK(5, 5)
++#define VUART_IIR_TXOE GENMASK(6, 6)
++
++#define VUART_FCR 0x30
++#define VUART_FCR_TFIFORST GENMASK(0, 0)
++#define VUART_FCR_RFIFORST GENMASK(1, 1)
++#define VUART_FCR_RFIFOT GENMASK(3, 2)
++#define VUART_FCR_TFIFOT GENMASK(5, 4)
++
++#define VUART_FSR 0x34
++#define VUART_FSR_TXDR GENMASK(0, 0)
++#define VUART_FSR_RXDR GENMASK(1, 1)
++#define VUART_FSR_RXFIFO GENMASK(2, 2)
++#define VUART_FSR_TXFIFOE GENMASK(3, 3)
++#define VUART_FSR_RXFIFOF GENMASK(4, 4)
++#define VUART_FSR_TXFIFOF GENMASK(5, 5)
++#define VUART_FSR_TFIFODN GENMASK(13, 6)
++#define VUART_FSR_RFIFODN GENMASK(21, 14)
++#define VUART_FSR_TXOE GENMASK(23, 23)
++#define VUART_FSR_RXUE GENMASK(24, 24)
++
++#define VUART_SCR 0x3c
++#define VUART_SCR_SCR GENMASK(7, 0)
++
++#define VUART_TX 0x40
++#define VUART_RX 0x40
++
++#define VUART_IER 0x48
++#define VUART_IER_HETXEI GENMASK(0, 0)
++#define VUART_IER_HERXTOI GENMASK(1, 1)
++#define VUART_IER_HETXDRI GENMASK(2, 2)
++#define VUART_IER_CCFGDI GENMASK(3, 3)
++#define VUART_IER_HETXFI GENMASK(4, 4)
++#define VUART_IER_HETXUI GENMASK(5, 5)
++#define VUART_IER_HERXOI GENMASK(6, 6)
++
++#define VUART_CFG 0x4c
++#define VUART_CFG_CCFGD GENMASK(0, 0)
++
++#endif
+-- 
+2.20.1
+
