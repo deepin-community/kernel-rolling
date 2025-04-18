@@ -1321,8 +1321,7 @@ static const struct key_entry ideapad_keymap[] = {
 	{ KE_KEY,	0x3d | IDEAPAD_WMI_KEY, { KEY_PROG4 } },
 	/* shift + prtsc */
 	{ KE_KEY,   0x2d | IDEAPAD_WMI_KEY, { KEY_CUT } },
-	/* Touchpad Toggle */
-	{ KE_KEY,  0x29 | IDEAPAD_WMI_KEY, { KEY_TOUCHPAD_TOGGLE } },
+	{ KE_KEY,   0x29 | IDEAPAD_WMI_KEY, { KEY_TOUCHPAD_TOGGLE } },
 	{ KE_KEY,   0x2a | IDEAPAD_WMI_KEY, { KEY_ROOT_MENU } },
 
 	{ KE_END },
