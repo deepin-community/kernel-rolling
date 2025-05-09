@@ -2633,13 +2633,6 @@ static int rtw89_pci_ops_mac_pre_init(struct rtw89_dev *rtwdev)
 	return 0;
 }
 
-static int rtw89_pci_ops_mac_pre_deinit(struct rtw89_dev *rtwdev)
-{
-	rtw89_pci_power_wake(rtwdev, false);
-
-	return 0;
-}
-
 int rtw89_pci_ltr_set(struct rtw89_dev *rtwdev, bool en)
 {
 	u32 val;
@@ -3884,7 +3877,6 @@ static const struct rtw89_hci_ops rtw89_pci_ops = {
 	.write32	= rtw89_pci_ops_write32,
 
 	.mac_pre_init	= rtw89_pci_ops_mac_pre_init,
-	.mac_pre_deinit = rtw89_pci_ops_mac_pre_deinit,
 	.mac_post_init	= rtw89_pci_ops_mac_post_init,
 	.deinit		= rtw89_pci_ops_deinit,
 
