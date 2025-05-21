@@ -366,7 +366,7 @@ MODULE_DEVICE_TABLE(acpi, zxsmb_acpi_match);
 
 static struct platform_driver zxsmb_driver = {
 	.probe  = zxsmb_probe,
-	.remove_new = zxsmb_remove,
+	.remove = zxsmb_remove,
 	.driver = {
 		.name = ZXSMB_NAME,
 		.acpi_match_table = ACPI_PTR(zxsmb_acpi_match),
