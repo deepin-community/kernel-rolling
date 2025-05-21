@@ -554,7 +554,7 @@ static struct platform_driver aaeon_hwmon_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = aaeon_hwmon_probe,
-	.remove_new = aaeon_hwmon_remove,
+	.remove = aaeon_hwmon_remove,
 };
 
 module_platform_driver_probe(aaeon_hwmon_driver, aaeon_hwmon_probe);
