@@ -745,7 +745,6 @@ static void update_zero_vruntime(struct cfs_rq *cfs_rq)
 	s64 delta = (s64)(vruntime - cfs_rq->zero_vruntime);
 
 	avg_vruntime_update(cfs_rq, delta);
-
 	cfs_rq->zero_vruntime = vruntime;
 }
 
@@ -3799,15 +3798,6 @@ static void reweight_entity(struct cfs_rq *cfs_rq, struct sched_entity *se,
 		if (!curr)
 			__enqueue_entity(cfs_rq, se);
 		cfs_rq->nr_queued++;
-
-		/*
-		 * The entity's vruntime has been adjusted, so let's check
-		 * whether the rq-wide min_vruntime needs updated too. Since
-		 * the calculations above require stable min_vruntime rather
-		 * than up-to-date one, we do the update at the end of the
-		 * reweight process.
-		 */
-		update_min_vruntime(cfs_rq);
 	}
 }
 
