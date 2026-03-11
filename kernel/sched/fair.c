@@ -745,6 +745,7 @@ static void update_zero_vruntime(struct cfs_rq *cfs_rq)
 	s64 delta = (s64)(vruntime - cfs_rq->zero_vruntime);
 
 	avg_vruntime_update(cfs_rq, delta);
+
 	cfs_rq->zero_vruntime = vruntime;
 }
 

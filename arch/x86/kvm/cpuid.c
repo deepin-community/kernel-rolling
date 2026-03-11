@@ -832,6 +832,8 @@ void kvm_set_cpu_caps(void)
 		F(TSA_SQ_NO) | F(TSA_L1_NO)
 	);
 
+	kvm_cpu_cap_check_and_set(X86_FEATURE_TSA_SQ_NO);
+	kvm_cpu_cap_check_and_set(X86_FEATURE_TSA_L1_NO);
 
 	/*
 	 * Synthesize "LFENCE is serializing" into the AMD-defined entry in
